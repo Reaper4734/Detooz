@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # CallMeBot (FREE WhatsApp alerts)
     CALLMEBOT_ENABLED: bool = True
     
+    # Telegram Bot (FREE, unlimited - recommended!)
+    # Create bot via @BotFather on Telegram
+    TELEGRAM_BOT_TOKEN: str = ""
+    
     model_config = {
         "env_file": ".env",
         "extra": "ignore"

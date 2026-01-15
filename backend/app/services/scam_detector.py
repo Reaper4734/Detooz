@@ -126,7 +126,7 @@ Return ONLY valid JSON (no markdown):
     def _sync_groq_call(self, message: str, sender: str) -> dict:
         """Synchronous Groq API call (will be run in thread pool)"""
         response = self.client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": self.SYSTEM_PROMPT},
                 {"role": "user", "content": f"Sender: {sender}\nMessage: {message}"}
