@@ -1,4 +1,3 @@
-import os
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -26,8 +25,10 @@ class Settings(BaseSettings):
     # CallMeBot (FREE WhatsApp alerts)
     CALLMEBOT_ENABLED: bool = True
     
-    class Config:
-        env_file = ".env"
+    model_config = {
+        "env_file": ".env",
+        "extra": "ignore"
+    }
 
 
 @lru_cache()

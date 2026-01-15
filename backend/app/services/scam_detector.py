@@ -1,5 +1,6 @@
 import re
 import json
+import asyncio
 from app.config import settings
 
 # Try to import groq, but make it optional
@@ -27,6 +28,9 @@ class ScamDetector:
         r"aadhaar\s+update\s+urgent",
         r"click\s+(here|this\s+link|now)",
         r"verify\s+(now|immediately|urgent)",
+        r"dear\s+customer.*blocked",
+        r"credit\s+card.*approved",
+        r"investment.*guaranteed.*return",
     ]
     
     MEDIUM_RISK_PATTERNS = [
@@ -37,6 +41,8 @@ class ScamDetector:
         r"congratulations",
         r"selected\s+as\s+winner",
         r"limited\s+time\s+offer",
+        r"last\s+chance",
+        r"offer\s+expires",
     ]
     
     # Scam detection prompt for AI
@@ -117,23 +123,26 @@ Return ONLY valid JSON (no markdown):
             "confidence": 0.7
         }
     
+    def _sync_groq_call(self, message: str, sender: str) -> dict:
+        """Synchronous Groq API call (will be run in thread pool)"""
+        response = self.client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": self.SYSTEM_PROMPT},
+                {"role": "user", "content": f"Sender: {sender}\nMessage: {message}"}
+            ],
+            temperature=0.1,
+            max_tokens=200
+        )
+        
+        result_text = response.choices[0].message.content.strip()
+        return json.loads(result_text)
+    
     async def _analyze_with_ai(self, message: str, sender: str) -> dict:
-        """Analyze message using Groq AI (Llama 3)"""
+        """Analyze message using Groq AI (Llama 3) - runs sync call in thread pool"""
         try:
-            response = self.client.chat.completions.create(
-                model="llama3-8b-8192",
-                messages=[
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
-                    {"role": "user", "content": f"Sender: {sender}\nMessage: {message}"}
-                ],
-                temperature=0.1,
-                max_tokens=200
-            )
-            
-            result_text = response.choices[0].message.content.strip()
-            
-            # Parse JSON response
-            result = json.loads(result_text)
+            # Run sync Groq call in thread pool to not block event loop
+            result = await asyncio.to_thread(self._sync_groq_call, message, sender)
             
             return {
                 "risk_level": result.get("risk_level", "LOW"),
