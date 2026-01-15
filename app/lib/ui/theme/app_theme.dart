@@ -30,6 +30,7 @@ class AppTheme {
           fontWeight: FontWeight.bold,
         ),
       ),
+      /*
       cardTheme: CardTheme(
         color: AppColors.surfaceLight,
         elevation: 0,
@@ -39,6 +40,7 @@ class AppTheme {
           side: const BorderSide(color: Color(0xFFE2E8F0)), // Light border
         ),
       ),
+      */
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.surfaceLight,
         selectedItemColor: AppColors.primary,
@@ -76,6 +78,7 @@ class AppTheme {
           fontWeight: FontWeight.bold,
         ),
       ),
+      /*
       cardTheme: CardTheme(
         color: AppColors.surfaceDark,
         elevation: 0,
@@ -85,6 +88,7 @@ class AppTheme {
           side: const BorderSide(color: Color(0xFF293038)), // Dark border
         ),
       ),
+      */
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: Color(0xFF101922), // Darker bg for nav
         selectedItemColor: AppColors.primary,

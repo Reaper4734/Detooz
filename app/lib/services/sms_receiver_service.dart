@@ -1,18 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:telephony/telephony.dart';
+// import 'package:another_telephony/telephony.dart';  // Temporarily disabled - AGP 8.x issue
 import 'package:permission_handler/permission_handler.dart';
 import '../services/api_service.dart';
 import '../ui/components/scam_alert_overlay.dart';
 
 /// Service that handles incoming SMS messages and WhatsApp detection
+/// Note: SMS listener temporarily disabled due to AGP 8.x compatibility issues
 class SmsReceiverService {
   static final SmsReceiverService _instance = SmsReceiverService._internal();
   factory SmsReceiverService() => _instance;
   SmsReceiverService._internal();
   
-  final Telephony telephony = Telephony.instance;
+  // final Telephony telephony = Telephony.instance;  // Disabled
   final MethodChannel _accessibilityChannel = 
       const MethodChannel('com.detooz.app/accessibility');
   
@@ -24,11 +25,11 @@ class SmsReceiverService {
     if (_isInitialized) return;
     _context = context;
     
-    // Request SMS permissions
-    final smsStatus = await Permission.sms.request();
-    if (smsStatus.isGranted) {
-      _startSmsListener();
-    }
+    // SMS listener temporarily disabled
+    // final smsStatus = await Permission.sms.request();
+    // if (smsStatus.isGranted) {
+    //   _startSmsListener();
+    // }
     
     // Setup WhatsApp accessibility channel
     _setupAccessibilityChannel();
@@ -36,46 +37,16 @@ class SmsReceiverService {
     _isInitialized = true;
   }
   
-  void _startSmsListener() {
-    telephony.listenIncomingSms(
-      onNewMessage: _handleIncomingSms,
-      onBackgroundMessage: _backgroundMessageHandler,
-    );
-  }
+  // void _startSmsListener() {
+  //   telephony.listenIncomingSms(
+  //     onNewMessage: _handleIncomingSms,
+  //     onBackgroundMessage: _backgroundMessageHandler,
+  //   );
+  // }
   
-  Future<void> _handleIncomingSms(SmsMessage message) async {
-    final sender = message.address ?? 'Unknown';
-    final body = message.body ?? '';
-    
-    if (body.isEmpty) return;
-    
-    try {
-      // Call backend API
-      final result = await apiService.analyzeSms(
-        sender: sender,
-        message: body,
-      );
-      
-      final riskLevel = result['risk_level'] as String?;
-      
-      if (riskLevel == 'HIGH' && _context != null) {
-        // Show alert overlay
-        _showScamAlert(
-          sender: sender,
-          message: body,
-          reason: result['risk_reason'] ?? 'Potential scam detected',
-          confidence: (result['confidence'] as num?)?.toDouble() ?? 0.9,
-        );
-      } else if (riskLevel == 'MEDIUM') {
-        // Show notification (less intrusive)
-        _showWarningNotification(sender, result['risk_reason'] ?? 'Suspicious message');
-      }
-      // LOW risk: do nothing
-      
-    } catch (e) {
-      debugPrint('SMS analysis failed: $e');
-    }
-  }
+  // Future<void> _handleIncomingSms(SmsMessage message) async {
+  //   // ... SMS handling code disabled
+  // }
   
   void _setupAccessibilityChannel() {
     _accessibilityChannel.setMethodCallHandler((call) async {
@@ -133,7 +104,6 @@ class SmsReceiverService {
   }
   
   void _showWarningNotification(String sender, String reason) {
-    // TODO: Implement local notification for MEDIUM risk
     debugPrint('⚠️ Warning from $sender: $reason');
   }
   
@@ -144,23 +114,6 @@ class SmsReceiverService {
     } catch (e) {
       debugPrint('Failed to block sender: $e');
     }
-  }
-}
-
-/// Background message handler (must be top-level function)
-@pragma('vm:entry-point')
-Future<void> _backgroundMessageHandler(SmsMessage message) async {
-  // In background, we can't show UI, but we can analyze and log
-  final sender = message.address ?? 'Unknown';
-  final body = message.body ?? '';
-  
-  if (body.isEmpty) return;
-  
-  try {
-    await apiService.analyzeSms(sender: sender, message: body);
-    // Backend will handle guardian alerts automatically
-  } catch (e) {
-    debugPrint('Background SMS analysis failed: $e');
   }
 }
 
