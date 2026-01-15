@@ -1,11 +1,22 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, scan, guardian
+from app.db import init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize database on startup"""
+    await init_db()
+    yield
+
 
 app = FastAPI(
     title="Detooz API",
     description="AI-powered scam detection backend",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS for mobile app
