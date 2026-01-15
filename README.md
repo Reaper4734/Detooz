@@ -1,51 +1,38 @@
 # Detooz (ScamShield)
 
-> AI-powered scam detection app protecting users from SMS, WhatsApp, and Telegram scams.
+> 🛡️ AI-powered scam detection app protecting users from SMS, WhatsApp, and Telegram scams.
 
-## Project Structure
+## 📚 Documentation
+- **[Backend Handover Guide](BACKEND_HANDOVER.md)** 👈 **START HERE (For Devs)**
+- [Mobile Integration Guide](API_DOCS_FOR_MOBILE.md)
+- [WhatsApp Detection Strategy](WHATSAPP_STRATEGY.md)
 
+## 🏗️ Project Structure
 ```
 Detooz/
-├── backend/           # Python FastAPI server
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── routers/
-│   │   ├── services/
-│   │   ├── models/
-│   │   └── schemas/
-│   └── tests/
-├── app/               # Flutter mobile app (coming soon)
-├── docker/            # Docker configuration
-└── docs/              # Documentation
+├── backend/               # FastAPI Server (Python)
+├── mobile/                # Flutter App (Dart)
+├── docker/                # Docker Config
+├── BACKEND_HANDOVER.md    # Developer Rules & Setup
+└── task.md                # Progress Tracker
 ```
 
-## Quick Start
+## ⚡ Tech Stack
+- **Backend**: FastAPI, SQLAlchemy (SQLite/Postgres)
+- **AI**: Groq (Text) + Gemini (Vision)
+- **Mobile**: Flutter
+- **Alerts**: Telegram Bot
 
-### Backend
-
+## 🚀 Quick Start (Backend)
 ```bash
 cd backend
-python -m venv venv
-.\venv\Scripts\Activate  # Windows
+# Setup venv & install deps
+.\venv\Scripts\Activate
 pip install -r requirements.txt
+# Run server
 uvicorn app.main:app --reload
 ```
+See `BACKEND_HANDOVER.md` for full instructions.
 
-### Docker
-
-```bash
-cd docker
-docker-compose up -d
-```
-
-## Tech Stack
-
-- **Backend**: FastAPI, PostgreSQL, Redis
-- **AI**: Groq API (Llama 3)
-- **Mobile**: Flutter
-- **Alerts**: CallMeBot (WhatsApp)
-
-## License
-
+## 📄 License
 MIT
