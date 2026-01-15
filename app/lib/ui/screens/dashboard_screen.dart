@@ -7,12 +7,57 @@ import '../components/scan_card.dart';
 import '../providers.dart';
 import 'scan_detail_screen.dart';
 import 'settings_screen.dart';
+import '../components/scam_alert_overlay.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  final TextEditingController _manualCheckController = TextEditingController();
+  bool _isAnalyzing = false;
+
+  @override
+  void dispose() {
+    _manualCheckController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _analyzeManualInput() async {
+    final text = _manualCheckController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isAnalyzing = true);
+    
+    final scan = await ref.read(scansProvider.notifier).analyzeMessage('Manual Check', text);
+    
+    setState(() => _isAnalyzing = false);
+    _manualCheckController.clear();
+    
+    if (scan != null && mounted) {
+      if (scan.riskLevel.name == 'high') {
+        ScamAlertOverlay.show(
+          context,
+          sender: 'Manual Check',
+          message: text,
+          reason: scan.riskReason ?? 'Potential scam detected',
+          confidence: scan.confidence ?? 0.9,
+          onBlock: () {},
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ScanDetailScreen(scan: scan)),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final recentScans = ref.watch(recentScansProvider);
 
     return Scaffold(
@@ -158,17 +203,21 @@ class DashboardScreen extends ConsumerWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.add_photo_alternate_outlined),
-                    onPressed: () {},
+                    onPressed: () {
+                      // TODO: Image picker for screenshot analysis
+                    },
                     color: Colors.grey,
                   ),
                   Expanded(
                     child: TextField(
+                      controller: _manualCheckController,
                       decoration: const InputDecoration(
                         hintText: 'Check text, URL, or number...',
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(horizontal: 8),
                       ),
                       style: Theme.of(context).textTheme.bodyMedium,
+                      onSubmitted: (_) => _analyzeManualInput(),
                     ),
                   ),
                   Container(
@@ -179,12 +228,19 @@ class DashboardScreen extends ConsumerWidget {
                         BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))
                       ]
                     ),
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_upward, color: Colors.white),
-                      onPressed: () {
-                         // Mock navigation to details
-                      },
-                    ),
+                    child: _isAnalyzing
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            ),
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.arrow_upward, color: Colors.white),
+                            onPressed: _analyzeManualInput,
+                          ),
                   ),
                 ],
               ),
