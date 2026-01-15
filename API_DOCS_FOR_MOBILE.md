@@ -72,7 +72,26 @@ Call this whenever a new SMS arrives.
 
 ---
 
-## 🐞 Troubleshooting
+## �️ Image Analysis (Screenshots)
+
+### Analyze Screenshot
+Call this when user captures a screenshot or shares an image.
+
+**Endpoint:** `POST /api/scan/analyze-image`
+
+**Format:** `multipart/form-data`
+
+**Fields:**
+- `file`: The image file (jpg/png)
+- `sender`: (Optional) Sender of the message in the screenshot
+- `platform`: (Optional) "WHATSAPP", "SMS", "TELEGRAM"
+
+**Response:**
+Same as SMS Analysis (`risk_level`, `reason`, etc.)
+
+---
+
+## �🐞 Troubleshooting
 
 - **Connection Refused?** 
   - Emulator: Use `10.0.2.2`, NOT `localhost`.
