@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "Detooz"
     DEBUG: bool = True
     
-    # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/detooz"
+    # Database (SQLite for local, PostgreSQL for production)
+    DATABASE_URL: str = "sqlite+aiosqlite:///./detooz.db"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379"

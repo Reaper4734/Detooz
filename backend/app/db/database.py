@@ -2,8 +2,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
-# Convert sync URL to async
-DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+# Handle both SQLite and PostgreSQL
+if settings.DATABASE_URL.startswith("sqlite"):
+    DATABASE_URL = settings.DATABASE_URL
+else:
+    # Convert sync PostgreSQL URL to async
+    DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
 
 engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG)
 
