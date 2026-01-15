@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../theme/theme_provider.dart';
+import '../providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -138,6 +139,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.light),
                 ),
               ],
+            ),
+          ),
+          
+          const SizedBox(height: 32),
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                ref.read(authProvider.notifier).logout();
+                Navigator.pop(context); // Close settings
+              },
+              icon: const Icon(Icons.logout),
+              label: const Text('Log Out'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.surfaceLight,
+                foregroundColor: AppColors.danger,
+                elevation: 0,
+                side: BorderSide(color: AppColors.danger.withOpacity(0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
             ),
           ),
           

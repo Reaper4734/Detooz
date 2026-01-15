@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/theme/theme_provider.dart';
+import 'ui/providers.dart';
 import 'ui/screens/main_screen.dart';
+import 'ui/screens/login_screen.dart';
 import 'services/offline_cache_service.dart';
 import 'services/sms_receiver_service.dart';
 
@@ -44,7 +46,17 @@ class _MyAppState extends ConsumerState<MyApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      home: const MainScreen(),
+      home: const AuthWrapper(),
     );
+  }
+}
+
+class AuthWrapper extends ConsumerWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthenticated = ref.watch(authProvider);
+    return isAuthenticated ? const MainScreen() : const LoginScreen();
   }
 }
