@@ -44,6 +44,10 @@ dependencies:
   permission_handler: ^11.3.0
   flutter_local_notifications: ^17.0.0
   flutter_secure_storage: ^9.0.0
+  
+  # Offline Cache
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
 
 dev_dependencies:
   flutter_test:
