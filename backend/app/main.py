@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, scan, guardian
+from app.routers import auth, scan, guardian, sms
 from app.db import init_db
 
 
@@ -32,6 +32,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(scan.router, prefix="/api/scan", tags=["Scam Detection"])
 app.include_router(guardian.router, prefix="/api/guardian", tags=["Guardians"])
+app.include_router(sms.router, prefix="/api/sms", tags=["SMS Detection"])
 
 
 @app.get("/")
