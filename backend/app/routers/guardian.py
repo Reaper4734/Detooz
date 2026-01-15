@@ -33,12 +33,19 @@ async def add_guardian(
 ):
     """Add a new guardian"""
     
+    # Verified if either CallMeBot or Telegram is configured
+    is_verified = (
+        guardian_data.callmebot_apikey is not None or 
+        guardian_data.telegram_chat_id is not None
+    )
+    
     guardian = Guardian(
         user_id=current_user.id,
         name=guardian_data.name,
         phone=guardian_data.phone,
         callmebot_apikey=guardian_data.callmebot_apikey,
-        is_verified=guardian_data.callmebot_apikey is not None
+        telegram_chat_id=guardian_data.telegram_chat_id,
+        is_verified=is_verified
     )
     
     db.add(guardian)
@@ -74,6 +81,9 @@ async def update_guardian(
         guardian.phone = update.phone
     if update.callmebot_apikey:
         guardian.callmebot_apikey = update.callmebot_apikey
+        guardian.is_verified = True
+    if update.telegram_chat_id:
+        guardian.telegram_chat_id = update.telegram_chat_id
         guardian.is_verified = True
     
     await db.commit()
@@ -113,7 +123,7 @@ async def test_alert(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Send a test alert to guardian"""
+    """Send a test alert to guardian via Telegram or WhatsApp"""
     
     result = await db.execute(
         select(Guardian).where(
@@ -126,16 +136,18 @@ async def test_alert(
     if not guardian:
         raise HTTPException(status_code=404, detail="Guardian not found")
     
-    if not guardian.callmebot_apikey:
+    # Check if any alert method is configured
+    if not guardian.callmebot_apikey and not guardian.telegram_chat_id:
         raise HTTPException(
             status_code=400,
-            detail="Guardian has no CallMeBot API key configured"
+            detail="Guardian has no alert method configured (CallMeBot or Telegram)"
         )
     
     success = await alert_service.send_test_alert(
         phone=guardian.phone,
         apikey=guardian.callmebot_apikey,
-        user_name=current_user.name
+        user_name=current_user.name,
+        telegram_chat_id=guardian.telegram_chat_id
     )
     
     if success:

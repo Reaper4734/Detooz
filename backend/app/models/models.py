@@ -45,6 +45,7 @@ class Guardian(Base):
     name = Column(String(255), nullable=False)
     phone = Column(String(20), nullable=False)
     callmebot_apikey = Column(String(50), nullable=True)
+    telegram_chat_id = Column(String(50), nullable=True)  # For Telegram alerts
     is_verified = Column(Boolean, default=False)
     last_alert_sent = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

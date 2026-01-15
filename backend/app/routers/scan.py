@@ -54,14 +54,16 @@ async def analyze_message(
         guardians = guardians_result.scalars().all()
         
         for guardian in guardians:
-            if guardian.callmebot_apikey:
+            # Try to send alert (supports both Telegram and CallMeBot)
+            if guardian.callmebot_apikey or guardian.telegram_chat_id:
                 success = await alert_service.send_scam_alert(
                     phone=guardian.phone,
                     apikey=guardian.callmebot_apikey,
                     user_name=current_user.name,
                     sender=request.sender,
                     risk_level=result["risk_level"],
-                    reason=result["reason"]
+                    reason=result["reason"],
+                    telegram_chat_id=guardian.telegram_chat_id
                 )
                 if success:
                     guardian.last_alert_sent = datetime.utcnow()

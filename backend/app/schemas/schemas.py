@@ -44,18 +44,21 @@ class GuardianCreate(BaseModel):
     name: str
     phone: str
     callmebot_apikey: str | None = None
+    telegram_chat_id: str | None = None
 
 
 class GuardianUpdate(BaseModel):
     name: str | None = None
     phone: str | None = None
     callmebot_apikey: str | None = None
+    telegram_chat_id: str | None = None
 
 
 class GuardianResponse(BaseModel):
     id: int
     name: str
     phone: str
+    telegram_chat_id: str | None
     is_verified: bool
     last_alert_sent: datetime | None
     created_at: datetime
