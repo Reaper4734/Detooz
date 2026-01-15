@@ -10,9 +10,16 @@ try:
 except ImportError:
     GROQ_AVAILABLE = False
 
+# Try to import google-generativeai
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
 
 class ScamDetector:
-    """AI-powered scam detection service using Groq API (Llama 3.3) + local patterns"""
+    """AI-powered scam detection service using Groq API (Llama 3.3) for text and Gemini for images"""
     
     # Scam detection prompt for AI
     SYSTEM_PROMPT = """You are a scam detection expert specialized in Indian SMS/WhatsApp scams.
@@ -44,6 +51,10 @@ class ScamDetector:
         self.client = None
         if GROQ_AVAILABLE and settings.GROQ_API_KEY:
             self.client = Groq(api_key=settings.GROQ_API_KEY)
+            
+        if GEMINI_AVAILABLE and settings.GEMINI_API_KEY:
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
     
     async def analyze(self, message: str, sender: str) -> dict:
         """
@@ -117,6 +128,9 @@ class ScamDetector:
         )
         
         result_text = response.choices[0].message.content.strip()
+        # Clean up if AI responds with ```json ... ```
+        if result_text.startswith("```"):
+            result_text = result_text.replace("```json", "").replace("```", "")
         return json.loads(result_text)
     
     async def _analyze_with_ai(self, message: str, sender: str) -> dict:
@@ -155,3 +169,48 @@ class ScamDetector:
             "scam_type": result["scam_type"],
             "confidence": result["confidence"]
         }
+        
+    async def analyze_image(self, image_data: bytes) -> dict:
+        """
+        Analyze an image (screenshot or photo) for scam content using Gemini Vision.
+        """
+        if not GEMINI_AVAILABLE or not getattr(self, 'gemini_model', None):
+            return {
+                "risk_level": "UNKNOWN",
+                "reason": "Image analysis not configured (Gemini API missing)",
+                "confidence": 0.0
+            }
+            
+        prompt = """Analyze this image for scam/fraud content.
+        Is it a screenshot of a fake payment, fake login page, suspicious WhatsApp conversation, or lottery win?
+        
+        Return JSON:
+        {"risk_level": "HIGH/MEDIUM/LOW", "reason": "short explanation", "scam_type": "type"}
+        """
+        
+        try:
+            # Run Gemini call in thread pool
+            result = await asyncio.to_thread(self._sync_gemini_call, image_data, prompt)
+            return result
+        except Exception as e:
+            print(f"Gemini analysis failed: {e}")
+            return {
+                "risk_level": "UNKNOWN",
+                "reason": f"Analysis failed: {str(e)}",
+                "confidence": 0.0
+            }
+            
+    def _sync_gemini_call(self, image_data: bytes, prompt: str) -> dict:
+        """Synchronous Gemini API call"""
+        from PIL import Image
+        import io
+        
+        image = Image.open(io.BytesIO(image_data))
+        response = self.gemini_model.generate_content([prompt, image])
+        text = response.text.strip()
+        
+        # Clean up JSON
+        if text.startswith("```"):
+            text = text.replace("```json", "").replace("```", "")
+            
+        return json.loads(text)
