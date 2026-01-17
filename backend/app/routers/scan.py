@@ -7,6 +7,9 @@ from app.models import User, Scan, Guardian, RiskLevel, PlatformType
 from app.routers.auth import get_current_user
 from app.schemas import ScanRequest, ScanResponse, ScanDetail
 from app.services.scam_detector import ScamDetector
+from app.services.confidence_scorer import confidence_scorer
+from app.services.explanation_engine import explanation_engine
+from app.services.notification_service import notification_service
 from app.services.alert_service import AlertService
 
 router = APIRouter()
@@ -45,11 +48,12 @@ async def analyze_message(
     
     # Send alert to guardians if HIGH risk
     if result["risk_level"] == "HIGH":
-        guardians_result = await db.execute(
-            select(Guardian).where(
-                Guardian.user_id == current_user.id,
-                Guardian.is_verified == True
-            )
+        # Add the notification task to background tasks
+        background_tasks.add_task(
+            notification_service.notify_guardians,
+            scan.id, # Pass scan ID instead of object for background task
+            current_user.id,
+            db # Pass the session for the background task
         )
         guardians = guardians_result.scalars().all()
         
@@ -78,33 +82,66 @@ async def analyze_message(
 @router.post("/analyze-image", response_model=ScanResponse)
 async def analyze_image(
     file: UploadFile = File(...),
-    sender: str = Form("Unknown"),
-    platform: PlatformType = Form(PlatformType.WHATSAPP),
+    sender: str = Form("Manual Check"),
+    platform: str = Form("WHATSAPP"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Analyze an uploaded image (screenshot) for scam indicators using Gemini"""
     
+    # Normalize platform
+    try:
+        p_type = PlatformType(platform.upper())
+    except ValueError:
+        p_type = PlatformType.WHATSAPP
+        
+    print(f"DEBUG: Endpoint /analyze-image called by user {current_user.email} for {p_type}")
     contents = await file.read()
-    result = await detector.analyze_image(contents)
+    print(f"DEBUG: File size read: {len(contents)} bytes")
+    
+    try:
+        result = await detector.analyze_image(contents)
+        print(f"DEBUG: Detector Result: {result}")
+    except Exception as e:
+        print(f"DEBUG: Detector Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Detector failed: {str(e)}")
+    
+    # Save image to disk
+    import os
+    import time
+    filename = f"scan_{int(time.time())}_{file.filename}"
+    file_path = os.path.join("app", "static", "uploads", filename)
+    with open(file_path, "wb") as f:
+        f.write(contents)
+    
+    image_url = f"/api/uploads/{filename}"
     
     # Create scan record
-    scan = Scan(
-        user_id=current_user.id,
-        sender=sender,
-        message="[Image Analysis]",
-        message_preview="[Image Analysis]",
-        platform=platform,
-        risk_level=RiskLevel(result["risk_level"] if result["risk_level"] in ["HIGH", "MEDIUM", "LOW"] else "LOW"),
-        risk_reason=result["reason"],
-        scam_type=result.get("scam_type"),
-        confidence=result["confidence"],
-        guardian_alerted=False
-    )
-    
-    db.add(scan)
-    await db.commit()
-    await db.refresh(scan)
+    try:
+        scan = Scan(
+            user_id=current_user.id,
+            sender=sender,
+            message=image_url, # Store image URL in message
+            message_preview="[Image Analysis]",
+            platform=p_type,
+            risk_level=RiskLevel(result["risk_level"] if result.get("risk_level") in ["HIGH", "MEDIUM", "LOW"] else "LOW"),
+            risk_reason=result.get("reason", "No reason provided"),
+            scam_type=result.get("scam_type"),
+            confidence=result.get("confidence", 0.5),
+            guardian_alerted=False
+        )
+        
+        db.add(scan)
+        await db.commit()
+        await db.refresh(scan)
+        print(f"DEBUG: Scan record created with ID: {scan.id}")
+    except Exception as e:
+        print(f"DEBUG: Database Save Failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database failed: {str(e)}")
     
     # Send alert if HIGH risk (simplified logic here)
     if scan.risk_level == RiskLevel.HIGH:

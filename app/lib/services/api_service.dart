@@ -2,13 +2,20 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+
 /// API Service for connecting to Detooz Backend
 /// Created by Backend Team for Stitch
 class ApiService {
-  // Change this to your backend URL
-  // Emulator: http://10.0.2.2:8000
-  // Real Device: http://<YOUR_PC_IP>:8000
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  // Smart URL detection
+  static String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8000/api';
+    // Android Emulator requires special IP
+    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+    // iOS and Desktop (Windows/Mac) use localhost
+    return 'http://127.0.0.1:8000/api';
+  }
   
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   String? _token;
@@ -40,7 +47,26 @@ class ApiService {
     };
   }
 
+  Map<String, dynamic> _processResponse(http.Response response) {
+    if (response.statusCode == 401) {
+      throw Exception('Unauthorized');
+    }
+    if (response.statusCode >= 400) {
+      throw Exception('API Error: ${response.statusCode} ${response.body}');
+    }
+    return jsonDecode(response.body);
+  }
+
   // ============ AUTH ============
+
+  /// Get current user profile
+  Future<Map<String, dynamic>> getUserProfile() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/auth/me'),
+      headers: await _getHeaders(),
+    ).timeout(const Duration(seconds: 30));
+    return _processResponse(response);
+  }
 
   /// Register new user
   Future<Map<String, dynamic>> register({
@@ -49,22 +75,32 @@ class ApiService {
     required String name,
     required String phone,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-        'name': name,
-        'phone': phone,
-      }),
-    );
-    
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200 && data['access_token'] != null) {
-      await saveToken(data['access_token']);
+    print('Registering user: $email');
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+          'name': name,
+          'phone': phone,
+        }),
+      ).timeout(const Duration(seconds: 30));
+      
+      print('Register URL: $baseUrl/auth/register');
+      print('Register Response: ${response.statusCode} ${response.body}');
+      
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['access_token'] != null) {
+        await saveToken(data['access_token']);
+      }
+      return data;
+    } catch (e) {
+      print('Register Error: $e');
+      rethrow;
     }
-    return data;
+
   }
 
   /// Login user (returns token)
@@ -72,17 +108,27 @@ class ApiService {
     required String email,
     required String password,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: 'username=$email&password=$password',
-    );
-    
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200 && data['access_token'] != null) {
-      await saveToken(data['access_token']);
+    print('Logging in user: $email');
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {'username': email, 'password': password},
+      ).timeout(const Duration(seconds: 30));
+      
+      print('Login URL: $baseUrl/auth/login');
+      print('Login Response: ${response.statusCode} ${response.body}');
+      
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['access_token'] != null) {
+        await saveToken(data['access_token']);
+      }
+      return data;
+    } catch (e) {
+      print('Login Error: $e');
+      rethrow;
     }
-    return data;
+
   }
 
   // ============ SMS DETECTION ============
@@ -101,9 +147,9 @@ class ApiService {
         'message': message,
         'timestamp': DateTime.now().toIso8601String(),
       }),
-    );
+    ).timeout(const Duration(seconds: 30));
     
-    return jsonDecode(response.body);
+    return _processResponse(response);
   }
 
   /// Block a sender
@@ -118,10 +164,14 @@ class ApiService {
   /// Get scan history
   Future<List<dynamic>> getHistory({int limit = 50}) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/sms/history?limit=$limit'),
+      Uri.parse('$baseUrl/sms/history?limit=$limit'), // Fixed path from recent to history
       headers: await _getHeaders(),
-    );
-    return jsonDecode(response.body);
+    ).timeout(const Duration(seconds: 10));
+    
+    final dynamic res = _processResponse(response);
+    if (res is List) return res;
+    if (res is Map && res.containsKey('scans')) return res['scans'] as List<dynamic>;
+    return [];
   }
 
   // ============ GUARDIAN ============
@@ -148,6 +198,284 @@ class ApiService {
   Future<List<dynamic>> getGuardians() async {
     final response = await http.get(
       Uri.parse('$baseUrl/guardian/list'),
+      headers: await _getHeaders(),
+    ).timeout(const Duration(seconds: 10));
+    final dynamic res = _processResponse(response);
+    return res is List ? res : [];
+  }
+
+  // ============ TRUSTED SENDERS ============
+
+  /// Mark a sender as trusted
+  Future<Map<String, dynamic>> markTrusted({
+    required String sender,
+    String? name,
+    String? reason,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/trusted/add'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'sender': sender,
+        if (name != null) 'name': name,
+        if (reason != null) 'reason': reason,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Remove trusted status from a sender
+  Future<bool> removeTrusted(String sender) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/trusted/$sender'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Get list of trusted senders
+  Future<List<dynamic>> getTrustedSenders() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/trusted/list'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Check if sender is trusted
+  Future<Map<String, dynamic>> checkTrusted(String sender) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/trusted/check/$sender'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // ============ USER STATS & SETTINGS ============
+
+  /// Get user statistics
+  Future<Map<String, dynamic>> getUserStats() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/user/stats'),
+      headers: await _getHeaders(),
+    ).timeout(const Duration(seconds: 10));
+    
+    print('User Stats Response: ${response.statusCode}');
+    return _processResponse(response);
+  }
+
+  /// Get user settings
+  Future<Map<String, dynamic>> getUserSettings() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/user/settings'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Update user settings
+  Future<Map<String, dynamic>> updateUserSettings({
+    String? language,
+    bool? autoBlockHighRisk,
+    String? alertGuardiansThreshold,
+    bool? receiveTips,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/user/settings'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        if (language != null) 'language': language,
+        if (autoBlockHighRisk != null) 'auto_block_high_risk': autoBlockHighRisk,
+        if (alertGuardiansThreshold != null) 'alert_guardians_threshold': alertGuardiansThreshold,
+        if (receiveTips != null) 'receive_tips': receiveTips,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Set language preference
+  Future<bool> setLanguage(String lang) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/user/language/$lang'),
+      headers: await _getHeaders(),
+    );
+    return response.statusCode == 200;
+  }
+
+  // ============ FEEDBACK ============
+
+  /// Submit feedback on a scan result
+  Future<Map<String, dynamic>> submitFeedback({
+    required int scanId,
+    required String userVerdict, // "safe", "scam", "unsure"
+    String? comment,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/feedback/scan/$scanId'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'user_verdict': userVerdict,
+        if (comment != null) 'comment': comment,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Get user's feedback history
+  Future<List<dynamic>> getMyFeedback({int limit = 50}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/feedback/my-feedback?limit=$limit'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Get feedback statistics
+  Future<Map<String, dynamic>> getFeedbackStats() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/feedback/stats'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // ============ REPUTATION DATABASE ============
+
+  /// Check reputation of a URL
+  Future<Map<String, dynamic>> checkUrlReputation(String url) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/reputation/check?url=${Uri.encodeComponent(url)}'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Check reputation of a phone number
+  Future<Map<String, dynamic>> checkPhoneReputation(String phone) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/reputation/check?phone=${Uri.encodeComponent(phone)}'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Report a scam URL/phone/domain
+  Future<Map<String, dynamic>> reportScam({
+    required String value,
+    required String type, // "url", "phone", "domain"
+    String? reason,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/reputation/report'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'value': value,
+        'type': type,
+        if (reason != null) 'reason': reason,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Get recently reported scams
+  Future<List<dynamic>> getRecentReports({int limit = 20, String? type}) async {
+    String url = '$baseUrl/reputation/recent?limit=$limit';
+    if (type != null) url += '&type=$type';
+    final response = await http.get(
+      Uri.parse(url),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // ============ MANUAL SCAN ============
+
+  /// Unified manual scan - analyzes text, URL, or phone number
+  Future<Map<String, dynamic>> manualScan({
+    required String content,
+    String contentType = 'auto', // "text", "url", "phone", "auto"
+  }) async {
+    print('Manual Scan: $content');
+    final response = await http.post(
+      Uri.parse('$baseUrl/manual/analyze'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'content': content,
+        'content_type': contentType,
+      }),
+    ).timeout(const Duration(seconds: 45));
+    
+    return _processResponse(response);
+  }
+
+  /// Analyze URL specifically
+  Future<Map<String, dynamic>> analyzeUrl(String url) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/manual/analyze-url?url=${Uri.encodeComponent(url)}'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Analyze image for scam detection
+  Future<Map<String, dynamic>> analyzeImage(File imageFile) async {
+    print('Analyzing image: ${imageFile.path}');
+    try {
+      final uri = Uri.parse('$baseUrl/scan/analyze-image');
+      final request = http.MultipartRequest('POST', uri);
+      
+      request.headers.addAll(await _getHeaders());
+      request.fields['sender'] = 'Manual Check';
+      request.fields['platform'] = 'WHATSAPP';
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'file', 
+        imageFile.path,
+      ));
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 120));
+      final response = await http.Response.fromStream(streamedResponse).timeout(const Duration(seconds: 60));
+      
+      print('Image Analysis Response: ${response.statusCode}');
+      
+      return _processResponse(response);
+    } catch (e) {
+      print('Image Analysis Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Check phone number specifically
+  Future<Map<String, dynamic>> checkPhone(String phone) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/manual/check-phone?phone=${Uri.encodeComponent(phone)}'),
+      headers: await _getHeaders(),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Get "Why Should I Care?" explanation
+  Future<Map<String, dynamic>> getExplanation({
+    required String riskLevel,
+    String? scamType,
+    String language = 'en',
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/manual/explain'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'risk_level': riskLevel,
+        if (scamType != null) 'scam_type': scamType,
+        'language': language,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Get list of all known scam types
+  Future<List<dynamic>> getScamTypes() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/manual/scam-types'),
       headers: await _getHeaders(),
     );
     return jsonDecode(response.body);

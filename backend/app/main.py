@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, scan, guardian, sms
+from app.routers import auth, scan, guardian, sms, trusted_sender, user, feedback, reputation, manual_scan
 from app.db import init_db
 
 
@@ -15,9 +16,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Detooz API",
     description="AI-powered scam detection backend",
-    version="1.0.0",
+    version="1.2.0",
     lifespan=lifespan
 )
+
+# Mount static files for image uploads
+app.mount("/api/uploads", StaticFiles(directory="app/static/uploads"), name="uploads")
 
 # CORS for mobile app
 app.add_middleware(
@@ -33,11 +37,16 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(scan.router, prefix="/api/scan", tags=["Scam Detection"])
 app.include_router(guardian.router, prefix="/api/guardian", tags=["Guardians"])
 app.include_router(sms.router, prefix="/api/sms", tags=["SMS Detection"])
+app.include_router(trusted_sender.router, prefix="/api/trusted", tags=["Trusted Senders"])
+app.include_router(user.router, prefix="/api/user", tags=["User"])
+app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
+app.include_router(reputation.router, prefix="/api/reputation", tags=["Reputation Database"])
+app.include_router(manual_scan.router, prefix="/api/manual", tags=["Manual Scan"])
 
 
 @app.get("/")
 async def root():
-    return {"message": "Detooz API is running", "version": "1.0.0"}
+    return {"message": "Detooz API is running", "version": "1.2.0"}
 
 
 @app.get("/health")

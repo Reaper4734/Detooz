@@ -14,15 +14,16 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _autoBlock = true;
+  // These will sync with API settings
   bool _aiScanning = true;
   bool _whatsapp = false;
-  bool _guardianAlerts = true;
   bool _pushNotifications = true;
 
   @override
   Widget build(BuildContext context) {
     final currentTheme = ref.watch(themeProvider);
+    final settingsAsync = ref.watch(userSettingsProvider);
+    final profileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -38,143 +39,218 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         leadingWidth: 80,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          _buildSectionHeader('Detection'),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-              border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
+      body: settingsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error loading settings: $e')),
+        data: (settings) => ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            // Profile Header
+            profileAsync.when(
+              data: (user) => Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E293B)]),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: AppColors.primary,
+                      child: Text(
+                        user.name.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(user.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(user.email, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          if (user.phone != null)
+                            Text(user.phone!, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              loading: () => const LinearProgressIndicator(), 
+              error: (_,__) => const SizedBox(),
             ),
-            child: Column(
-              children: [
-                _buildSwitchTile(
-                  icon: Icons.shield,
-                  iconColor: Colors.blue,
-                  title: 'Auto-block high risk',
-                  subtitle: 'Filter known scam numbers',
-                  value: _autoBlock,
-                  onChanged: (v) => setState(() => _autoBlock = v),
-                ),
-                const Divider(height: 1, indent: 60),
-                _buildSwitchTile(
-                  icon: Icons.psychology,
-                  iconColor: Colors.purple,
-                  title: 'AI Message Scanning',
-                  subtitle: 'Analyze incoming SMS',
-                  value: _aiScanning,
-                  onChanged: (v) => setState(() => _aiScanning = v),
-                ),
-                const Divider(height: 1, indent: 60),
-                _buildSwitchTile(
-                  icon: Icons.chat,
-                  iconColor: Colors.green,
-                  title: 'WhatsApp Integration',
-                  subtitle: 'Scan forwarded messages',
-                  value: _whatsapp,
-                  onChanged: (v) => setState(() => _whatsapp = v),
-                ),
-              ],
-            ),
-          ),
-          
-          _buildSectionHeader('Alerts'),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-              border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-            ),
-            child: Column(
-              children: [
-                _buildSwitchTile(
-                  icon: Icons.supervised_user_circle,
-                  iconColor: AppColors.danger,
-                  title: 'Guardian Alerts',
-                  subtitle: 'Notify family of threats',
-                  value: _guardianAlerts,
-                  onChanged: (v) => setState(() => _guardianAlerts = v),
-                ),
-                const Divider(height: 1, indent: 60),
-                _buildSwitchTile(
-                  icon: Icons.notifications_active,
-                  iconColor: AppColors.warning,
-                  title: 'Push Notifications',
-                  value: _pushNotifications,
-                  onChanged: (v) => setState(() => _pushNotifications = v),
-                ),
-              ],
-            ),
-          ),
-          
-          _buildSectionHeader('Appearance'),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-              border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-            ),
-            child: Column(
-              children: [
-                _buildThemeTile(
-                  icon: Icons.settings_brightness,
-                  title: 'System Default',
-                  isSelected: currentTheme == ThemeMode.system,
-                  onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.system),
-                ),
-                const Divider(height: 1, indent: 60),
-                _buildThemeTile(
-                  icon: Icons.dark_mode,
-                  title: 'Dark Mode',
-                  isSelected: currentTheme == ThemeMode.dark,
-                  onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.dark),
-                ),
-                const Divider(height: 1, indent: 60),
-                _buildThemeTile(
-                  icon: Icons.light_mode,
-                  title: 'Light Mode',
-                  isSelected: currentTheme == ThemeMode.light,
-                  onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.light),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                ref.read(authProvider.notifier).logout();
-                Navigator.pop(context); // Close settings
-              },
-              icon: const Icon(Icons.logout),
-              label: const Text('Log Out'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surfaceLight,
-                foregroundColor: AppColors.danger,
-                elevation: 0,
-                side: BorderSide(color: AppColors.danger.withOpacity(0.5)),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+
+            _buildSectionHeader('Detection'),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
+              ),
+              child: Column(
+                children: [
+                  _buildSwitchTile(
+                    icon: Icons.shield,
+                    iconColor: Colors.blue,
+                    title: 'Auto-block high risk',
+                    subtitle: 'Filter known scam numbers',
+                    value: settings.autoBlockHighRisk,
+                    onChanged: (v) {
+                      ref.read(userSettingsProvider.notifier).updateSettings(autoBlockHighRisk: v);
+                    },
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildSwitchTile(
+                    icon: Icons.psychology,
+                    iconColor: Colors.purple,
+                    title: 'AI Message Scanning',
+                    subtitle: 'Analyze incoming SMS',
+                    value: _aiScanning,
+                    onChanged: (v) => setState(() => _aiScanning = v),
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildSwitchTile(
+                    icon: Icons.chat,
+                    iconColor: Colors.green,
+                    title: 'WhatsApp Integration',
+                    subtitle: 'Scan forwarded messages',
+                    value: _whatsapp,
+                    onChanged: (v) => setState(() => _whatsapp = v),
+                  ),
+                ],
               ),
             ),
-          ),
-          
-          const SizedBox(height: 32),
-          Center(
-            child: Column(
-              children: [
-                Text('ScamShield v1.0.4', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
-                const SizedBox(height: 4),
-                Text('© 2023 Security Corp.', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10)),
-              ],
+            
+            _buildSectionHeader('Alerts'),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
+              ),
+              child: Column(
+                children: [
+                  _buildDropdownTile(
+                    icon: Icons.supervised_user_circle,
+                    iconColor: AppColors.danger,
+                    title: 'Guardian Alert Threshold',
+                    subtitle: 'When to notify family',
+                    value: settings.alertGuardiansThreshold,
+                    options: const ['HIGH', 'MEDIUM', 'ALL'],
+                    onChanged: (v) {
+                      if (v != null) {
+                        ref.read(userSettingsProvider.notifier).updateSettings(alertGuardiansThreshold: v);
+                      }
+                    },
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildSwitchTile(
+                    icon: Icons.notifications_active,
+                    iconColor: AppColors.warning,
+                    title: 'Receive Safety Tips',
+                    value: settings.receiveTips,
+                    onChanged: (v) {
+                      ref.read(userSettingsProvider.notifier).updateSettings(receiveTips: v);
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 32),
-        ],
+
+            _buildSectionHeader('Language'),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
+              ),
+              child: Column(
+                children: [
+                  _buildLanguageTile(
+                    title: 'English',
+                    isSelected: settings.language == 'en',
+                    onTap: () => ref.read(userSettingsProvider.notifier).setLanguage('en'),
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildLanguageTile(
+                    title: 'हिंदी (Hindi)',
+                    isSelected: settings.language == 'hi',
+                    onTap: () => ref.read(userSettingsProvider.notifier).setLanguage('hi'),
+                  ),
+                ],
+              ),
+            ),
+            
+            _buildSectionHeader('Appearance'),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
+              ),
+              child: Column(
+                children: [
+                  _buildThemeTile(
+                    icon: Icons.settings_brightness,
+                    title: 'System Default',
+                    isSelected: currentTheme == ThemeMode.system,
+                    onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.system),
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildThemeTile(
+                    icon: Icons.dark_mode,
+                    title: 'Dark Mode',
+                    isSelected: currentTheme == ThemeMode.dark,
+                    onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.dark),
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildThemeTile(
+                    icon: Icons.light_mode,
+                    title: 'Light Mode',
+                    isSelected: currentTheme == ThemeMode.light,
+                    onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.light),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await ref.read(authProvider.notifier).logout();
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('Log Out'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.surfaceLight,
+                  foregroundColor: AppColors.danger,
+                  elevation: 0,
+                  side: BorderSide(color: AppColors.danger.withOpacity(0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            Center(
+              child: Column(
+                children: [
+                  Text('DeTooz v1.1.0', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text('© 2026 DeTooz Team', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }
@@ -233,6 +309,82 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             activeColor: AppColors.primary,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    required String value,
+    required List<String> options,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
+                ],
+              ],
+            ),
+          ),
+          DropdownButton<String>(
+            value: value,
+            underline: const SizedBox(),
+            items: options.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageTile({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).dividerColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.language, color: Theme.of(context).iconTheme.color, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            if (isSelected)
+              const Icon(Icons.check, color: AppColors.primary, size: 20),
+          ],
+        ),
       ),
     );
   }

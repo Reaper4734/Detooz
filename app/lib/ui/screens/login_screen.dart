@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../theme/app_colors.dart';
@@ -36,32 +37,73 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     
     setState(() => _isLoading = true);
     
-    bool success;
-    if (_isLogin) {
-      success = await ref.read(authProvider.notifier).login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-    } else {
-      success = await ref.read(authProvider.notifier).register(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-        _nameController.text.trim(),
-        _phoneController.text.trim(),
-      );
+    try {
+      bool success;
+      if (_isLogin) {
+        success = await ref.read(authProvider.notifier).login(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+      } else {
+        success = await ref.read(authProvider.notifier).register(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          _nameController.text.trim(),
+          _phoneController.text.trim(),
+        );
+      }
+      
+      setState(() => _isLoading = false);
+      
+      // If success
+      if (success) {
+        if (!_isLogin && mounted) {
+          // Show Telegram Prompt for Registration
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('Registration Successful'),
+              content: const Text(
+                'To receive scam alerts via Telegram, you must start our bot.\n\n'
+                '1. Click "Start Bot"\n'
+                '2. Click "Start" in Telegram',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Later'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final Uri url = Uri.parse('https://t.me/Detooz_bot');
+                    if (await canLaunchUrl(url)) {
+                       await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  child: const Text('Start Bot'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.danger,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(label: 'OK', onPressed: () {}, textColor: Colors.white),
+          ),
+        );
+      }
     }
-    
-    setState(() => _isLoading = false);
-    
-    if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isLogin ? 'Login failed' : 'Registration failed'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    }
-    // If success, authProvider state change will trigger navigation in main.dart
   }
 
   @override

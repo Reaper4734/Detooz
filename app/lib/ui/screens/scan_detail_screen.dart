@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../components/platform_icon.dart';
+import '../../services/api_service.dart';
 
 class ScanDetailScreen extends StatelessWidget {
   final ScanViewModel scan;
@@ -18,6 +19,8 @@ class ScanDetailScreen extends StatelessWidget {
     String riskLabel;
     String riskDesc;
     int score;
+    IconData badgeIcon;
+    String badgeText;
 
     switch (scan.riskLevel) {
       case RiskLevel.high:
@@ -25,20 +28,28 @@ class ScanDetailScreen extends StatelessWidget {
         riskLabel = 'HIGH RISK';
         riskDesc = 'AI analysis indicates highly suspicious patterns.';
         score = 95;
+        badgeIcon = Icons.warning;
+        badgeText = 'THREAT DETECTED';
         break;
       case RiskLevel.medium:
         riskColor = AppColors.warning;
         riskLabel = 'MEDIUM RISK';
         riskDesc = 'Potential scam detected. Proceed with caution.';
         score = 65;
+        badgeIcon = Icons.info_outline;
+        badgeText = 'CAUTION ADVISED';
         break;
       case RiskLevel.low:
         riskColor = AppColors.success;
         riskLabel = 'SAFE';
         riskDesc = 'No suspicious patterns detected.';
-        score = 10;
+        score = 0;
+        badgeIcon = Icons.check_circle;
+        badgeText = 'VERIFIED SAFE';
         break;
     }
+
+    final isManual = scan.sender.startsWith('Manual');
 
     return Scaffold(
       appBar: AppBar(
@@ -52,7 +63,12 @@ class ScanDetailScreen extends StatelessWidget {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 100),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.md, 
+              AppSpacing.sm, 
+              AppSpacing.md, 
+              isManual ? AppSpacing.xl : 120
+            ),
             child: Column(
               children: [
                 // Risk Visual Card
@@ -110,10 +126,10 @@ class ScanDetailScreen extends StatelessWidget {
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.warning, size: 12, color: Colors.white),
-                                  SizedBox(width: 4),
-                                  Text('THREAT DETECTED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                children: [
+                                  Icon(badgeIcon, size: 12, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text(badgeText, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ),
@@ -157,7 +173,7 @@ class ScanDetailScreen extends StatelessWidget {
                         context,
                         icon: Icons.person,
                         label: 'Sender',
-                        value: scan.sender,
+                        value: isManual ? 'Manual Check' : scan.sender,
                         isFirst: true,
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
@@ -172,7 +188,7 @@ class ScanDetailScreen extends StatelessWidget {
                             color: Theme.of(context).dividerColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text('Business', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
+                          child: Text(isManual ? 'Manual' : 'Business', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
                         ),
                       ),
                       const Divider(height: 1, indent: 16, endIndent: 16),
@@ -216,10 +232,42 @@ class ScanDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '"${scan.messagePreview}"',
-                        style: Theme.of(context).textTheme.bodyLarge!.copyWith(height: 1.5),
-                      ),
+                      if (scan.message.startsWith('/api/uploads/'))
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            '${ApiService.baseUrl.replaceAll('/api', '')}${scan.message}',
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              height: 150,
+                              width: double.infinity,
+                              color: Colors.grey.withOpacity(0.1),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.broken_image, color: Colors.grey),
+                                  SizedBox(height: 8),
+                                  Text('Failed to load image preview', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Text(
+                          '"${scan.messagePreview}"',
+                          style: Theme.of(context).textTheme.bodyLarge!.copyWith(height: 1.5),
+                        ),
                       const SizedBox(height: AppSpacing.md),
                       if (scan.riskLevel != RiskLevel.low)
                         Row(
@@ -239,9 +287,9 @@ class ScanDetailScreen extends StatelessWidget {
                  Container(
                    padding: const EdgeInsets.all(AppSpacing.md),
                    decoration: BoxDecoration(
-                     color: Colors.blue.withOpacity(0.05),
+                     color: isManual ? Colors.orange.withOpacity(0.05) : Colors.blue.withOpacity(0.05),
                      borderRadius: BorderRadius.circular(16),
-                     border: Border.all(color: Colors.blue.withOpacity(0.1)),
+                     border: Border.all(color: isManual ? Colors.orange.withOpacity(0.1) : Colors.blue.withOpacity(0.1)),
                    ),
                    child: Row(
                      crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,10 +297,10 @@ class ScanDetailScreen extends StatelessWidget {
                        Container(
                          padding: const EdgeInsets.all(8),
                          decoration: BoxDecoration(
-                           color: Colors.blue.withOpacity(0.1),
+                           color: isManual ? Colors.orange.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
                            shape: BoxShape.circle,
                          ),
-                         child: const Icon(Icons.smart_toy, color: Colors.blue, size: 20),
+                         child: Icon(Icons.smart_toy, color: isManual ? Colors.orange : Colors.blue, size: 20),
                        ),
                        const SizedBox(width: AppSpacing.md),
                        Expanded(
@@ -275,43 +323,67 @@ class ScanDetailScreen extends StatelessWidget {
             ),
           ),
           
-          // Bottom Actions
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, MediaQuery.of(context).padding.bottom + AppSpacing.md),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
-                border: Border(top: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.block),
-                      label: const Text('Block this Sender'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.danger,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          // Bottom Actions - Only show if NOT manual
+          if (!isManual)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, MediaQuery.of(context).padding.bottom + AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+                  border: Border(top: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          // Call block API
+                          final success = await apiService.blockSender(scan.sender);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(success ? 'Sender blocked successfully' : 'Failed to block sender'),
+                                backgroundColor: success ? AppColors.success : AppColors.danger,
+                              )
+                            );
+                            if (success) Navigator.pop(context);
+                          }
+                        },
+                        icon: const Icon(Icons.block),
+                        label: const Text('Block this Sender'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.danger,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text('Report as Safe', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
-                  ),
-                ],
+                    const SizedBox(height: AppSpacing.sm),
+                    TextButton(
+                      onPressed: () async {
+                        // Report safe / trusted
+                        final success = await apiService.markTrusted(sender: scan.sender, reason: "User reported safe");
+                        if (context.mounted) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(success['id'] != null ? 'Marked as Safe/Trusted' : 'Failed to mark safe'),
+                                backgroundColor: AppColors.success,
+                              )
+                            );
+                        }
+                      },
+                      child: Text('Report as Safe', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

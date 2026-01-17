@@ -6,8 +6,12 @@ import '../theme/app_typography.dart';
 import '../components/scan_card.dart';
 import '../providers.dart';
 import 'scan_detail_screen.dart';
+import 'manual_result_screen.dart';
 import 'settings_screen.dart';
 import '../components/scam_alert_overlay.dart';
+
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -19,11 +23,42 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final TextEditingController _manualCheckController = TextEditingController();
   bool _isAnalyzing = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
     _manualCheckController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+      
+      setState(() => _isAnalyzing = true);
+      
+      final scan = await ref.read(scansProvider.notifier).analyzeImage(File(image.path));
+      
+      // Refresh stats
+      ref.read(userStatsProvider.notifier).loadStats();
+      
+      setState(() => _isAnalyzing = false);
+      
+      if (scan != null && mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
+          );
+      }
+    } catch (e) {
+       setState(() => _isAnalyzing = false);
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Image analysis failed: $e'), backgroundColor: AppColors.danger),
+         );
+       }
+    }
   }
 
   Future<void> _analyzeManualInput() async {
@@ -32,26 +67,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     setState(() => _isAnalyzing = true);
     
-    final scan = await ref.read(scansProvider.notifier).analyzeMessage('Manual Check', text);
+    final scan = await ref.read(scansProvider.notifier).manualScan(text);
+    
+    // Refresh stats
+    ref.read(userStatsProvider.notifier).loadStats();
     
     setState(() => _isAnalyzing = false);
     _manualCheckController.clear();
     
     if (scan != null && mounted) {
-      if (scan.riskLevel.name == 'high') {
-        ScamAlertOverlay.show(
-          context,
-          sender: 'Manual Check',
-          message: text,
-          reason: scan.riskReason ?? 'Potential scam detected',
-          confidence: scan.confidence ?? 0.9,
-          onBlock: () {},
-        );
+      // Navigate directly - no overlay needed for manual check
+      
+      // Navigate to appropriate screen
+      if (scan.sender.startsWith('Manual')) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan)),
+          );
       } else {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ScanDetailScreen(scan: scan)),
-        );
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
+          );
       }
     }
   }
@@ -59,6 +96,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final recentScans = ref.watch(recentScansProvider);
+    final statsAsync = ref.watch(userStatsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -156,7 +194,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   children: [
                                     Icon(Icons.warning, size: 14, color: Colors.red[200]),
                                     const SizedBox(width: 4),
-                                    Text('12 HIGH RISK DETECTED', style: TextStyle(color: Colors.red[200], fontSize: 10, fontWeight: FontWeight.bold)),
+                                    statsAsync.when(
+                                      data: (stats) => Text('${stats.highRiskBlocked} HIGH RISK DETECTED', style: TextStyle(color: Colors.red[200], fontSize: 10, fontWeight: FontWeight.bold)),
+                                      loading: () => Text('... HIGH RISK', style: TextStyle(color: Colors.red[200], fontSize: 10, fontWeight: FontWeight.bold)),
+                                      error: (_, __) => Text('0 HIGH RISK', style: TextStyle(color: Colors.red[200], fontSize: 10, fontWeight: FontWeight.bold)),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -175,7 +217,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              const Text('1,240', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                              statsAsync.when(
+                                data: (stats) => Text('${stats.totalScans}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                loading: () => const Text('...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                error: (_, __) => const Text('0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                              ),
                               Text('SCANNED', style: TextStyle(color: Colors.grey[300], fontSize: 10)),
                             ],
                           ),
@@ -201,13 +247,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.add_photo_alternate_outlined),
-                    onPressed: () {
-                      // TODO: Image picker for screenshot analysis
-                    },
-                    color: Colors.grey,
-                  ),
+                      IconButton(
+                        icon: const Icon(Icons.add_photo_alternate_outlined),
+                        onPressed: _pickImage,
+                        color: Colors.grey,
+                      ),
                   Expanded(
                     child: TextField(
                       controller: _manualCheckController,
@@ -275,12 +319,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 return ScanCard(
                   scan: recentScans[index],
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ScanDetailScreen(scan: recentScans[index]),
-                      ),
-                    );
+                    if (recentScans[index].sender.startsWith('Manual')) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ManualResultScreen(scan: recentScans[index])),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: recentScans[index])),
+                      );
+                    }
                   },
                 );
               },
@@ -292,7 +341,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Text('Safety Tips', style: AppTypography.h3),
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
-              height: 100,
+              height: 140,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [

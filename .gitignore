@@ -35,6 +35,14 @@ dist/
 build/
 *.egg-info/
 
+# Database
+*.db
+*.sqlite3
+
+# Uploads
+backend/app/static/uploads/*
+!backend/app/static/uploads/.gitkeep
+
 # Flutter
 app/.dart_tool/
 app/.packages

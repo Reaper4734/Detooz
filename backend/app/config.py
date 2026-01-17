@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # AI APIs (FREE tiers)
     GROQ_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
     
     # CallMeBot (FREE WhatsApp alerts)
     CALLMEBOT_ENABLED: bool = True
@@ -41,3 +42,5 @@ def get_settings():
 
 
 settings = get_settings()
+print(f"DEBUG: Groq Key Loaded: {'YES' if settings.GROQ_API_KEY else 'NO'}")
+print(f"DEBUG: Groq Key Starts With: {settings.GROQ_API_KEY[:4] if settings.GROQ_API_KEY else 'N/A'}")

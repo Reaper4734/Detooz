@@ -10,6 +10,7 @@ class ScanViewModel {
   final String id;
   final String senderNumber;
   String get sender => senderNumber;
+  final String message;
   final String messagePreview;
   final RiskLevel riskLevel;
   final PlatformType platform;
@@ -20,6 +21,7 @@ class ScanViewModel {
   ScanViewModel({
     required this.id,
     required this.senderNumber,
+    required this.message,
     required this.messagePreview,
     required this.riskLevel,
     required this.platform,
@@ -33,6 +35,7 @@ class ScanViewModel {
     return ScanViewModel(
       id: json['id']?.toString() ?? '',
       senderNumber: json['sender'] ?? 'Unknown',
+      message: json['message'] ?? '',
       messagePreview: json['message_preview'] ?? json['message'] ?? '',
       riskLevel: _parseRiskLevel(json['risk_level']),
       platform: _parsePlatform(json['platform']),

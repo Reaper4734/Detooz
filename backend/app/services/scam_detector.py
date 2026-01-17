@@ -1,4 +1,6 @@
 import json
+import base64
+from functools import lru_cache
 import asyncio
 from app.config import settings
 from app.services.sms_patterns import check_patterns
@@ -10,16 +12,16 @@ try:
 except ImportError:
     GROQ_AVAILABLE = False
 
-# Try to import google-generativeai
+# Import OpenAI for OpenRouter
 try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
+    from openai import OpenAI
+    OPENROUTER_AVAILABLE = True
 except ImportError:
-    GEMINI_AVAILABLE = False
+    OPENROUTER_AVAILABLE = False
 
 
 class ScamDetector:
-    """AI-powered scam detection service using Groq API (Llama 3.3) for text and Gemini for images"""
+    """AI-powered scam detection service supporting Groq and OpenRouter (Gemma/Gemini)"""
     
     # Scam detection prompt for AI
     SYSTEM_PROMPT = """You are a scam detection expert specialized in Indian SMS/WhatsApp scams.
@@ -52,9 +54,16 @@ class ScamDetector:
         if GROQ_AVAILABLE and settings.GROQ_API_KEY:
             self.client = Groq(api_key=settings.GROQ_API_KEY)
             
-        if GEMINI_AVAILABLE and settings.GEMINI_API_KEY:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+        self.router_client = None
+        if OPENROUTER_AVAILABLE and settings.OPENROUTER_API_KEY:
+            try:
+                self.router_client = OpenAI(
+                    base_url="https://openrouter.ai/api/v1",
+                    api_key=settings.OPENROUTER_API_KEY,
+                )
+                print("DEBUG: OpenRouter Initialized successfully")
+            except Exception as e:
+                print(f"DEBUG: OpenRouter Init Failed: {e}")
     
     async def analyze(self, message: str, sender: str) -> dict:
         """
@@ -69,7 +78,9 @@ class ScamDetector:
         local_result = check_patterns(message, sender)
         
         # If HIGH confidence from patterns, no need for AI
-        if local_result["risk_level"] == "HIGH" and local_result["confidence"] >= 0.85:
+        # Return immediately if confident (HIGH scam or verified LOW)
+        if (local_result["risk_level"] == "HIGH" and local_result["confidence"] >= 0.85) or \
+           (local_result["risk_level"] == "LOW" and local_result["confidence"] >= 0.9):
             return {
                 "risk_level": local_result["risk_level"],
                 "reason": local_result["reason"],
@@ -80,6 +91,7 @@ class ScamDetector:
         # Step 2: Use AI for uncertain messages (MEDIUM or LOW from patterns)
         if self.client:
             try:
+                print(f"DEBUG: Calling Groq AI for: {message[:50]}...")
                 ai_result = await self._analyze_with_ai(message, sender)
                 
                 # If AI says HIGH and patterns say MEDIUM, trust AI
@@ -115,6 +127,7 @@ class ScamDetector:
             "confidence": local_result["confidence"]
         }
     
+    @lru_cache(maxsize=1024)
     def _sync_groq_call(self, message: str, sender: str) -> dict:
         """Synchronous Groq API call (will be run in thread pool)"""
         response = self.client.chat.completions.create(
@@ -128,9 +141,10 @@ class ScamDetector:
         )
         
         result_text = response.choices[0].message.content.strip()
+        print(f"DEBUG: Groq Response: {result_text}")
         # Clean up if AI responds with ```json ... ```
         if result_text.startswith("```"):
-            result_text = result_text.replace("```json", "").replace("```", "")
+            result_text = result_text.replace("```json", "").replace("```", "").strip()
         return json.loads(result_text)
     
     async def _analyze_with_ai(self, message: str, sender: str) -> dict:
@@ -172,45 +186,99 @@ class ScamDetector:
         
     async def analyze_image(self, image_data: bytes) -> dict:
         """
-        Analyze an image (screenshot or photo) for scam content using Gemini Vision.
+        Analyze an image for scam content using OpenRouter (Gemma/Gemini).
         """
-        if not GEMINI_AVAILABLE or not getattr(self, 'gemini_model', None):
+        if not self.router_client:
+            print("DEBUG: OpenRouter client not initialized")
             return {
                 "risk_level": "UNKNOWN",
-                "reason": "Image analysis not configured (Gemini API missing)",
+                "reason": "Image analysis not configured (OpenRouter API missing)",
                 "confidence": 0.0
             }
             
-        prompt = """Analyze this image for scam/fraud content.
-        Is it a screenshot of a fake payment, fake login page, suspicious WhatsApp conversation, or lottery win?
-        
-        Return JSON:
-        {"risk_level": "HIGH/MEDIUM/LOW", "reason": "short explanation", "scam_type": "type"}
-        """
-        
         try:
-            # Run Gemini call in thread pool
-            result = await asyncio.to_thread(self._sync_gemini_call, image_data, prompt)
+            print("DEBUG: Calling OpenRouter (Gemma-3) Vision API...")
+            # Run OpenRouter call in thread pool
+            result = await asyncio.to_thread(self._sync_openrouter_call, image_data)
             return result
         except Exception as e:
-            print(f"Gemini analysis failed: {e}")
+            print(f"DEBUG: OpenRouter analysis failed: {e}")
             return {
                 "risk_level": "UNKNOWN",
                 "reason": f"Analysis failed: {str(e)}",
                 "confidence": 0.0
             }
             
-    def _sync_gemini_call(self, image_data: bytes, prompt: str) -> dict:
-        """Synchronous Gemini API call"""
-        from PIL import Image
-        import io
+    def _sync_openrouter_call(self, image_data: bytes) -> dict:
+        """Synchronous OpenRouter API call with multiple model fallback"""
+        import re
+        import time
         
-        image = Image.open(io.BytesIO(image_data))
-        response = self.gemini_model.generate_content([prompt, image])
-        text = response.text.strip()
+        # Encode image to base64
+        base64_image = base64.b64encode(image_data).decode('utf-8')
         
-        # Clean up JSON
-        if text.startswith("```"):
-            text = text.replace("```json", "").replace("```", "")
-            
-        return json.loads(text)
+        prompt = """Analyze this image for scam/fraud content.
+        Indian context: fake payment screens, suspicious WhatsApp chats, fake lottery/prize messages.
+        Return JSON ONLY:
+        {"risk_level": "HIGH/MEDIUM/LOW", "reason": "short explanation in English", "scam_type": "type"}"""
+
+        # List of models to try in order of reliability/speed for vision
+        models_to_try = [
+            "google/gemini-2.0-flash-exp:free",
+            "meta-llama/llama-3.2-11b-vision-instruct:free",
+            "google/gemini-2.0-flash-001", # Non-free version if user has credits
+            "qwen/qwen-2-vl-7b-instruct:free"
+        ]
+        
+        last_error = "No models tried"
+
+        for model in models_to_try:
+            try:
+                print(f"DEBUG: Attempting image analysis with {model}...")
+                start_time = time.time()
+                
+                response = self.router_client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{base64_image}"
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    max_tokens=200,
+                    timeout=25 # Strict 25s timeout per model
+                )
+                
+                text = response.choices[0].message.content.strip()
+                print(f"DEBUG: {model} responded in {time.time() - start_time:.1f}s")
+                print(f"DEBUG: Raw Response: {text}")
+                
+                # Clean up JSON
+                if "{" in text:
+                    match = re.search(r'\{.*\}', text, re.DOTALL)
+                    if match:
+                        text = match.group(0)
+                
+                return json.loads(text)
+                
+            except Exception as e:
+                print(f"DEBUG: Model {model} failed: {e}")
+                last_error = str(e)
+                continue # Try next model
+        
+        # If all models fail, return a safe error response
+        print(f"DEBUG: All vision models failed. Last error: {last_error}")
+        return {
+            "risk_level": "UNKNOWN",
+            "reason": f"AI models currently unavailable (429/Timeout). Please retry in 5 mins.",
+            "scam_type": "Service Busy",
+            "confidence": 0.0
+        }
