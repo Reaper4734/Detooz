@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'guardian_login_screen.dart';
+import 'guardians_screen.dart';
+import 'admin/admin_login_screen.dart';
+
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -20,16 +25,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // Controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
+  // Name Controllers
+  final _firstNameController = TextEditingController();
+  final _middleNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  
   final _phoneController = TextEditingController();
+
+  String _countryCode = "+91";
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _lastNameController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  // Validators
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) return 'Email is required';
+    final regex = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
+    if (!regex.hasMatch(value)) return 'Enter a valid email address';
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) return 'Password is required';
+    if (_isLogin) return null; // Relax validation for login, strict for registration
+
+    if (value.length < 8) return 'Min 8 characters';
+    if (!value.contains(RegExp(r'[A-Z]'))) return 'Must contain 1 uppercase letter';
+    if (!value.contains(RegExp(r'[0-9]'))) return 'Must contain 1 number';
+    if (!value.contains(RegExp(r'[@#*&!$%^]'))) return 'Must contain 1 special char';
+    return null;
   }
 
   Future<void> _submit() async {
@@ -48,8 +80,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         success = await ref.read(authProvider.notifier).register(
           _emailController.text.trim(),
           _passwordController.text.trim(),
-          _nameController.text.trim(),
+          _firstNameController.text.trim(),
+          _middleNameController.text.trim().isEmpty ? null : _middleNameController.text.trim(),
+          _lastNameController.text.trim(),
           _phoneController.text.trim(),
+          countryCode: _countryCode,
         );
       }
       
@@ -58,41 +93,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // If success
       if (success) {
         if (!_isLogin && mounted) {
-          // Show Telegram Prompt for Registration
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              title: const Text('Registration Successful'),
-              content: const Text(
-                'To receive scam alerts via Telegram, you must start our bot.\n\n'
-                '1. Click "Start Bot"\n'
-                '2. Click "Start" in Telegram',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Later'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final Uri url = Uri.parse('https://t.me/Detooz_bot');
-                    if (await canLaunchUrl(url)) {
-                       await launchUrl(url, mode: LaunchMode.externalApplication);
-                    }
-                    if (context.mounted) Navigator.pop(context);
-                  },
-                  child: const Text('Start Bot'),
-                ),
-              ],
-            ),
-          );
+          _showAddGuardianPrompt();
         }
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -106,6 +111,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _showAddGuardianPrompt() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Registration Successful'),
+        content: const Text(
+          'Enhance your safety by adding a trusted Guardian.\n'
+          'Share an OTP with them to link accounts instantly.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GuardiansScreen()),
+              );
+            },
+            child: const Text('Add Guardian'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -115,6 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -134,24 +172,72 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 
                 // Fields
                 if (!_isLogin) ...[
+                  // Name fields
                   TextFormField(
-                    controller: _nameController,
+                    controller: _firstNameController,
                     decoration: const InputDecoration(
-                      labelText: 'Full Name',
+                      labelText: 'First Name *',
                       prefixIcon: Icon(Icons.person),
                       border: OutlineInputBorder(),
                     ),
                     validator: (v) => v?.isEmpty == true ? 'Required' : null,
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  
                   TextFormField(
-                    controller: _phoneController,
+                    controller: _middleNameController,
                     decoration: const InputDecoration(
-                      labelText: 'Phone Number',
-                      prefixIcon: Icon(Icons.phone),
+                      labelText: 'Middle Name (Optional)',
+                      prefixIcon: Icon(Icons.person_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  
+                  TextFormField(
+                    controller: _lastNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Last Name *',
+                      prefixIcon: Icon(Icons.person),
                       border: OutlineInputBorder(),
                     ),
                     validator: (v) => v?.isEmpty == true ? 'Required' : null,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  
+                  // Phone with Country Code
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: CountryCodePicker(
+                          onChanged: (country) => setState(() => _countryCode = country.dialCode!),
+                          initialSelection: 'IN',
+                          favorite: const ['+91', 'US'],
+                          showCountryOnly: false,
+                          showOnlyCountryWhenClosed: false,
+                          alignLeft: false,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _phoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone Number',
+                            prefixIcon: Icon(Icons.phone),
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.phone,
+                          validator: (v) => v?.isEmpty == true ? 'Required' : null,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
@@ -163,20 +249,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     prefixIcon: Icon(Icons.email),
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) => v?.isEmpty == true ? 'Required' : null,
+                  validator: _validateEmail,
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 
                 TextFormField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Password',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock),
+                    border: const OutlineInputBorder(),
+                    helperText: _isLogin ? null : 'Min 8 chars, 1 Upper, 1 Special, 1 Number',
+                    helperMaxLines: 2,
                   ),
                   obscureText: true,
-                  validator: (v) => (v?.length ?? 0) < 6 ? 'Min 6 chars' : null,
+                  validator: _validatePassword,
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 
@@ -199,6 +287,62 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 TextButton(
                   onPressed: () => setState(() => _isLogin = !_isLogin),
                   child: Text(_isLogin ? 'Create an account' : 'Already have an account? Login'),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Guardian Login Button
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.shield_outlined, color: Colors.blue, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Are you a Guardian?',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const GuardianLoginScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text('Login as Guardian →'),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
+                    );
+                  },
+                  child: Text(
+                    'Admin Login',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                  ),
                 ),
               ],
             ),

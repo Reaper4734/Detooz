@@ -113,9 +113,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            ref.read(scansProvider.notifier).loadScans(),
+            ref.read(userStatsProvider.notifier).loadStats(),
+          ]);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Hero Card: Protection Active
@@ -368,8 +376,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: AppSpacing.xl),
           ],
         ),
-      ),
-    );
+        ), // SingleChildScrollView
+      ), // RefreshIndicator
+    ); // Scaffold
   }
 
   Widget _buildTipCard({

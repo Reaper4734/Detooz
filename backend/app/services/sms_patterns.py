@@ -150,6 +150,10 @@ SAFE_SENDER_PATTERNS = [
 ]
 
 
+# TRAI/DLT Header Pattern (2 chars prefix - 6 chars header)
+TRAI_HEADER_PATTERN = r"^[A-Z]{2}-[A-Za-z0-9]{6}$"
+
+
 def check_patterns(message: str, sender: str = "") -> dict:
     """
     Check message against all scam patterns.
@@ -161,10 +165,21 @@ def check_patterns(message: str, sender: str = "") -> dict:
     sender_upper = sender.upper() if sender else ""
     
     # Check if sender is from a known safe source
+    # TRAI Logic: Check for Header Suffix (-S, -T, -P, -A) or TRAI prefix format
+    is_trai_header = bool(re.match(TRAI_HEADER_PATTERN, sender_upper))
+    is_safe_sender = False
+    
+    # Check for TRAI Content Classification Suffix at the end of message (e.g. "Your OTP is 123456 -T")
+    # Note: Suffix might be separated by space
+    trai_suffix = None
+    suffix_match = re.search(r"[-–]([STPA])$", message.strip())
+    if suffix_match:
+        trai_suffix = suffix_match.group(1)
+
     for pattern in SAFE_SENDER_PATTERNS:
         if re.search(pattern, sender_upper):
-            # Still check message content for scams (in case sender is spoofed)
-            pass
+            is_safe_sender = True
+            break
     
     matched_high = []
     matched_medium = []
@@ -187,6 +202,39 @@ def check_patterns(message: str, sender: str = "") -> dict:
                     "pattern": pattern
                 })
     
+    # Exception for TRAI/Regulated senders & Suffix Logic
+    
+    # 1. -T (Transactional) and -A (Administrative): Usually safe if from TRAI header
+    if is_trai_header and trai_suffix in ['T', 'A']:
+        # Downgrade to LOW unless explicit HIGH risk pattern found (like money request)
+        # However, purely informational messages should be safe.
+        # We check if critical high risk patterns exist.
+        has_critical_scam = any(m['type'] in ["kyc_scam", "otp_scam", "govt_scam", "money_request"] for m in matched_high)
+        if not has_critical_scam:
+             return {
+                "risk_level": "LOW",
+                "reason": f"Verified Transactional/Admin message ({trai_suffix})",
+                "scam_type": "Transactional/Info",
+                "confidence": 0.95,
+                "matched_patterns": matched_high
+            }
+
+    # 2. -P (Promotional): Marketing. 
+    # Downgrade "loan_scam" (marketing) to LOW/Spam if -P is present OR sender is TRAI
+    if (is_trai_header or is_safe_sender) and matched_high:
+        marketing_types = ["loan_scam", "prize_scam", "investment_scam"]
+        is_marketing = all(m['type'] in marketing_types for m in matched_high)
+        
+        # If explicitly marked as Promotional (-P) OR just matches marketing pattern from safe sender
+        if is_marketing and (trai_suffix == 'P' or is_trai_header):
+            return {
+                "risk_level": "LOW",
+                "reason": "Promotional message from regulated sender",
+                "scam_type": "Marketing/Spam",
+                "confidence": 0.9,
+                "matched_patterns": matched_high
+            }
+
     # Determine risk level
     if matched_high:
         return {

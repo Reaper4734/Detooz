@@ -1,72 +1,68 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:another_telephony/telephony.dart';  // Temporarily disabled - AGP 8.x issue
-import 'package:permission_handler/permission_handler.dart';
 import '../services/api_service.dart';
 import '../ui/components/scam_alert_overlay.dart';
 
-/// Service that handles incoming SMS messages and WhatsApp detection
-/// Note: SMS listener temporarily disabled due to AGP 8.x compatibility issues
+/// Unified Message Receiver Service
+/// Handles incoming messages from SMS, WhatsApp, and Telegram via Notification Listener
+/// Privacy: Only processes messages from UNKNOWN senders (saved contacts are skipped on Android)
 class SmsReceiverService {
   static final SmsReceiverService _instance = SmsReceiverService._internal();
   factory SmsReceiverService() => _instance;
   SmsReceiverService._internal();
   
-  // final Telephony telephony = Telephony.instance;  // Disabled
-  final MethodChannel _accessibilityChannel = 
-      const MethodChannel('com.detooz.app/accessibility');
+  // Unified method channel for all messaging platforms
+  final MethodChannel _messageChannel = 
+      const MethodChannel('com.detooz.app/sms_notifications');
   
   bool _isInitialized = false;
   BuildContext? _context;
   
-  /// Initialize the SMS receiver
+  /// Initialize the message receiver
   Future<void> initialize(BuildContext context) async {
     if (_isInitialized) return;
     _context = context;
     
-    // SMS listener temporarily disabled
-    // final smsStatus = await Permission.sms.request();
-    // if (smsStatus.isGranted) {
-    //   _startSmsListener();
-    // }
-    
-    // Setup WhatsApp accessibility channel
-    _setupAccessibilityChannel();
+    // Setup unified message channel (handles SMS, WhatsApp, Telegram)
+    _setupMessageChannel();
     
     _isInitialized = true;
+    debugPrint('📱 Unified Message Receiver initialized (SMS, WhatsApp, Telegram)');
   }
   
-  // void _startSmsListener() {
-  //   telephony.listenIncomingSms(
-  //     onNewMessage: _handleIncomingSms,
-  //     onBackgroundMessage: _backgroundMessageHandler,
-  //   );
-  // }
-  
-  // Future<void> _handleIncomingSms(SmsMessage message) async {
-  //   // ... SMS handling code disabled
-  // }
-  
-  void _setupAccessibilityChannel() {
-    _accessibilityChannel.setMethodCallHandler((call) async {
-      if (call.method == 'onWhatsAppMessage') {
+  void _setupMessageChannel() {
+    _messageChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onMessageReceived') {
         final args = call.arguments as Map<dynamic, dynamic>;
         final message = args['message'] as String;
-        final source = args['source'] as String;
+        final sender = args['sender'] as String;
+        final platform = args['platform'] as String;
         
-        await _handleWhatsAppMessage(message, source);
+        await _handleIncomingMessage(
+          message: message, 
+          sender: sender, 
+          platform: platform
+        );
       }
       return null;
     });
   }
   
-  Future<void> _handleWhatsAppMessage(String message, String source) async {
-    if (message.length < 20) return; // Skip very short messages
+  /// Handle incoming message from any source (SMS or WhatsApp)
+  Future<void> _handleIncomingMessage({
+    required String message,
+    required String sender,
+    required String platform,
+  }) async {
+    if (message.length < 10) return; // Skip very short messages
+    
+    debugPrint('📩 Received $platform message from: $sender');
     
     try {
+      // Send to backend for analysis
       final result = await apiService.analyzeSms(
-        sender: source,
+        sender: sender,
         message: message,
       );
       
@@ -74,14 +70,17 @@ class SmsReceiverService {
       
       if (riskLevel == 'HIGH' && _context != null) {
         _showScamAlert(
-          sender: 'WhatsApp',
+          sender: sender,
           message: message,
           reason: result['risk_reason'] ?? 'Potential scam detected',
           confidence: (result['confidence'] as num?)?.toDouble() ?? 0.9,
+          platform: platform,
         );
+      } else if (riskLevel == 'MEDIUM') {
+        debugPrint('⚠️ MEDIUM risk detected from $sender');
       }
     } catch (e) {
-      debugPrint('WhatsApp analysis failed: $e');
+      debugPrint('❌ Message analysis failed: $e');
     }
   }
   
@@ -90,12 +89,15 @@ class SmsReceiverService {
     required String message,
     required String reason,
     required double confidence,
+    required String platform,
   }) {
     if (_context == null) return;
     
+    debugPrint('🚨 HIGH RISK $platform message detected! Showing alert...');
+    
     ScamAlertOverlay.show(
       _context!,
-      sender: sender,
+      sender: '$platform: $sender',
       message: message,
       reason: reason,
       confidence: confidence,
@@ -103,19 +105,16 @@ class SmsReceiverService {
     );
   }
   
-  void _showWarningNotification(String sender, String reason) {
-    debugPrint('⚠️ Warning from $sender: $reason');
-  }
-  
   Future<void> _blockSender(String sender) async {
     try {
       await apiService.blockSender(sender);
-      debugPrint('Blocked sender: $sender');
+      debugPrint('🚫 Blocked sender: $sender');
     } catch (e) {
-      debugPrint('Failed to block sender: $e');
+      debugPrint('❌ Failed to block sender: $e');
     }
   }
 }
 
 /// Global instance
 final smsReceiverService = SmsReceiverService();
+

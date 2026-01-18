@@ -7,11 +7,10 @@ from app.db import get_db
 from app.models import User, Scan, Guardian, RiskLevel, PlatformType
 from app.routers.auth import get_current_user
 from app.services.scam_detector import ScamDetector
-from app.services.alert_service import AlertService
+from app.services.guardian_alert_service import send_guardian_alerts
 
 router = APIRouter()
 detector = ScamDetector()
-alert_service = AlertService()
 
 
 # ============== SMS-Specific Schemas ==============

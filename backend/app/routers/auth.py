@@ -61,20 +61,36 @@ async def get_current_user(
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     """Register a new user"""
     
+    # Normalize email
+    normalized_email = user_data.email.lower().strip()
+
     # Check if email exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
+    result = await db.execute(select(User).where(User.email == normalized_email))
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
+        
+    # Check if phone exists (if provided)
+    if user_data.phone:
+        normalized_phone = user_data.phone.strip()
+        result_phone = await db.execute(select(User).where(User.phone == normalized_phone))
+        if result_phone.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number already registered"
+            )
     
     # Create new user
     user = User(
-        email=user_data.email,
+        email=normalized_email,
         password_hash=get_password_hash(user_data.password),
-        name=user_data.name,
-        phone=user_data.phone
+        first_name=user_data.first_name,
+        middle_name=user_data.middle_name,
+        last_name=user_data.last_name,
+        phone=user_data.phone.strip() if user_data.phone else None,
+        country_code=user_data.country_code
     )
     db.add(user)
     await db.commit()

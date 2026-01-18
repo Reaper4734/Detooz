@@ -88,6 +88,8 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
         state = AsyncValue.data([scan, ...scans]);
       });
       
+      await offlineCacheService.cacheScan(scanMap);
+      
       return scan;
     } catch (e) {
       print('Manual scan error in provider: $e');
@@ -170,7 +172,9 @@ class GuardiansNotifier extends StateNotifier<AsyncValue<List<GuardianViewModel>
 
 /// Auth state
 class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
-  AuthNotifier() : super(const AsyncValue.loading()) {
+  final Ref ref;
+
+  AuthNotifier(this.ref) : super(const AsyncValue.loading()) {
     checkAuth();
   }
   
@@ -179,6 +183,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
     // await Future.delayed(const Duration(milliseconds: 500)); 
     final token = await apiService.token;
     if (token == null) {
+      await offlineCacheService.clearAll();
       state = const AsyncValue.data(false);
       return;
     }
@@ -190,6 +195,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
     } catch (e) {
       // Token invalid (e.g. user deleted from DB)
       await apiService.clearToken();
+      await offlineCacheService.clearAll();
       state = const AsyncValue.data(false);
     }
   }
@@ -205,13 +211,16 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
     }
   }
   
-  Future<bool> register(String email, String password, String name, String phone) async {
+  Future<bool> register(String email, String password, String firstName, String? middleName, String lastName, String phone, {String? countryCode}) async {
     try {
       final result = await apiService.register(
         email: email,
         password: password,
-        name: name,
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
         phone: phone,
+        countryCode: countryCode,
       );
       final success = result['access_token'] != null;
       state = AsyncValue.data(success);
@@ -223,6 +232,14 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
   
   Future<void> logout() async {
     await apiService.clearToken();
+    await offlineCacheService.clearAll();
+    
+    // Reset other providers to clear memory state
+    ref.invalidate(scansProvider);
+    ref.invalidate(guardiansProvider);
+    ref.invalidate(userStatsProvider);
+    ref.invalidate(userProfileProvider);
+    
     state = const AsyncValue.data(false);
   }
 }
@@ -231,7 +248,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
 
 /// Auth state provider
 final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<bool>>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref);
 });
 
 /// Scans provider (API-connected)

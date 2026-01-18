@@ -15,6 +15,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     
+    <!-- Notification Listener for SMS/WhatsApp/Telegram (Android 15+ compatible) -->
+    <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" />
+    
+    <!-- Contacts Permission - to skip saved contacts for privacy -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <application
         android:label="Detooz"
         android:name="${applicationName}"
@@ -50,6 +56,16 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
+        </service>
+        
+        <!-- SMS Notification Listener Service -->
+        <service
+            android:name=".SmsNotificationListener"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
         
         <meta-data

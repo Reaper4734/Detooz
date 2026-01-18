@@ -64,7 +64,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/auth/me'),
       headers: await _getHeaders(),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(const Duration(seconds: 45));
     return _processResponse(response);
   }
 
@@ -72,8 +72,11 @@ class ApiService {
   Future<Map<String, dynamic>> register({
     required String email,
     required String password,
-    required String name,
+    required String firstName,
+    String? middleName,
+    required String lastName,
     required String phone,
+    String? countryCode,
   }) async {
     print('Registering user: $email');
     try {
@@ -83,10 +86,13 @@ class ApiService {
         body: jsonEncode({
           'email': email,
           'password': password,
-          'name': name,
+          'first_name': firstName,
+          'middle_name': middleName,
+          'last_name': lastName,
           'phone': phone,
+          'country_code': countryCode ?? '+91',
         }),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 45));
       
       print('Register URL: $baseUrl/auth/register');
       print('Register Response: ${response.statusCode} ${response.body}');
@@ -114,7 +120,7 @@ class ApiService {
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {'username': email, 'password': password},
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 45));
       
       print('Login URL: $baseUrl/auth/login');
       print('Login Response: ${response.statusCode} ${response.body}');
@@ -164,7 +170,7 @@ class ApiService {
   /// Get scan history
   Future<List<dynamic>> getHistory({int limit = 50}) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/sms/history?limit=$limit'), // Fixed path from recent to history
+      Uri.parse('$baseUrl/scan/history?limit=$limit'),
       headers: await _getHeaders(),
     ).timeout(const Duration(seconds: 10));
     
@@ -480,7 +486,241 @@ class ApiService {
     );
     return jsonDecode(response.body);
   }
+
+  // ============ GUARDIAN AUTH ============
+  
+  String? _guardianToken;
+  int? _guardianId;
+  String? _guardianName;
+
+  /// Guardian registration
+  Future<Map<String, dynamic>> guardianRegister({
+    required String email,
+    required String password,
+    required String firstName,
+    String? middleName,
+    required String lastName,
+    String? phone,
+    String? countryCode,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/guardian-auth/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'first_name': firstName,
+        'middle_name': middleName,
+        'last_name': lastName,
+        'phone': phone,
+        'country_code': countryCode ?? '+91',
+      }),
+    ).timeout(const Duration(seconds: 30));
+    return _processResponse(response);
+  }
+
+  /// Guardian login
+  Future<Map<String, dynamic>> guardianLogin({
+    required String email,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/guardian-auth/login'),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'username=$email&password=$password',
+    ).timeout(const Duration(seconds: 30));
+    return _processResponse(response);
+  }
+
+  /// Save guardian token
+  Future<void> saveGuardianToken(String token, int guardianId, String name) async {
+    _guardianToken = token;
+    _guardianId = guardianId;
+    _guardianName = name;
+    await _storage.write(key: 'guardian_token', value: token);
+    await _storage.write(key: 'guardian_id', value: guardianId.toString());
+    await _storage.write(key: 'guardian_name', value: name);
+  }
+
+  /// Get guardian token
+  Future<String?> get guardianToken async {
+    _guardianToken ??= await _storage.read(key: 'guardian_token');
+    return _guardianToken;
+  }
+
+  /// Get guardian ID
+  Future<int?> get guardianId async {
+    if (_guardianId != null) return _guardianId;
+    final id = await _storage.read(key: 'guardian_id');
+    if (id != null) _guardianId = int.tryParse(id);
+    return _guardianId;
+  }
+
+  /// Clear guardian token
+  Future<void> clearGuardianToken() async {
+    _guardianToken = null;
+    _guardianId = null;
+    _guardianName = null;
+    await _storage.delete(key: 'guardian_token');
+    await _storage.delete(key: 'guardian_id');
+    await _storage.delete(key: 'guardian_name');
+  }
+
+  /// Get guardian headers
+  Future<Map<String, String>> _getGuardianHeaders() async {
+    final t = await guardianToken;
+    return {
+      'Content-Type': 'application/json',
+      if (t != null) 'Authorization': 'Bearer $t',
+    };
+  }
+
+  // ============ GUARDIAN ALERTS ============
+
+  /// Get pending alerts for guardian
+  Future<List<dynamic>> getGuardianAlerts() async {
+    final gid = await guardianId;
+    final response = await http.get(
+      Uri.parse('$baseUrl/guardian-alerts/pending?guardian_id=$gid'),
+      headers: await _getGuardianHeaders(),
+    ).timeout(const Duration(seconds: 15));
+    
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to get alerts: ${response.body}');
+    }
+    return jsonDecode(response.body);
+  }
+
+  /// Mark alert as seen
+  Future<void> markAlertSeen(int alertId) async {
+    final gid = await guardianId;
+    final response = await http.post(
+      Uri.parse('$baseUrl/guardian-alerts/$alertId/seen?guardian_id=$gid'),
+      headers: await _getGuardianHeaders(),
+    );
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to mark seen: ${response.body}');
+    }
+  }
+
+  /// Take action on alert
+  Future<void> takeAlertAction(int alertId, String action, {String? notes}) async {
+    final gid = await guardianId;
+    final response = await http.post(
+      Uri.parse('$baseUrl/guardian-alerts/$alertId/action?guardian_id=$gid'),
+      headers: await _getGuardianHeaders(),
+      body: jsonEncode({
+        'action': action,
+        'notes': notes,
+      }),
+    );
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to take action: ${response.body}');
+    }
+  }
+
+  // ============ GUARDIAN LINKING ============
+
+  /// Get protected users (for guardian)
+  Future<List<dynamic>> getProtectedUsers() async {
+    final gid = await guardianId;
+    final response = await http.get(
+      Uri.parse('$baseUrl/guardian-link/my-protected-users?guardian_id=$gid'),
+      headers: await _getGuardianHeaders(),
+    );
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to get users: ${response.body}');
+    }
+    return jsonDecode(response.body);
+  }
+
+  /// Generate OTP for linking (user side)
+  Future<Map<String, dynamic>> generateGuardianOtp() async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/guardian-link/generate-otp'),
+      headers: await _getHeaders(),
+    );
+    return _processResponse(response);
+  }
+
+  /// Verify OTP and link (guardian side)
+  Future<Map<String, dynamic>> verifyGuardianOtp(String userEmail, String otp) async {
+    final gid = await guardianId;
+    final response = await http.post(
+      Uri.parse('$baseUrl/guardian-link/verify-otp?guardian_id=$gid'),
+      headers: await _getGuardianHeaders(),
+      body: jsonEncode({
+        'user_email': userEmail,
+        'otp_code': otp,
+      }),
+    );
+    return _processResponse(response);
+  }
+
+  /// Get my guardians (user side)
+  Future<List<dynamic>> getMyGuardians() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/guardian-link/my-guardians'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to get guardians: ${response.body}');
+    }
+    return jsonDecode(response.body);
+  }
+
+  // ============ ADMIN DASHBOARD ============
+
+  Future<Map<String, dynamic>> getAdminStats() async {
+    final response = await http.get(Uri.parse('$baseUrl/admin/stats'));
+    if (response.statusCode >= 400) throw Exception('Failed to load stats');
+    return jsonDecode(response.body);
+  }
+
+  Future<List<dynamic>> getAdminUsers() async {
+    final response = await http.get(Uri.parse('$baseUrl/admin/users'));
+    if (response.statusCode >= 400) throw Exception('Failed to load users');
+    return jsonDecode(response.body);
+  }
+  
+  Future<List<dynamic>> getAdminGuardians() async {
+    final response = await http.get(Uri.parse('$baseUrl/admin/guardians'));
+    if (response.statusCode >= 400) throw Exception('Failed to load guardians');
+    return jsonDecode(response.body);
+  }
+  
+  Future<List<dynamic>> getAdminAlerts() async {
+    final response = await http.get(Uri.parse('$baseUrl/admin/alerts'));
+    if (response.statusCode >= 400) throw Exception('Failed to load alerts');
+    return jsonDecode(response.body);
+  }
+
+  Future<void> deleteUser(int userId) async {
+    final response = await http.delete(Uri.parse('$baseUrl/admin/users/$userId'));
+    if (response.statusCode >= 400) throw Exception('Failed to delete user');
+  }
+
+
+  Future<void> updateUser(int userId, String name, String phone) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/admin/users/$userId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'name': name, 'phone': phone}),
+    );
+    if (response.statusCode >= 400) throw Exception('Failed to update user');
+  }
+
+  Future<void> deleteGuardian(int guardianId) async {
+    final response = await http.delete(Uri.parse('$baseUrl/admin/guardians/$guardianId'));
+    if (response.statusCode >= 400) throw Exception('Failed to delete guardian');
+  }
+
+  Future<void> deleteAlert(int alertId) async {
+    final response = await http.delete(Uri.parse('$baseUrl/admin/alerts/$alertId'));
+    if (response.statusCode >= 400) throw Exception('Failed to delete alert');
+  }
 }
 
 /// Global API service instance
 final apiService = ApiService();
+
