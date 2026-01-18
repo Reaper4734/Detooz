@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import 'guardian_login_screen.dart';
+// import 'guardian_login_screen.dart'; // Removed
 import 'guardians_screen.dart';
 import 'admin/admin_login_screen.dart';
 
@@ -291,45 +291,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // Guardian Login Button
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
-                  ),
-                  child: Column(
-                    children: [
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.shield_outlined, color: Colors.blue, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Are you a Guardian?',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const GuardianLoginScreen(),
-                            ),
-                          );
-                        },
-                        child: const Text('Login as Guardian →'),
-                      ),
-                    ],
-                  ),
-                ),
+// Guardian login section removed (unified user model)
                 
                 const SizedBox(height: 16),
                 TextButton(

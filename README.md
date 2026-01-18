@@ -23,7 +23,16 @@ Detooz/
 - **Mobile**: Flutter
 - **Alerts**: Telegram Bot
 
-## 🚀 Quick Start (Backend)
+## 🐳 Run with Docker
+```bash
+# Start backend, db, and redis
+docker-compose up --build -d
+
+# Check logs
+docker-compose logs -f api
+```
+
+## 🚀 Quick Start (Local)
 ```bash
 cd backend
 # Setup venv & install deps

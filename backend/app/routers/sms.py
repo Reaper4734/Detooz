@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 from app.db import get_db
-from app.models import User, Scan, Guardian, RiskLevel, PlatformType
+from app.models import User, Scan, RiskLevel, PlatformType
 from app.routers.auth import get_current_user
 from app.services.scam_detector import ScamDetector
 from app.services.guardian_alert_service import send_guardian_alerts
@@ -422,32 +422,4 @@ async def get_recent_sms(
 
 # ============== Helper Functions ==============
 
-async def send_guardian_alerts(db: AsyncSession, user: User, scan: Scan, result: dict):
-    """Background task to send guardian alerts"""
-    try:
-        guardians_result = await db.execute(
-            select(Guardian).where(
-                Guardian.user_id == user.id,
-                Guardian.is_verified == True
-            )
-        )
-        guardians = guardians_result.scalars().all()
-        
-        for guardian in guardians:
-            if guardian.callmebot_apikey or guardian.telegram_chat_id:
-                success = await alert_service.send_scam_alert(
-                    phone=guardian.phone,
-                    apikey=guardian.callmebot_apikey,
-                    user_name=user.name,
-                    sender=scan.sender,
-                    risk_level=result["risk_level"],
-                    reason=result["reason"],
-                    telegram_chat_id=guardian.telegram_chat_id
-                )
-                if success:
-                    guardian.last_alert_sent = datetime.utcnow()
-                    scan.guardian_alerted = True
-        
-        await db.commit()
-    except Exception as e:
-        print(f"Error sending guardian alerts: {e}")
+# Helper function send_guardian_alerts is imported from app.services.guardian_alert_service

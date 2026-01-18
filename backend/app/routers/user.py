@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from datetime import datetime
 from pydantic import BaseModel
 from app.db import get_db
-from app.models import User, Scan, Guardian, TrustedSender, UserSettings, RiskLevel, PlatformType
+from app.models import User, Scan, TrustedSender, UserSettings, RiskLevel, PlatformType, GuardianLink
 from app.routers.auth import get_current_user
 
 router = APIRouter()
@@ -85,9 +85,12 @@ async def get_user_stats(
     # Low risk (safe) count
     low_risk = total_scans - high_risk - medium_risk
     
-    # Guardians count
+    # Guardians count (Active links)
     guardians_result = await db.execute(
-        select(func.count(Guardian.id)).where(Guardian.user_id == current_user.id)
+        select(func.count(GuardianLink.id)).where(
+            GuardianLink.user_id == current_user.id,
+            GuardianLink.status == 'active'
+        )
     )
     guardians_count = guardians_result.scalar() or 0
     

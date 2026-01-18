@@ -1,14 +1,14 @@
 """Guardian linking router - OTP-based linking between users and guardians"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr
 import random
 import string
 
 from app.db import get_db
-from app.models import User, GuardianAccount, GuardianLink
+from app.models import User, GuardianLink
 from app.routers.auth import get_current_user
 
 router = APIRouter()
@@ -23,7 +23,7 @@ class GenerateOTPResponse(BaseModel):
 
 
 class VerifyOTPRequest(BaseModel):
-    user_email: str  # Email of the user to link to
+    user_email: str  # Email of the user to link to (The Protected User)
     otp_code: str
 
 
@@ -56,7 +56,7 @@ def generate_otp() -> str:
     return ''.join(random.choices(string.digits, k=6))
 
 
-# ============ USER ENDPOINTS (Victim side) ============
+# ============ USER ENDPOINTS (Protected User Side) ============
 
 @router.post("/generate-otp", response_model=GenerateOTPResponse)
 async def generate_link_otp(
@@ -64,9 +64,28 @@ async def generate_link_otp(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Generate OTP for guardian linking.
-    User shares this OTP with their guardian verbally.
+    User A (Protected) generates OTP.
+    User A shares this with User B (Guardian).
     """
+
+    # CONSTRAINT CHECK: Can User A be protected?
+    # If User A is already a guardian for someone else, they cannot be protected?
+    # "If B is guardian of A then B cannot have C... as their guardian"
+    # This implies a chain: C -> B -> A.
+    # If I am A (Protected), I cannot be a Guardian (B) for someone else (X).
+    # Check if current_user protects anyone.
+    
+    protecting_others = await db.execute(
+        select(GuardianLink).where(
+            GuardianLink.guardian_id == current_user.id,
+            GuardianLink.status == 'active'
+        )
+    )
+    if protecting_others.scalars().first():
+        raise HTTPException(
+            status_code=400, 
+            detail="You are currently a Guardian for someone. You cannot have a Guardian while you are protecting others."
+        )
     
     otp_code = generate_otp()
     expires_at = datetime.utcnow() + timedelta(minutes=10)
@@ -108,33 +127,29 @@ async def get_my_guardians(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get list of verified guardians linked to current user (active only)"""
+    """Get list of guardians protecting ME (current_user)"""
     
-    # Only return active (verified) guardians - not pending ones
     result = await db.execute(
         select(GuardianLink).where(
             GuardianLink.user_id == current_user.id,
-            GuardianLink.status == "active"  # Only active, not pending
+            GuardianLink.status == "active"
         )
     )
     links = result.scalars().all()
     
     guardians = []
     for link in links:
-        guardian_name = None
-        guardian_email = None
+        guardian_name = "Unknown"
+        guardian_email = "Unknown"
         
-        if link.guardian_account_id:
-            guardian_result = await db.execute(
-                select(GuardianAccount).where(GuardianAccount.id == link.guardian_account_id)
-            )
-            guardian = guardian_result.scalar_one_or_none()
-            if guardian:
-                guardian_name = guardian.name
-                guardian_email = guardian.email
+        if link.guardian_id:
+            g_user = await db.get(User, link.guardian_id)
+            if g_user:
+                guardian_name = f"{g_user.first_name} {g_user.last_name}"
+                guardian_email = g_user.email
         
         guardians.append(LinkedGuardianResponse(
-            guardian_id=link.guardian_account_id,
+            guardian_id=link.guardian_id,
             guardian_name=guardian_name,
             guardian_email=guardian_email,
             status=link.status,
@@ -150,12 +165,12 @@ async def revoke_guardian_link(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Revoke a guardian's access"""
+    """Revoke a guardian's access (Can be called by User or Guardian)"""
     
     result = await db.execute(
         select(GuardianLink).where(
             GuardianLink.id == link_id,
-            GuardianLink.user_id == current_user.id
+            or_(GuardianLink.user_id == current_user.id, GuardianLink.guardian_id == current_user.id)
         )
     )
     link = result.scalar_one_or_none()
@@ -163,38 +178,72 @@ async def revoke_guardian_link(
     if not link:
         raise HTTPException(status_code=404, detail="Guardian link not found")
     
-    link.status = "revoked"
+    # We can either delete the row or mark as revoked.
+    # Deleting is cleaner for retries.
+    await db.delete(link)
     await db.commit()
     
-    return {"message": "Guardian access revoked"}
+    return {"message": "Guardian connection removed"}
 
 
-# ============ GUARDIAN ENDPOINTS ============
+# ============ GUARDIAN ENDPOINTS (Guardian Side) ============
 
 @router.post("/verify-otp")
 async def verify_otp_and_link(
     data: VerifyOTPRequest,
-    guardian_id: int,  # This will come from guardian auth token
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # This is the Guardian User (B)
 ):
     """
-    Guardian verifies OTP to link with user.
-    Called from guardian's app after they enter the OTP.
+    User B (Guardian) enters OTP from User A (Protected).
+    Checks constraints before linking.
     """
     
-    # Find user by email
+    # 1. basic self check
+    if current_user.email == data.user_email:
+        raise HTTPException(status_code=400, detail="You cannot be your own guardian.")
+
+    # 2. Find protected user (A)
     user_result = await db.execute(
         select(User).where(User.email == data.user_email)
     )
-    user = user_result.scalar_one_or_none()
+    protected_user = user_result.scalar_one_or_none()
     
-    if not user:
+    if not protected_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Find pending link with matching OTP
+
+    # 3. CONSTRAINT: Guardian (B) cannot have their own Guardians (C)
+    # "If B is guardian... B cannot have C... as their guardian"
+    has_guardians = await db.execute(
+        select(GuardianLink).where(
+            GuardianLink.user_id == current_user.id,
+            GuardianLink.status == 'active'
+        )
+    )
+    if has_guardians.scalars().first():
+        raise HTTPException(
+            status_code=400, 
+            detail="You have guardians protecting you. You cannot be a guardian for others while protected."
+        )
+
+    # 4. CONSTRAINT: Protected User (A) cannot be a Guardian for others (X)
+    # (Avoid chains/loops)
+    is_protecting_others = await db.execute(
+        select(GuardianLink).where(
+            GuardianLink.guardian_id == protected_user.id,
+            GuardianLink.status == 'active'
+        )
+    )
+    if is_protecting_others.scalars().first():
+        raise HTTPException(
+            status_code=400,
+            detail="The user you are trying to protect is already a guardian for someone else. Chains are not allowed."
+        )
+
+    # 5. Find pending link
     result = await db.execute(
         select(GuardianLink).where(
-            GuardianLink.user_id == user.id,
+            GuardianLink.user_id == protected_user.id,
             GuardianLink.otp_code == data.otp_code,
             GuardianLink.status == "pending"
         )
@@ -204,36 +253,36 @@ async def verify_otp_and_link(
     if not link:
         raise HTTPException(status_code=400, detail="Invalid OTP or no pending link")
     
-    # Check OTP expiry
+    # 6. Check Expiry
     if link.otp_expires_at and datetime.utcnow() > link.otp_expires_at:
-        raise HTTPException(status_code=400, detail="OTP has expired. Please generate a new one.")
+        raise HTTPException(status_code=400, detail="OTP has expired.")
     
-    # Verify and activate link
-    link.guardian_account_id = guardian_id
+    # 7. Activate Link
+    link.guardian_id = current_user.id
     link.status = "active"
     link.verified_at = datetime.utcnow()
-    link.otp_code = None  # Clear OTP after use
+    link.otp_code = None
     link.otp_expires_at = None
     
     await db.commit()
     
     return {
-        "message": "Successfully linked to user",
-        "user_name": user.name,
-        "user_email": user.email
+        "message": f"You are now protecting {protected_user.first_name}",
+        "user_name": f"{protected_user.first_name} {protected_user.last_name}",
+        "user_email": protected_user.email
     }
 
 
 @router.get("/my-protected-users", response_model=list[LinkedUserResponse])
 async def get_protected_users(
-    guardian_id: int,  # This will come from guardian auth token
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    """Get list of users this guardian is protecting"""
+    """Get list of users I am protecting"""
     
     result = await db.execute(
         select(GuardianLink).where(
-            GuardianLink.guardian_account_id == guardian_id,
+            GuardianLink.guardian_id == current_user.id,
             GuardianLink.status == "active"
         )
     )
@@ -241,15 +290,12 @@ async def get_protected_users(
     
     users = []
     for link in links:
-        user_result = await db.execute(
-            select(User).where(User.id == link.user_id)
-        )
-        user = user_result.scalar_one_or_none()
-        if user:
+        u_user = await db.get(User, link.user_id)
+        if u_user:
             users.append(LinkedUserResponse(
-                user_id=user.id,
-                user_name=user.name,
-                user_email=user.email,
+                user_id=u_user.id,
+                user_name=f"{u_user.first_name} {u_user.last_name}",
+                user_email=u_user.email,
                 status=link.status,
                 linked_at=link.verified_at
             ))

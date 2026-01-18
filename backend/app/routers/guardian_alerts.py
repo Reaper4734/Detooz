@@ -7,7 +7,8 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.db import get_db
-from app.models import User, GuardianAccount, GuardianLink, GuardianAlert, Scan
+from app.models import User, GuardianLink, GuardianAlert, Scan
+from app.routers.auth import get_current_user
 
 router = APIRouter()
 
@@ -53,27 +54,17 @@ class ActionResponse(BaseModel):
 
 @router.get("/pending", response_model=list[AlertResponse])
 async def get_pending_alerts(
-    guardian_id: int,  # Will come from auth token
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Get pending alerts for guardian.
-    This is the polling endpoint - guardian app calls every 10 seconds.
-    Returns alerts with status 'pending' or 'seen' (not yet actioned).
+    Get pending alerts for guardian (current_user).
     """
-    
-    # Verify guardian exists
-    guardian_result = await db.execute(
-        select(GuardianAccount).where(GuardianAccount.id == guardian_id)
-    )
-    guardian = guardian_result.scalar_one_or_none()
-    if not guardian:
-        raise HTTPException(status_code=404, detail="Guardian not found")
     
     # Get pending/seen alerts
     result = await db.execute(
         select(GuardianAlert).where(
-            GuardianAlert.guardian_account_id == guardian_id,
+            GuardianAlert.guardian_id == current_user.id,
             GuardianAlert.status.in_(["pending", "seen"])
         ).order_by(GuardianAlert.created_at.desc())
     )
@@ -81,7 +72,7 @@ async def get_pending_alerts(
     
     response = []
     for alert in alerts:
-        # Get user info
+        # Get user info (Protected User)
         user_result = await db.execute(
             select(User).where(User.id == alert.user_id)
         )
@@ -97,7 +88,7 @@ async def get_pending_alerts(
             response.append(AlertResponse(
                 id=alert.id,
                 user_id=user.id,
-                user_name=user.name,
+                user_name=f"{user.first_name} {user.last_name}",
                 user_phone=user.phone,
                 scan_id=scan.id,
                 sender=scan.sender,
@@ -117,15 +108,15 @@ async def get_pending_alerts(
 @router.post("/{alert_id}/seen")
 async def mark_alert_seen(
     alert_id: int,
-    guardian_id: int,  # Will come from auth token
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Mark an alert as seen (guardian opened it)"""
     
     result = await db.execute(
         select(GuardianAlert).where(
             GuardianAlert.id == alert_id,
-            GuardianAlert.guardian_account_id == guardian_id
+            GuardianAlert.guardian_id == current_user.id
         )
     )
     alert = result.scalar_one_or_none()
@@ -145,8 +136,8 @@ async def mark_alert_seen(
 async def take_action_on_alert(
     alert_id: int,
     action_data: ActionRequest,
-    guardian_id: int,  # Will come from auth token
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Take action on an alert.
@@ -156,7 +147,7 @@ async def take_action_on_alert(
     result = await db.execute(
         select(GuardianAlert).where(
             GuardianAlert.id == alert_id,
-            GuardianAlert.guardian_account_id == guardian_id
+            GuardianAlert.guardian_id == current_user.id
         )
     )
     alert = result.scalar_one_or_none()
@@ -184,15 +175,15 @@ async def take_action_on_alert(
 
 @router.get("/history", response_model=list[AlertResponse])
 async def get_alert_history(
-    guardian_id: int,  # Will come from auth token
     limit: int = 50,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Get all alerts (including actioned) for history view"""
     
     result = await db.execute(
         select(GuardianAlert).where(
-            GuardianAlert.guardian_account_id == guardian_id
+            GuardianAlert.guardian_id == current_user.id
         ).order_by(GuardianAlert.created_at.desc()).limit(limit)
     )
     alerts = result.scalars().all()
@@ -213,7 +204,7 @@ async def get_alert_history(
             response.append(AlertResponse(
                 id=alert.id,
                 user_id=user.id,
-                user_name=user.name,
+                user_name=f"{user.first_name} {user.last_name}",
                 user_phone=user.phone,
                 scan_id=scan.id,
                 sender=scan.sender,

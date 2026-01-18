@@ -9,3 +9,6 @@
   - [x] Backend Server (Started on port 8000)
   - [x] Fix Startup Crash (Fixed MainActivity)
   - [x] Fix Pub Cache Build Errors (Patched local cache)
+- [x] **Containerization**
+  - [x] Create connection-ready Docker Compose
+  - [x] Update Dockerfile

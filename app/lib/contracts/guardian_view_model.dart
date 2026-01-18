@@ -1,44 +1,38 @@
 class GuardianViewModel {
   final String id;
   final String name;
-  final String phone;
+  final String email;
   final bool isVerified;
-  final String? telegramChatId;
-  final DateTime? lastAlertSent;
+  final String status;
+  final DateTime? createdAt;
 
   GuardianViewModel({
     required this.id,
     required this.name,
-    required this.phone,
+    required this.email,
     required this.isVerified,
-    this.telegramChatId,
-    this.lastAlertSent,
+    required this.status,
+    this.createdAt,
   });
   
   /// Create from API JSON response
   factory GuardianViewModel.fromJson(Map<String, dynamic> json) {
     return GuardianViewModel(
-      id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
-      phone: json['phone'] ?? '',
-      isVerified: json['is_verified'] ?? false,
-      telegramChatId: json['telegram_chat_id'],
-      lastAlertSent: json['last_alert_sent'] != null 
-          ? DateTime.tryParse(json['last_alert_sent'])
+      id: json['guardian_id']?.toString() ?? '',
+      name: json['guardian_name'] ?? 'Unknown',
+      email: json['guardian_email'] ?? '',
+      isVerified: json['status'] == 'active',
+      status: json['status'] ?? 'pending',
+      createdAt: json['created_at'] != null 
+          ? DateTime.tryParse(json['created_at'])
           : null,
     );
   }
   
   /// Get status text for display
   String get statusText {
-    if (lastAlertSent != null) {
-      final diff = DateTime.now().difference(lastAlertSent!);
-      if (diff.inMinutes < 60) {
-        return 'Alerted ${diff.inMinutes}m ago';
-      } else if (diff.inHours < 24) {
-        return 'Alerted ${diff.inHours}h ago';
-      }
-    }
-    return isVerified ? 'Active Protection' : 'Request Pending';
+    if (status == 'active') return 'Active Protection';
+    if (status == 'pending') return 'Request Pending';
+    return status.toUpperCase();
   }
 }

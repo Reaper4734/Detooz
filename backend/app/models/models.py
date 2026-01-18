@@ -33,31 +33,12 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    guardians = relationship("Guardian", back_populates="user", cascade="all, delete-orphan")
     scans = relationship("Scan", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User {self.email}>"
 
 
-class Guardian(Base):
-    __tablename__ = "guardians"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    name = Column(String(255), nullable=False)
-    phone = Column(String(20), nullable=False)
-    callmebot_apikey = Column(String(50), nullable=True)
-    telegram_chat_id = Column(String(50), nullable=True)  # For Telegram alerts
-    is_verified = Column(Boolean, default=False)
-    last_alert_sent = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    user = relationship("User", back_populates="guardians")
-    
-    def __repr__(self):
-        return f"<Guardian {self.name}>"
 
 
 class Scan(Base):
@@ -162,35 +143,12 @@ class UserSettings(Base):
 
 # ============ GUARDIAN ALERT SYSTEM ============
 
-class GuardianAccount(Base):
-    """Separate login account for guardians (not regular users)"""
-    __tablename__ = "guardian_accounts"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    first_name = Column(String(100), nullable=False)
-    middle_name = Column(String(100), nullable=True)
-    last_name = Column(String(100), nullable=False)
-    phone = Column(String(20), nullable=True)
-    country_code = Column(String(5), default="+91", nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    links = relationship("GuardianLink", back_populates="guardian_account", cascade="all, delete-orphan")
-    alerts = relationship("GuardianAlert", back_populates="guardian_account", cascade="all, delete-orphan")
-    
-    def __repr__(self):
-        return f"<GuardianAccount {self.email}>"
-
-
 class GuardianLink(Base):
-    """Links a guardian account to a user they are protecting (via OTP verification)"""
+    """Links a guardian (User) to a protected user (User) via OTP verification"""
     __tablename__ = "guardian_links"
     
     id = Column(Integer, primary_key=True, index=True)
-    guardian_account_id = Column(Integer, ForeignKey("guardian_accounts.id", ondelete="CASCADE"), nullable=True)
+    guardian_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     
     # OTP verification
@@ -204,11 +162,11 @@ class GuardianLink(Base):
     verified_at = Column(DateTime, nullable=True)
     
     # Relationships
-    guardian_account = relationship("GuardianAccount", back_populates="links")
-    user = relationship("User", backref="guardian_links")
+    guardian = relationship("User", foreign_keys=[guardian_id], backref="protected_users")
+    user = relationship("User", foreign_keys=[user_id], backref="guardians_links")
     
     def __repr__(self):
-        return f"<GuardianLink user={self.user_id} guardian={self.guardian_account_id} status={self.status}>"
+        return f"<GuardianLink user={self.user_id} guardian={self.guardian_id} status={self.status}>"
 
 
 class GuardianAlert(Base):
@@ -216,7 +174,7 @@ class GuardianAlert(Base):
     __tablename__ = "guardian_alerts"
     
     id = Column(Integer, primary_key=True, index=True)
-    guardian_account_id = Column(Integer, ForeignKey("guardian_accounts.id", ondelete="CASCADE"), nullable=False)
+    guardian_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     scan_id = Column(Integer, ForeignKey("scans.id", ondelete="CASCADE"), nullable=False)
     
@@ -230,8 +188,8 @@ class GuardianAlert(Base):
     actioned_at = Column(DateTime, nullable=True)
     
     # Relationships
-    guardian_account = relationship("GuardianAccount", back_populates="alerts")
-    user = relationship("User", backref="guardian_alerts")
+    guardian = relationship("User", foreign_keys=[guardian_id])
+    user = relationship("User", foreign_keys=[user_id])
     scan = relationship("Scan", backref="guardian_alerts")
     
     def __repr__(self):

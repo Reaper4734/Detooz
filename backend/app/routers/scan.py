@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 from app.db import get_db
-from app.models import User, Scan, Guardian, RiskLevel, PlatformType
+from app.models import User, Scan, RiskLevel, PlatformType
 from app.routers.auth import get_current_user
 from app.schemas import ScanRequest, ScanResponse, ScanDetail
 from app.services.scam_detector import ScamDetector
@@ -48,33 +48,7 @@ async def analyze_message(
     
     # Send alert to guardians if HIGH risk
     if result["risk_level"] == "HIGH":
-        # Add the notification task to background tasks
-        background_tasks.add_task(
-            notification_service.notify_guardians,
-            scan.id, # Pass scan ID instead of object for background task
-            current_user.id,
-            db # Pass the session for the background task
-        )
-        guardians = guardians_result.scalars().all()
-        
-        for guardian in guardians:
-            # Try to send alert (supports both Telegram and CallMeBot)
-            if guardian.callmebot_apikey or guardian.telegram_chat_id:
-                success = await alert_service.send_scam_alert(
-                    phone=guardian.phone,
-                    apikey=guardian.callmebot_apikey,
-                    user_name=current_user.name,
-                    sender=request.sender,
-                    risk_level=result["risk_level"],
-                    reason=result["reason"],
-                    telegram_chat_id=guardian.telegram_chat_id
-                )
-                if success:
-                    guardian.last_alert_sent = datetime.utcnow()
-                    scan.guardian_alerted = True
-        
-        await db.commit()
-        await db.refresh(scan)
+        await notification_service.notify_guardians(scan, db)
     
     return scan
 

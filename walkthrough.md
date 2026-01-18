@@ -123,3 +123,17 @@ Created `OfflineCacheService` using Hive:
   - **Flow**: Updated `main.dart` to enforce Authentication before accessing Dashboard.
   - **Settings**: Added **Log Out** button.
 - **Outcome**: User can now Login, reducing 401 errors, and data syncs with backend.
+
+---
+
+## 🐳 Containerization (Completed)
+- **Files Created/Updated**:
+  - `docker-compose.yml` (Root): Orchestrates FastAPI, PostgreSQL, and Redis. Matches production architecture.
+  - `backend/Dockerfile`: Optimized for production, includes uploads directory creation.
+  - `backend/.dockerignore`: Ensures clean builds.
+- **Features**:
+  - **Healthchecks**: Database service waits for readiness.
+  - **API Keys**: Inherited from `backend/.env` automatically.
+  - **Persistence**: Volumes for Postgres, Redis, and Uploads.
+- **How to Run**:
+  `docker-compose up --build -d`

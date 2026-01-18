@@ -76,41 +76,46 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             
             // List
             Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: groupedScans.length,
-                itemBuilder: (context, index) {
-                  final group = groupedScans[index];
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Sticky Header style
-                      Container(
-                         padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-                         color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
-                         width: double.infinity,
-                         child: Text(
-                           group.label,
-                           style: const TextStyle(
-                             fontSize: 12, 
-                             fontWeight: FontWeight.bold, 
-                             color: AppColors.textSecondaryLight,
-                             letterSpacing: 1,
-                           ),
-                         ),
-                      ),
-                      ...group.scans.map((scan) => ScanCard(
-                        scan: scan,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => ScanDetailScreen(scan: scan)),
-                          );
-                        },
-                      )),
-                    ],
-                  );
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await ref.read(scansProvider.notifier).loadScans();
                 },
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: groupedScans.length,
+                  itemBuilder: (context, index) {
+                    final group = groupedScans[index];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Sticky Header style
+                        Container(
+                           padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+                           color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
+                           width: double.infinity,
+                           child: Text(
+                             group.label,
+                             style: const TextStyle(
+                               fontSize: 12, 
+                               fontWeight: FontWeight.bold, 
+                               color: AppColors.textSecondaryLight,
+                               letterSpacing: 1,
+                             ),
+                           ),
+                        ),
+                        ...group.scans.map((scan) => ScanCard(
+                          scan: scan,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => ScanDetailScreen(scan: scan)),
+                            );
+                          },
+                        )),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ],

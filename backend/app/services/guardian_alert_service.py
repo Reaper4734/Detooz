@@ -47,10 +47,10 @@ class GuardianAlertService:
         alerts_created = 0
         
         for link in links:
-            if link.guardian_account_id:
+            if link.guardian_id:
                 # Create alert for this guardian
                 alert = GuardianAlert(
-                    guardian_account_id=link.guardian_account_id,
+                    guardian_id=link.guardian_id,
                     user_id=user.id,
                     scan_id=scan.id,
                     status="pending"
