@@ -60,15 +60,59 @@ class SmsNotificationListener : NotificationListenerService() {
         return super.onBind(intent)
     }
     
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG, "🔧 SmsNotificationListener Created")
+        startForegroundService()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
+        Log.d(TAG, "🔄 SmsNotificationListener Started (Sticky)")
+        // Ensure foreground is active
+        startForegroundService()
+        return START_STICKY
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.d(TAG, "✅ Unified Message Listener connected - monitoring SMS, WhatsApp, Telegram")
+    }
+
+    private fun startForegroundService() {
+        try {
+            val channelId = "detooz_protection_service"
+            val channelName = "Protection Service"
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                val channel = android.app.NotificationChannel(
+                    channelId,
+                    channelName,
+                    android.app.NotificationManager.IMPORTANCE_LOW
+                )
+                val manager = getSystemService(android.app.NotificationManager::class.java)
+                manager.createNotificationChannel(channel)
+            }
+
+            val notification = android.app.Notification.Builder(this, channelId)
+                .setContentTitle("Detooz is Active")
+                .setContentText("Scanning for scam messages in background... 🛡️")
+                .setSmallIcon(android.R.drawable.ic_dialog_info) // Using system icon as fallback
+                .build()
+
+            // ID 1337 for leet protection
+            startForeground(1337, notification)
+            Log.d(TAG, "🛡️ Foreground Service Started")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to start foreground service: ${e.message}")
+        }
     }
     
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         sbn ?: return
         
         val packageName = sbn.packageName ?: return
+        Log.d(TAG, "🔔 Notification posted from: $packageName") // Debug log
         
         // Check if this is a messaging app we monitor
         var platform = MESSAGING_PACKAGES[packageName]
@@ -96,7 +140,7 @@ class SmsNotificationListener : NotificationListenerService() {
             ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
             ?: ""
         
-        if (message.isBlank() || message.length < 10) {
+        if (message.isBlank() || message.length < 3) {
             return
         }
         

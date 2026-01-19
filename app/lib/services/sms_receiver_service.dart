@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../ui/components/scam_alert_overlay.dart';
+import '../ui/screens/permission_wizard_screen.dart';
 
 /// Unified Message Receiver Service
 /// Handles incoming messages from SMS, WhatsApp, and Telegram via Notification Listener
@@ -28,6 +29,9 @@ class SmsReceiverService {
     // Setup unified message channel (handles SMS, WhatsApp, Telegram)
     _setupMessageChannel();
     
+    // Force re-bind of notification service (Fixes "Silent Failure" after updates)
+    await reconnectNotificationService();
+    
     // Check and request permission on Android
     await _checkAndroidPermission();
     
@@ -35,36 +39,53 @@ class SmsReceiverService {
     debugPrint('📱 Unified Message Receiver initialized (SMS, WhatsApp, Telegram)');
   }
 
-  Future<void> _checkAndroidPermission() async {
+  Future<void> reconnectNotificationService() async {
+    try {
+      await _messageChannel.invokeMethod('reconnectNotificationService');
+    } catch (e) {
+      debugPrint("Error reconnecting service: $e");
+    }
+  }
+
+  Future<bool> isNotificationListenerEnabled() async {
     try {
       final bool isEnabled = await _messageChannel.invokeMethod('isNotificationListenerEnabled');
+      return isEnabled;
+    } catch (e) {
+      debugPrint("Error checking permission: $e");
+      return false;
+    }
+  }
+
+  Future<void> _checkAndroidPermission() async {
+    try {
+      final bool isEnabled = await isNotificationListenerEnabled();
       if (!isEnabled && _context != null) {
         if (!_context!.mounted) return;
         
-        showDialog(
-          context: _context!,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Permission Required'),
-            content: const Text(
-              'To detect scam messages in SMS, WhatsApp, and Telegram, '
-              'Detooz needs "Device & App Notifications" permission.\n\n'
-              'Please find "Detooz" in the list and enable it.'
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _messageChannel.invokeMethod('openNotificationListenerSettings');
-                },
-                child: const Text('Open Settings'),
-              ),
-            ],
-          ),
+        // Redirect to Permission Wizard for guided setup
+        Navigator.of(_context!).push(
+          MaterialPageRoute(builder: (_) => const PermissionWizardScreen()),
         );
       }
     } catch (e) {
       debugPrint('Error checking permission: $e');
+    }
+  }
+  
+  Future<void> openNotificationListenerSettings() async {
+    try {
+      await _messageChannel.invokeMethod('openNotificationListenerSettings');
+    } catch (e) {
+      debugPrint("Error opening settings: $e");
+    }
+  }
+
+  Future<void> openAutostartSettings() async {
+    try {
+      await _messageChannel.invokeMethod('openAutostartSettings');
+    } catch (e) {
+      debugPrint("Error opening autostart settings: $e");
     }
   }
   
@@ -92,7 +113,7 @@ class SmsReceiverService {
     required String sender,
     required String platform,
   }) async {
-    if (message.length < 10) return; // Skip very short messages
+    if (message.length < 3) return; // Skip very short messages
     
     debugPrint('📩 Received $platform message from: $sender');
     

@@ -30,12 +30,11 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
       }
       
       state = AsyncValue.data(scans);
+      state = AsyncValue.data(scans);
     } catch (e) {
-      if (e.toString().contains('Unauthorized')) {
-        ref.read(authProvider.notifier).logout();
-        return;
-      }
-      
+      // Don't auto-logout on 401 here to prevent race conditions or loops.
+      // Just show error state. AuthNotifier handles session validity.
+       
       // Try to load from cache
       final cached = offlineCacheService.getCachedScans();
       if (cached.isNotEmpty) {
@@ -58,7 +57,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
       return scan;
     } catch (e) {
       if (e.toString().contains('Unauthorized')) {
-        ref.read(authProvider.notifier).logout();
+        // ref.read(authProvider.notifier).logout();
       }
       rethrow;
     }
@@ -94,7 +93,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
     } catch (e) {
       print('Manual scan error in provider: $e');
       if (e.toString().contains('Unauthorized')) {
-        ref.read(authProvider.notifier).logout();
+        // ref.read(authProvider.notifier).logout();
       }
       rethrow;
     }
@@ -113,7 +112,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
     } catch (e) {
       print('Image analysis error in provider: $e');
       if (e.toString().contains('Unauthorized')) {
-        ref.read(authProvider.notifier).logout();
+        // ref.read(authProvider.notifier).logout();
       }
       rethrow;
     }
@@ -136,7 +135,8 @@ class GuardiansNotifier extends StateNotifier<AsyncValue<List<GuardianViewModel>
       );
     } catch (e) {
       if (e.toString().contains('Unauthorized')) {
-        ref.read(authProvider.notifier).logout();
+        // ref.read(authProvider.notifier).logout();
+        state = AsyncValue.error(e, StackTrace.current);
         return;
       }
       state = AsyncValue.error(e, StackTrace.current);
@@ -163,7 +163,7 @@ class GuardiansNotifier extends StateNotifier<AsyncValue<List<GuardianViewModel>
       return true;
     } catch (e) {
       if (e.toString().contains('Unauthorized')) {
-        ref.read(authProvider.notifier).logout();
+        // ref.read(authProvider.notifier).logout();
       }
       return false;
     }

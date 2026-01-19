@@ -198,12 +198,15 @@ class ScamAlertOverlay extends StatelessWidget {
                   children: [
                     const Icon(Icons.check_circle, color: Colors.green, size: 20),
                     const SizedBox(width: 8),
-                    Text(
-                      'Guardian has been alerted via Telegram',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.green.shade100,
+                    Expanded(
+                      child: Text(
+                        'Guardian has been alerted via Telegram',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.green.shade100,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ],
