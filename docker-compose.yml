@@ -1,68 +1,22 @@
 version: '3.8'
 
 services:
-  api:
+  detooz-backend:
+    container_name: detooz_backend
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: detooz-backend
     ports:
       - "8000:8000"
+    volumes:
+      # Persist SQLite Database
+      - ./backend/detooz.db:/app/detooz.db
+      # Persist Logs
+      - ./backend/logs:/app/logs
+      # Mount service account if needed (though it might be copied in build if not .dockerignored)
+      - ./backend/firebase-service-account.json:/app/firebase-service-account.json
     env_file:
       - ./backend/.env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/detooz
-      - REDIS_URL=redis://redis:6379
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    volumes:
-      - ./backend:/app
-      - uploads_data:/app/app/static/uploads
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    networks:
-      - detooz-network
-
-  db:
-    image: postgres:15-alpine
-    container_name: detooz-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: detooz
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - detooz-network
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:alpine
-    container_name: detooz-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - detooz-network
-
-volumes:
-  postgres_data:
-  redis_data:
-  uploads_data:
-
-
-networks:
-  detooz-network:
-    driver: bridge
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

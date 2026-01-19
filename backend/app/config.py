@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
     
+    # Firebase Cloud Messaging (for push notifications)
+    FCM_SERVER_KEY: str = ""
+    
     # CallMeBot (FREE WhatsApp alerts)
     CALLMEBOT_ENABLED: bool = True
     

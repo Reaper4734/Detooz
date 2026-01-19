@@ -4,6 +4,8 @@ import 'dashboard_screen.dart';
 import 'history_screen.dart';
 import 'guardians_screen.dart';
 import 'settings_screen.dart';
+import '../../services/sms_receiver_service.dart';
+import '../../services/firebase_messaging_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,6 +23,20 @@ class _MainScreenState extends State<MainScreen> {
     const GuardiansScreen(),
     const SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Register FCM token with backend for push notifications
+    // This enables guardian alerts even when app is closed
+    firebaseMessagingService.registerTokenWithBackend();
+    
+    // Initialize SMS/WhatsApp/Telegram receiver
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      smsReceiverService.initialize(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,5 @@
 import json
 import base64
-from functools import lru_cache
 import asyncio
 from app.config import settings
 from app.services.sms_patterns import check_patterns
@@ -18,6 +17,12 @@ try:
     OPENROUTER_AVAILABLE = True
 except ImportError:
     OPENROUTER_AVAILABLE = False
+
+
+# Module-level cache for Groq API calls (avoids @lru_cache on instance method)
+# Key: (message, sender) -> dict result
+_groq_cache: dict[tuple[str, str], dict] = {}
+_GROQ_CACHE_MAX_SIZE = 1024
 
 
 class ScamDetector:
@@ -127,9 +132,17 @@ class ScamDetector:
             "confidence": local_result["confidence"]
         }
     
-    @lru_cache(maxsize=1024)
     def _sync_groq_call(self, message: str, sender: str) -> dict:
-        """Synchronous Groq API call (will be run in thread pool)"""
+        """Synchronous Groq API call with module-level caching"""
+        global _groq_cache
+        
+        # Check cache first
+        cache_key = (message, sender)
+        if cache_key in _groq_cache:
+            print(f"DEBUG: Cache hit for message from {sender}")
+            return _groq_cache[cache_key]
+        
+        # Make API call
         response = self.client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -145,7 +158,16 @@ class ScamDetector:
         # Clean up if AI responds with ```json ... ```
         if result_text.startswith("```"):
             result_text = result_text.replace("```json", "").replace("```", "").strip()
-        return json.loads(result_text)
+        result = json.loads(result_text)
+        
+        # Store in cache (with size limit)
+        if len(_groq_cache) >= _GROQ_CACHE_MAX_SIZE:
+            # Remove oldest entry (first key)
+            oldest_key = next(iter(_groq_cache))
+            del _groq_cache[oldest_key]
+        _groq_cache[cache_key] = result
+        
+        return result
     
     async def _analyze_with_ai(self, message: str, sender: str) -> dict:
         """Analyze message using Groq AI (Llama 3.3) - runs sync call in thread pool"""

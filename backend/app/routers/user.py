@@ -233,3 +233,39 @@ async def set_language(
     await db.commit()
     
     return {"message": f"Language set to {lang}", "language": lang}
+
+
+# ============== FCM Token ==============
+
+class FCMTokenRequest(BaseModel):
+    """FCM token registration request"""
+    fcm_token: str
+
+
+@router.post("/fcm-token")
+async def register_fcm_token(
+    request: FCMTokenRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Register Firebase Cloud Messaging token for push notifications.
+    Called by Flutter app on startup and token refresh.
+    """
+    current_user.fcm_token = request.fcm_token
+    await db.commit()
+    
+    return {"message": "FCM token registered", "success": True}
+
+
+@router.delete("/fcm-token")
+async def remove_fcm_token(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Remove FCM token (called on logout)"""
+    current_user.fcm_token = None
+    await db.commit()
+    
+    return {"message": "FCM token removed", "success": True}
+

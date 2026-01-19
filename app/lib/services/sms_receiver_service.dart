@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../ui/components/scam_alert_overlay.dart';
 
 /// Unified Message Receiver Service
@@ -27,8 +28,44 @@ class SmsReceiverService {
     // Setup unified message channel (handles SMS, WhatsApp, Telegram)
     _setupMessageChannel();
     
+    // Check and request permission on Android
+    await _checkAndroidPermission();
+    
     _isInitialized = true;
     debugPrint('📱 Unified Message Receiver initialized (SMS, WhatsApp, Telegram)');
+  }
+
+  Future<void> _checkAndroidPermission() async {
+    try {
+      final bool isEnabled = await _messageChannel.invokeMethod('isNotificationListenerEnabled');
+      if (!isEnabled && _context != null) {
+        if (!_context!.mounted) return;
+        
+        showDialog(
+          context: _context!,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Permission Required'),
+            content: const Text(
+              'To detect scam messages in SMS, WhatsApp, and Telegram, '
+              'Detooz needs "Device & App Notifications" permission.\n\n'
+              'Please find "Detooz" in the list and enable it.'
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _messageChannel.invokeMethod('openNotificationListenerSettings');
+                },
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error checking permission: $e');
+    }
   }
   
   void _setupMessageChannel() {
@@ -67,12 +104,24 @@ class SmsReceiverService {
       );
       
       final riskLevel = result['risk_level'] as String?;
+      final reason = result['risk_reason'] as String? ?? 'Potential scam detected';
       
+      // Show push notification for HIGH and MEDIUM risk (works in background)
+      if (riskLevel == 'HIGH' || riskLevel == 'MEDIUM') {
+        await notificationService.showScamAlert(
+          sender: sender,
+          riskLevel: riskLevel!,
+          reason: reason,
+          platform: platform,
+        );
+      }
+      
+      // Also show full-screen overlay for HIGH risk (only if app is open)
       if (riskLevel == 'HIGH' && _context != null) {
         _showScamAlert(
           sender: sender,
           message: message,
-          reason: result['risk_reason'] ?? 'Potential scam detected',
+          reason: reason,
           confidence: (result['confidence'] as num?)?.toDouble() ?? 0.9,
           platform: platform,
         );

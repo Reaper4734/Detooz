@@ -1,43 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/theme/theme_provider.dart';
 import 'ui/providers.dart';
 import 'ui/screens/main_screen.dart';
 import 'ui/screens/login_screen.dart';
 import 'services/offline_cache_service.dart';
-import 'services/sms_receiver_service.dart';
+import 'services/notification_service.dart';
+import 'services/firebase_messaging_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialize Firebase (required for FCM push notifications) - Skip on Web for now
+  if (!kIsWeb) {
+    await Firebase.initializeApp();
+    
+    // Initialize Firebase Cloud Messaging (for push when app is closed)
+    await firebaseMessagingService.initialize();
+  } else {
+    debugPrint('⚠️ Web detected: Skipping Firebase initialization');
+  }
+
   // Initialize offline cache
   await offlineCacheService.initialize();
+  
+  // Initialize local push notifications
+  await notificationService.initialize();
   
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends ConsumerStatefulWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  ConsumerState<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends ConsumerState<MyApp> {
-  
-  @override
-  void initState() {
-    super.initState();
-    // Initialize SMS receiver after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      smsReceiverService.initialize(context);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(

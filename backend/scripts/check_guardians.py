@@ -1,5 +1,7 @@
 import asyncio
 import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Force settings update before other imports if possible, or just hack the logging after
 import logging
 

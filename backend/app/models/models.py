@@ -29,6 +29,7 @@ class User(Base):
     phone = Column(String(20), nullable=True)
     country_code = Column(String(5), default="+91", nullable=True)
     is_active = Column(Boolean, default=True)
+    fcm_token = Column(String(255), nullable=True)  # Firebase Cloud Messaging token
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

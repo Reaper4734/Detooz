@@ -9,12 +9,10 @@ from app.schemas import ScanRequest, ScanResponse, ScanDetail
 from app.services.scam_detector import ScamDetector
 from app.services.confidence_scorer import confidence_scorer
 from app.services.explanation_engine import explanation_engine
-from app.services.notification_service import notification_service
-from app.services.alert_service import AlertService
+from app.services.guardian_alert_service import guardian_alert_service
 
 router = APIRouter()
 detector = ScamDetector()
-alert_service = AlertService()
 
 
 @router.post("/analyze", response_model=ScanResponse)
@@ -48,7 +46,7 @@ async def analyze_message(
     
     # Send alert to guardians if HIGH risk
     if result["risk_level"] == "HIGH":
-        await notification_service.notify_guardians(scan, db)
+        await guardian_alert_service.create_alerts_for_scan(scan, db)
     
     return scan
 

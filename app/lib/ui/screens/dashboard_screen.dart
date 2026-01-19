@@ -129,7 +129,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             // Hero Card: Protection Active
             Container(
               width: double.infinity,
-              height: 140,
+              constraints: const BoxConstraints(minHeight: 140),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                 gradient: const LinearGradient(

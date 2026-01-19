@@ -1,9 +1,9 @@
 import sqlite3
 
-conn = sqlite3.connect('detooz.db')
+conn = sqlite3.connect('../detooz.db')
 cursor = conn.cursor()
 
-with open('db_output.txt', 'w') as f:
+with open('../logs/db_output.txt', 'w') as f:
     # Check all tables
     f.write("=== ALL TABLES ===\n")
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")

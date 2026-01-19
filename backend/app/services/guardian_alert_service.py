@@ -4,6 +4,7 @@ from sqlalchemy import select
 from datetime import datetime
 
 from app.models import User, Scan, GuardianLink, GuardianAlert, UserSettings
+from app.services.fcm_service import fcm_service
 
 
 class GuardianAlertService:
@@ -17,6 +18,7 @@ class GuardianAlertService:
     ) -> int:
         """
         Create guardian alerts for a scan based on user's threshold settings.
+        Also sends FCM push notifications to guardians.
         Returns number of alerts created.
         """
         
@@ -56,7 +58,17 @@ class GuardianAlertService:
                     status="pending"
                 )
                 db.add(alert)
+                await db.flush()  # Get alert ID
                 alerts_created += 1
+                
+                # Send FCM push notification to guardian
+                await self._send_fcm_to_guardian(
+                    db=db,
+                    guardian_id=link.guardian_id,
+                    user=user,
+                    scan=scan,
+                    alert_id=alert.id
+                )
         
         if alerts_created > 0:
             # Mark scan as guardian_alerted
@@ -64,6 +76,45 @@ class GuardianAlertService:
             await db.commit()
         
         return alerts_created
+    
+    async def _send_fcm_to_guardian(
+        self,
+        db: AsyncSession,
+        guardian_id: int,
+        user: User,
+        scan: Scan,
+        alert_id: int
+    ):
+        """Send FCM push notification to guardian's device"""
+        try:
+            # Get guardian's FCM token
+            guardian_result = await db.execute(
+                select(User).where(User.id == guardian_id)
+            )
+            guardian = guardian_result.scalar_one_or_none()
+            
+            if guardian and guardian.fcm_token:
+                protected_user_name = f"{user.first_name} {user.last_name}"
+                
+                success = await fcm_service.send_guardian_alert(
+                    fcm_token=guardian.fcm_token,
+                    protected_user_name=protected_user_name,
+                    scam_type=scan.scam_type or "Suspicious Message",
+                    sender=scan.sender or "Unknown",
+                    message_preview=scan.message_preview or "",
+                    alert_id=alert_id,
+                    risk_level=scan.risk_level.value
+                )
+                
+                if success:
+                    print(f"✅ FCM push sent to guardian {guardian.email}")
+                else:
+                    print(f"⚠️ FCM push failed for guardian {guardian.email}")
+            else:
+                print(f"⚠️ Guardian {guardian_id} has no FCM token registered")
+                
+        except Exception as e:
+            print(f"ERROR: FCM push failed: {e}")
     
     def _should_alert(self, risk_level: str, threshold: str) -> bool:
         """
@@ -91,7 +142,7 @@ guardian_alert_service = GuardianAlertService()
 
 async def send_guardian_alerts(db: AsyncSession, user: User, scan: Scan, result: dict):
     """
-    Background task to create guardian alerts.
+    Background task to create guardian alerts and send FCM notifications.
     Called from SMS analysis endpoint when HIGH risk detected.
     """
     try:
@@ -99,3 +150,4 @@ async def send_guardian_alerts(db: AsyncSession, user: User, scan: Scan, result:
         print(f"DEBUG: Created {alerts_created} guardian alerts for scan {scan.id}")
     except Exception as e:
         print(f"ERROR: Failed to create guardian alerts: {e}")
+

@@ -51,7 +51,7 @@ class SmsNotificationListener : NotificationListenerService() {
         var methodChannel: MethodChannel? = null
         
         // Prevent duplicate processing
-        private val recentMessages = mutableSetOf<String>()
+        private val recentMessages = LinkedHashSet<String>()
         private const val MAX_RECENT = 200
     }
     
@@ -71,7 +71,19 @@ class SmsNotificationListener : NotificationListenerService() {
         val packageName = sbn.packageName ?: return
         
         // Check if this is a messaging app we monitor
-        val platform = MESSAGING_PACKAGES[packageName] ?: return
+        var platform = MESSAGING_PACKAGES[packageName]
+        
+        // Fallback: Auto-detect SMS apps by package name (e.g. Truecaller, Textra)
+        if (platform == null) {
+            if (packageName.contains("sms") || 
+                packageName.contains("mms") || 
+                packageName.contains("messaging")) {
+                platform = "SMS"
+                Log.d(TAG, "⚠️ Auto-detected generic SMS app: $packageName")
+            } else {
+                return
+            }
+        }
         
         val notification = sbn.notification ?: return
         val extras = notification.extras ?: return
@@ -84,7 +96,7 @@ class SmsNotificationListener : NotificationListenerService() {
             ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
             ?: ""
         
-        if (message.isBlank() || message.length < 5) {
+        if (message.isBlank() || message.length < 10) {
             return
         }
         

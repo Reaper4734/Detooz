@@ -11,8 +11,8 @@ class ApiService {
   // Smart URL detection
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:8000/api';
-    // Android Emulator requires special IP
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+    // Android Physical Device (Host IP)
+    if (!kIsWeb && Platform.isAndroid) return 'http://192.168.1.3:8000/api';
     // iOS and Desktop (Windows/Mac) use localhost
     return 'http://127.0.0.1:8000/api';
   }
@@ -135,6 +135,39 @@ class ApiService {
       rethrow;
     }
 
+  }
+
+  // ============ FCM TOKEN ============
+
+  /// Register FCM token for push notifications
+  Future<bool> registerFcmToken(String fcmToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/user/fcm-token'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'fcm_token': fcmToken}),
+      ).timeout(const Duration(seconds: 10));
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print('FCM token registration failed: $e');
+      return false;
+    }
+  }
+
+  /// Remove FCM token (on logout)
+  Future<bool> removeFcmToken() async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/user/fcm-token'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 10));
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print('FCM token removal failed: $e');
+      return false;
+    }
   }
 
   // ============ SMS DETECTION ============
