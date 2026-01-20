@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../contracts/scan_view_model.dart';
 import '../../contracts/risk_level.dart';
 import '../../contracts/guardian_view_model.dart';
@@ -99,7 +100,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
     }
   }
 
-  Future<ScanViewModel?> analyzeImage(File imageFile) async {
+  Future<ScanViewModel?> analyzeImage(XFile imageFile) async {
     try {
       final result = await apiService.analyzeImage(imageFile);
       final scan = ScanViewModel.fromJson(result);

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -11,8 +12,8 @@ class ApiService {
   // Smart URL detection
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:8000/api';
-    // Android Physical Device (Host IP)
-    if (!kIsWeb && Platform.isAndroid) return 'http://192.168.1.3:8000/api';
+    // Android - using ADB Reverse (tcp:8000 tcp:8000)
+    if (!kIsWeb && Platform.isAndroid) return 'http://127.0.0.1:8000/api';
     // iOS and Desktop (Windows/Mac) use localhost
     return 'http://127.0.0.1:8000/api';
   }
@@ -457,7 +458,7 @@ class ApiService {
   }
 
   /// Analyze image for scam detection
-  Future<Map<String, dynamic>> analyzeImage(File imageFile) async {
+  Future<Map<String, dynamic>> analyzeImage(XFile imageFile) async {
     print('Analyzing image: ${imageFile.path}');
     try {
       final uri = Uri.parse('$baseUrl/scan/analyze-image');
@@ -467,9 +468,10 @@ class ApiService {
       request.fields['sender'] = 'Manual Check';
       request.fields['platform'] = 'WHATSAPP';
 
-      request.files.add(await http.MultipartFile.fromPath(
+      request.files.add(http.MultipartFile.fromBytes(
         'file', 
-        imageFile.path,
+        await imageFile.readAsBytes(),
+        filename: imageFile.name,
       ));
 
       final streamedResponse = await request.send().timeout(const Duration(seconds: 120));

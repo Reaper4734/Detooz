@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, scan, sms, trusted_sender, user, feedback, reputation, manual_scan
 from app.routers import guardian_link, guardian_alerts, admin
 from app.db import init_db
+# Import all models so they're registered with SQLAlchemy before init_db
+from app.models import User, Scan, TrustedSender, Feedback, Blacklist, UserSettings, GuardianLink, GuardianAlert
 
 
 @asynccontextmanager

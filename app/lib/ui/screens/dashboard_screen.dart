@@ -9,6 +9,8 @@ import 'scan_detail_screen.dart';
 import 'manual_result_screen.dart';
 import 'settings_screen.dart';
 import '../components/scam_alert_overlay.dart';
+import '../../contracts/scan_view_model.dart';
+import '../../contracts/risk_level.dart';
 
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -38,7 +40,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       
       setState(() => _isAnalyzing = true);
       
-      final scan = await ref.read(scansProvider.notifier).analyzeImage(File(image.path));
+      final scan = await ref.read(scansProvider.notifier).analyzeImage(image);
       
       // Refresh stats
       ref.read(userStatsProvider.notifier).loadStats();
@@ -96,323 +98,537 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final recentScans = ref.watch(recentScansProvider);
-    final statsAsync = ref.watch(userStatsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ScamShield'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-               Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.wait([
-            ref.read(scansProvider.notifier).loadScans(),
-            ref.read(userStatsProvider.notifier).loadStats(),
-          ]);
-        },
+      backgroundColor: Colors.black, // Dark background as per design
+      body: SafeArea(
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(24),
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hero Card: Protection Active
-            Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(minHeight: 140),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0B3D20), Color(0xFF101922)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Good Morning, Alex',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Stay safe today',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.primary, width: 2),
+                      image: const DecorationImage(
+                        image: NetworkImage('https://lh3.googleusercontent.com/aida-public/AB6AXuAFyYFn2y2xT2u1p2ca8CuBuFmN6pCxEh5GKQz-Z7lNJrFr9NjWypYQzNRUQJuSmO_tcKaMlFuFsTdJ_rATPtwzwbWdJLNsedzejOy9KnNkQ_PagQALkBqKew-GcL5Ua7pWGtoG_lxcJtLmCd9zNgjAYfEpGkQmCTGveko90Y5c5uB3OTd_0zPNsaJGuH0iuqVyJYOTz1eJ-zydGV4dMNgsljHiVVe3HjDJrwTWFsFFhVtWgku-U-zYU5UYCD1n4euAK7NeKJjoIXbw'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              child: Stack(
-                children: [
-                  // TODO: Background pattern/image overlay if needed
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Left Content
-                        Expanded(
-                          child: Column(
+              
+              const SizedBox(height: 32),
+              
+              // Protection Active Card
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(32),
+                  color: const Color(0xFF141416), // Surface dark
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    // Gradient overlay
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      left: 0,
+                      height: 200,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                          gradient: LinearGradient(
+                            begin: Alignment.topRight,
+                            end: Alignment.bottomLeft,
+                            colors: [
+                              AppColors.primary.withOpacity(0.1),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          // Card Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(8),
+                                    width: 48,
+                                    height: 48,
                                     decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: const LinearGradient(
-                                        colors: [Color(0xFF15803D), Color(0xFF14532D)],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(color: Colors.green.withOpacity(0.4), blurRadius: 15)
-                                      ]
+                                      color: const Color(0xFF1E1E24), // Slightly lighter
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.white.withOpacity(0.05)),
                                     ),
-                                    child: const Icon(Icons.verified_user, color: Colors.white, size: 24),
+                                    child: const Icon(Icons.security, color: AppColors.primary, size: 24),
                                   ),
-                                  const SizedBox(width: AppSpacing.md),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Protection Active', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                        Text('System is online & scanning', style: TextStyle(color: Colors.green[200]!.withOpacity(0.8), fontSize: 12)),
-                                      ],
-                                    ),
+                                  const SizedBox(width: 16),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Protection Active',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: const BoxDecoration(
+                                              color:  Color(0xFF10B981), // Success
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(color: Color(0xFF10B981), blurRadius: 8), 
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'Monitoring active',
+                                            style: TextStyle(
+                                              color: Color(0xFF10B981),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: AppSpacing.md),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.red[900]!.withOpacity(0.4),
-                                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                                  border: Border.all(color: Colors.red.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.warning, size: 14, color: Colors.red[200]),
-                                    const SizedBox(width: 4),
-                                    statsAsync.when(
-                                      data: (stats) => Text('${stats.highRiskBlocked} HIGH RISK DETECTED', style: TextStyle(color: Colors.red[200], fontSize: 10, fontWeight: FontWeight.bold)),
-                                      loading: () => Text('... HIGH RISK', style: TextStyle(color: Colors.red[200], fontSize: 10, fontWeight: FontWeight.bold)),
-                                      error: (_, __) => Text('0 HIGH RISK', style: TextStyle(color: Colors.red[200], fontSize: 10, fontWeight: FontWeight.bold)),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              Icon(Icons.more_horiz, color: Colors.grey[600]),
                             ],
                           ),
-                        ),
-                        // Right Content (Counter)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                            border: Border.all(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Metrics Grid
+                          Row(
                             children: [
-                              statsAsync.when(
-                                data: (stats) => Text('${stats.totalScans}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                                loading: () => const Text('...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                                error: (_, __) => const Text('0', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E1E24).withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Items Scanned',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        '142', // Static
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                              Text('SCANNED', style: TextStyle(color: Colors.grey[300], fontSize: 10)),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E1E24).withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'High Risk Blocked',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          const Text(
+                                            '12', // Static
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 4),
+                                            child: Text(
+                                              'Total today',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 36),
+              
+              // Manual Check
+              const Padding(
+                padding: EdgeInsets.only(left: 4, bottom: 12),
+                child: Text(
+                  'Manual Check',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141416),
+                  borderRadius: BorderRadius.circular(100), // Pill shape
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 12),
+                    Icon(Icons.search, color: Colors.grey[600], size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _manualCheckController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Check text, URL, or number',
+                          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        onSubmitted: (_) => _analyzeManualInput(),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.camera_alt_outlined, color: Colors.grey[400]),
+                      onPressed: _pickImage, // Kept functional
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(100),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 0),
+                          )
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _isAnalyzing ? null : _analyzeManualInput,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: const StadiumBorder(),
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                        ),
+                        child: _isAnalyzing 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Scan', style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 36),
+              
+              // Recent Scans
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Text(
+                      'Recent Scans',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {}, // View All
+                    child: const Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              
+              // Dynamic List
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: recentScans.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  return _buildScanItem(context, recentScans[index]);
+                },
+              ),
+              
+              // Spacing for bottom nav not needed if using standard Scaffold bottomNavigationBar or floating, 
+              // but design shows spacing.
+              const SizedBox(height: 100),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  Widget _buildScanItem(BuildContext context, ScanViewModel scan) {
+    // LOGIC: Map ScanViewModel to UI
+    final RiskLevel risk = scan.riskLevel;
+    
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    switch (risk) {
+      case RiskLevel.high:
+        statusColor = const Color(0xFFEF4444); // Red
+        statusText = 'RISK';
+        statusIcon = Icons.warning;
+        break;
+      case RiskLevel.medium:
+        statusColor = const Color(0xFFEAB308); // Yellow
+        statusText = 'CAUTION';
+        statusIcon = Icons.info;
+        break;
+      case RiskLevel.low:
+        statusColor = const Color(0xFF10B981); // Green
+        statusText = 'SAFE';
+        statusIcon = Icons.verified_user;
+        break;
+    }
+    
+    Color badgeBg = statusColor.withOpacity(0.1);
+    Color badgeBorder = statusColor.withOpacity(0.2);
+
+    // Platform Icon logic
+    IconData platformIcon;
+    switch (scan.platform) {
+      case PlatformType.whatsapp:
+        platformIcon = Icons.chat;
+        break;
+      case PlatformType.telegram:
+        platformIcon = Icons.telegram;
+        break;
+      case PlatformType.sms:
+      default:
+        platformIcon = Icons.sms;
+        break;
+    }
+    
+    // Time logic
+    final now = DateTime.now();
+    final diff = now.difference(scan.scannedAt);
+    String timeAgo = '';
+    if (diff.inMinutes < 60) {
+      timeAgo = '${diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      timeAgo = '${diff.inHours}h ago';
+    } else {
+      timeAgo = '${diff.inDays}d ago';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141416),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: InkWell(
+        onTap: () {
+            if (scan.sender.startsWith('Manual')) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan)),
+              );
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
+              );
+            }
+        },
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E24),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.05)),
+              ),
+              child: Icon(platformIcon, color: risk == RiskLevel.low ? const Color(0xFF10B981) : (risk == RiskLevel.high ? const Color(0xFFEF4444) : const Color(0xFFEAB308)), size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          scan.sender,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(
+                          timeAgo,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    scan.messagePreview.replaceAll('\n', ' '),
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            
-            const SizedBox(height: AppSpacing.lg),
-            
-            // Manual Check
-            Text('Manual Check', style: AppTypography.h3),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(width: 12),
             Container(
-              padding: const EdgeInsets.all(AppSpacing.xs),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
+                color: badgeBg,
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(color: badgeBorder),
               ),
               child: Row(
                 children: [
-                      IconButton(
-                        icon: const Icon(Icons.add_photo_alternate_outlined),
-                        onPressed: _pickImage,
-                        color: Colors.grey,
-                      ),
-                  Expanded(
-                    child: TextField(
-                      controller: _manualCheckController,
-                      decoration: const InputDecoration(
-                        hintText: 'Check text, URL, or number...',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                      ),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      onSubmitted: (_) => _analyzeManualInput(),
+                  Icon(statusIcon, color: statusColor, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
                     ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                      boxShadow: [
-                        BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))
-                      ]
-                    ),
-                    child: _isAnalyzing
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            ),
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.arrow_upward, color: Colors.white),
-                            onPressed: _analyzeManualInput,
-                          ),
                   ),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 8, top: 4),
-              child: Text('Analyze screenshots, SMS text, or suspicious URLs instantly.', style: Theme.of(context).textTheme.bodySmall!.copyWith(color: Colors.grey)),
-            ),
-            
-            const SizedBox(height: AppSpacing.lg),
-            
-            // Recent Activity
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Recent Activity', style: AppTypography.h3),
-                TextButton(
-                  onPressed: () {
-                    // Navigate to history tab via MainScreen logic if possible, or push screen
-                    // For now simple push
-                  }, 
-                  child: const Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold))
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: recentScans.length,
-              itemBuilder: (context, index) {
-                return ScanCard(
-                  scan: recentScans[index],
-                  onTap: () {
-                    if (recentScans[index].sender.startsWith('Manual')) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ManualResultScreen(scan: recentScans[index])),
-                      );
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: recentScans[index])),
-                      );
-                    }
-                  },
-                );
-              },
-            ),
-            
-            const SizedBox(height: AppSpacing.lg),
-            
-            // Safety Tips
-            Text('Safety Tips', style: AppTypography.h3),
-            const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              height: 140,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildTipCard(
-                    icon: Icons.lightbulb,
-                    title: 'TIP OF THE DAY',
-                    message: 'Never share your 2FA codes with anyone, even if they claim to be support.',
-                    gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
-                    textColor: Colors.white,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  _buildTipCard(
-                    icon: Icons.lock,
-                    title: 'SECURITY',
-                    message: 'Enable biometric login for an extra layer of protection.',
-                    color: Theme.of(context).cardColor,
-                    textColor: Theme.of(context).textTheme.bodyMedium!.color!,
-                    iconColor: AppColors.primary,
-                    borderColor: Theme.of(context).dividerColor.withOpacity(0.1),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
           ],
         ),
-        ), // SingleChildScrollView
-      ), // RefreshIndicator
-    ); // Scaffold
-  }
-
-  Widget _buildTipCard({
-    required IconData icon,
-    required String title,
-    required String message,
-    Color? color,
-    Gradient? gradient,
-    required Color textColor,
-    Color? iconColor,
-    Color? borderColor,
-  }) {
-    return Container(
-      width: 250,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color,
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: borderColor != null ? Border.all(color: borderColor) : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: iconColor ?? textColor),
-              const SizedBox(width: 8),
-              Text(title, style: TextStyle(color: (iconColor ?? textColor).withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(message, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w500), maxLines: 3, overflow: TextOverflow.ellipsis),
-        ],
       ),
     );
   }
