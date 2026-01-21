@@ -117,5 +117,5 @@ Detooz/
 - **Guardian System** - Protect family members with OTP linking
 - **Single-level depth** - Guardians can't have guardians (prevents loops)
 - **Cross-platform** - Android, iOS, Web
-
++
 Questions? Open an issue on GitHub! 🙌

@@ -33,6 +33,15 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Privacy & Consent
+    consent_training_data = Column(Boolean, default=False)  # LLM training consent
+    consent_analytics = Column(Boolean, default=False)  # Usage analytics
+    consent_version = Column(String(10), default="1.0")  # Track policy version
+    consent_given_at = Column(DateTime, nullable=True)  # Timestamp
+    consent_ip_address = Column(String(45), nullable=True)  # For audit
+    data_retention_days = Column(Integer, default=365)  # User preference
+    anonymize_data = Column(Boolean, default=True)  # Remove PII from training
+    
     # Relationships
     scans = relationship("Scan", back_populates="user", cascade="all, delete-orphan")
     
@@ -118,6 +127,15 @@ class Blacklist(Base):
     last_reported_at = Column(DateTime, default=datetime.utcnow)
     is_verified = Column(Boolean, default=False)
     
+    # === LLM Training Data Fields ===
+    full_message = Column(Text, nullable=True)  # Original scam message/content
+    ai_reasoning = Column(Text, nullable=True)  # AI's explanation of detection
+    scam_type = Column(String(100), nullable=True)  # Detected category
+    confidence_score = Column(Float, nullable=True)  # AI confidence (0.0-1.0)
+    detection_method = Column(String(20), default="user_report")  # "ai_auto", "user_report", "manual_verify"
+    language = Column(String(10), default="en")  # Message language
+    features_detected = Column(Text, nullable=True)  # JSON string of scam indicators
+    
     def __repr__(self):
         return f"<Blacklist {self.type}: {self.value[:30]}>"
 
@@ -134,6 +152,11 @@ class UserSettings(Base):
     receive_tips = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Privacy Settings
+    share_scam_patterns = Column(Boolean, default=False)  # Share anonymous patterns
+    allow_research_use = Column(Boolean, default=False)  # Academic research
+    data_export_requested = Column(Boolean, default=False)  # GDPR export flag
     
     # Relationships
     user = relationship("User", backref="settings")
@@ -192,6 +215,22 @@ class GuardianAlert(Base):
     guardian = relationship("User", foreign_keys=[guardian_id])
     user = relationship("User", foreign_keys=[user_id])
     scan = relationship("Scan", backref="guardian_alerts")
+
+
+class ConsentLog(Base):
+    """Audit trail for consent changes"""
+    __tablename__ = "consent_logs"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    consent_type = Column(String(50))  # "training_data", "analytics"
+    consent_given = Column(Boolean)
+    consent_version = Column(String(10))
+    ip_address = Column(String(45))
+    user_agent = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", backref="consent_history")
     
     def __repr__(self):
         return f"<GuardianAlert id={self.id} status={self.status}>"

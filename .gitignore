@@ -32,3 +32,9 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+# Large ML Model Files (exceed GitHub limits)
+backend/results/
+backend/ml_pipeline/saved_model/model.safetensors
+*.safetensors
+backend/redis/

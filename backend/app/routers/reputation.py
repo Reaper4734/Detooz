@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from app.db import get_db
 from app.models import User, Blacklist
 from app.routers.auth import get_current_user
+from app.services.blacklist_manager import blacklist_manager
 
 router = APIRouter()
 
@@ -239,3 +240,40 @@ async def get_verified_scams(
         .limit(limit)
     )
     return result.scalars().all()
+
+
+@router.get("/export/training-data")
+async def export_training_data(
+    format: str = "jsonl",  # "jsonl" or "csv"
+    min_confidence: float = 0.70,
+    verified_only: bool = False,
+    limit: int = 10000,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Export blacklist data in LLM training format
+    
+    Formats:
+    - jsonl: OpenAI fine-tuning format
+    - csv: Tabular data format
+    """
+    
+    if format not in ["jsonl", "csv"]:
+        raise HTTPException(status_code=400, detail="Format must be 'jsonl' or 'csv'")
+    
+    training_data = await blacklist_manager.export_training_data(
+        db=db,
+        format=format,
+        min_confidence=min_confidence,
+        verified_only=verified_only,
+        limit=limit
+    )
+    
+    return {
+        "format": format,
+        "total_entries": len(training_data),
+        "min_confidence": min_confidence,
+        "verified_only": verified_only,
+        "data": training_data
+    }

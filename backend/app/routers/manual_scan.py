@@ -15,6 +15,7 @@ from app.services.scam_detector import ScamDetector
 from app.services.url_scraper import url_scraper
 from app.services.explanation_engine import explanation_engine
 from app.services.confidence_scorer import confidence_scorer
+from app.services.blacklist_manager import blacklist_manager
 import hashlib
 import re
 
@@ -77,40 +78,7 @@ def detect_content_type(content: str) -> str:
     return "text"
 
 
-async def check_reputation(content: str, content_type: str, db: AsyncSession) -> dict:
-    """Check content against reputation database"""
-    
-    if content_type not in ["url", "phone"]:
-        return {"is_blacklisted": False, "reports_count": 0}
-    
-    # Normalize and hash
-    if content_type == "phone":
-        normalized = url_scraper.normalize_phone(content)
-    else:
-        normalized = content.lower().strip()
-        if normalized.startswith(('http://', 'https://')):
-            normalized = re.sub(r'^https?://', '', normalized)
-    
-    value_hash = hashlib.sha256(normalized.encode()).hexdigest()
-    
-    # Check blacklist
-    result = await db.execute(
-        select(Blacklist).where(
-            Blacklist.value_hash == value_hash,
-            Blacklist.type == content_type
-        )
-    )
-    entry = result.scalar_one_or_none()
-    
-    if entry:
-        return {
-            "is_blacklisted": True,
-            "reports_count": entry.reports_count,
-            "is_verified": entry.is_verified,
-            "risk_boost": 0.3 if entry.is_verified else 0.2
-        }
-    
-    return {"is_blacklisted": False, "reports_count": 0, "risk_boost": 0}
+# Helper function check_reputation removed - replaced by blacklist_manager.check_blacklist
 
 
 async def check_trusted(sender: str, user_id: int, db: AsyncSession) -> bool:
@@ -146,8 +114,8 @@ async def manual_scan(
     if content_type == "auto":
         content_type = detect_content_type(content)
     
-    # Check reputation database
-    reputation = await check_reputation(content, content_type, db)
+    # Check reputation database (Cached)
+    reputation = await blacklist_manager.check_blacklist(content, content_type, db)
     
     # Check if trusted (for phone numbers as "sender")
     is_trusted = False
@@ -231,6 +199,29 @@ async def manual_scan(
     db.add(scan)
     await db.commit()
     await db.refresh(scan)
+    
+    # Auto-blacklist HIGH confidence scams
+    if result["risk_level"] == "HIGH" and calibrated["confidence"] >= 0.70:
+        if content_type in ["url", "phone"]:
+            await blacklist_manager.auto_blacklist(
+                value=content,
+                content_type=content_type,
+                full_message=content,
+                ai_reasoning=result["reason"],
+                scam_type=result.get("scam_type"),
+                confidence=calibrated["confidence"],
+                user_consented=current_user.consent_training_data,
+                db=db
+            )
+        elif content_type == "text":
+            await blacklist_manager.auto_blacklist_from_message(
+                message=content,
+                ai_reasoning=result["reason"],
+                scam_type=result.get("scam_type"),
+                confidence=calibrated["confidence"],
+                user_consented=current_user.consent_training_data,
+                db=db
+            )
     
     return ManualScanResult(
         content=content,
@@ -328,8 +319,8 @@ async def check_phone_only(
     
     normalized = url_scraper.normalize_phone(phone)
     
-    # Check reputation
-    reputation = await check_reputation(normalized, "phone", db)
+    # Check reputation (Cached)
+    reputation = await blacklist_manager.check_blacklist(normalized, "phone", db)
     
     # Check if trusted
     is_trusted = await check_trusted(normalized, current_user.id, db)

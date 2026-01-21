@@ -8,6 +8,7 @@ from app.models import User, Scan, RiskLevel, PlatformType
 from app.routers.auth import get_current_user
 from app.services.scam_detector import ScamDetector
 from app.services.guardian_alert_service import send_guardian_alerts
+from app.services.blacklist_manager import blacklist_manager
 
 router = APIRouter()
 detector = ScamDetector()
@@ -117,10 +118,16 @@ async def analyze_sms(
     result = await detector.analyze(sms.message, sms.sender)
     
     # Create scan record
+    # Create scan record
+    # SPACE OPTIMIZATION: Do not store full message for LOW risk (Safe) scans
+    message_content = sms.message
+    if result["risk_level"] == "LOW":
+        message_content = None
+
     scan = Scan(
         user_id=current_user.id,
         sender=sms.sender,
-        message=sms.message,
+        message=message_content,
         message_preview=sms.message[:200] if len(sms.message) > 200 else sms.message,
         platform=PlatformType.SMS,
         risk_level=RiskLevel(result["risk_level"]),
@@ -141,6 +148,17 @@ async def analyze_sms(
             send_guardian_alerts,
             db, current_user, scan, result
         )
+        
+        # Auto-blacklist HIGH confidence scams
+        if result["confidence"] >= 0.70:
+            await blacklist_manager.auto_blacklist_from_message(
+                message=sms.message,
+                ai_reasoning=result["reason"],
+                scam_type=result.get("scam_type"),
+                confidence=result["confidence"],
+                user_consented=current_user.consent_training_data,
+                db=db
+            )
     
     return SMSAnalysisResult(
         sender=sms.sender,
@@ -179,10 +197,15 @@ async def analyze_sms_batch(
         # Run detection (simplified, no guardian alerts for batch)
         result = await detector.analyze(sms.message, sms.sender)
         
+        # SPACE OPTIMIZATION: Do not store full message for LOW risk (Safe) scans
+        message_content = sms.message
+        if result["risk_level"] == "LOW":
+            message_content = None
+
         scan = Scan(
             user_id=current_user.id,
             sender=sms.sender,
-            message=sms.message,
+            message=message_content,
             message_preview=sms.message[:200] if len(sms.message) > 200 else sms.message,
             platform=PlatformType.SMS,
             risk_level=RiskLevel(result["risk_level"]),
@@ -196,6 +219,17 @@ async def analyze_sms_batch(
         db.add(scan)
         await db.commit()
         await db.refresh(scan)
+        
+        # Auto-blacklist HIGH confidence scams
+        if result["risk_level"] == "HIGH" and result["confidence"] >= 0.70:
+            await blacklist_manager.auto_blacklist_from_message(
+                message=sms.message,
+                ai_reasoning=result["reason"],
+                scam_type=result.get("scam_type"),
+                confidence=result["confidence"],
+                user_consented=current_user.consent_training_data,
+                db=db
+            )
         
         results.append(SMSAnalysisResult(
             sender=sms.sender,

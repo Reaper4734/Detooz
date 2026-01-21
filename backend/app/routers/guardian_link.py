@@ -6,13 +6,15 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr
 import random
 import string
+import json
+from typing import Dict
 
 from app.db import get_db
 from app.models import User, GuardianLink
 from app.routers.auth import get_current_user
+from app.core.redis_client import redis_client
 
 router = APIRouter()
-
 
 # ============ SCHEMAS ============
 
@@ -66,15 +68,11 @@ async def generate_link_otp(
     """
     User A (Protected) generates OTP.
     User A shares this with User B (Guardian).
+    Stored in Redis (10 min TTL).
     """
-
+    
     # CONSTRAINT CHECK: Can User A be protected?
     # If User A is already a guardian for someone else, they cannot be protected?
-    # "If B is guardian of A then B cannot have C... as their guardian"
-    # This implies a chain: C -> B -> A.
-    # If I am A (Protected), I cannot be a Guardian (B) for someone else (X).
-    # Check if current_user protects anyone.
-    
     protecting_others = await db.execute(
         select(GuardianLink).where(
             GuardianLink.guardian_id == current_user.id,
@@ -90,30 +88,21 @@ async def generate_link_otp(
     otp_code = generate_otp()
     expires_at = datetime.utcnow() + timedelta(minutes=10)
     
-    # Check for existing pending link
-    result = await db.execute(
-        select(GuardianLink).where(
-            GuardianLink.user_id == current_user.id,
-            GuardianLink.status == "pending"
-        )
-    )
-    existing_link = result.scalar_one_or_none()
+    # Store in Redis
+    otp_data = {
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "expires_at_iso": expires_at.isoformat()
+    }
     
-    if existing_link:
-        # Update existing pending link with new OTP
-        existing_link.otp_code = otp_code
-        existing_link.otp_expires_at = expires_at
-    else:
-        # Create new pending link
-        new_link = GuardianLink(
-            user_id=current_user.id,
-            otp_code=otp_code,
-            otp_expires_at=expires_at,
-            status="pending"
-        )
-        db.add(new_link)
+    # Use redis_client
+    # Key: otp:{otp_code} -> ensures uniqueness of code. 
+    # Production note: Better to key by user_id to prevent spam, but code lookup is faster for verification.
+    success = redis_client.setex(f"otp:{otp_code}", 600, json.dumps(otp_data))
     
-    await db.commit()
+    if not success:
+         # Fallback error if Redis is down (since strict consistency needed)
+         raise HTTPException(status_code=503, detail="Service unavailable (Cache Error)")
     
     return GenerateOTPResponse(
         otp_code=otp_code,
@@ -178,8 +167,6 @@ async def revoke_guardian_link(
     if not link:
         raise HTTPException(status_code=404, detail="Guardian link not found")
     
-    # We can either delete the row or mark as revoked.
-    # Deleting is cleaner for retries.
     await db.delete(link)
     await db.commit()
     
@@ -202,18 +189,27 @@ async def verify_otp_and_link(
     # 1. basic self check
     if current_user.email == data.user_email:
         raise HTTPException(status_code=400, detail="You cannot be your own guardian.")
-
-    # 2. Find protected user (A)
-    user_result = await db.execute(
-        select(User).where(User.email == data.user_email)
-    )
-    protected_user = user_result.scalar_one_or_none()
+        
+    # 2. Check Redis Cache for OTP
+    cached_json = redis_client.get(f"otp:{data.otp_code}")
     
-    if not protected_user:
-        raise HTTPException(status_code=404, detail="User not found")
+    if not cached_json:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    
+    try:
+        cached_data = json.loads(cached_json)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Cache data corruption")
+        
+    # Check email match
+    if cached_data["email"] != data.user_email:
+        raise HTTPException(status_code=400, detail="OTP matches a different user")
 
-    # 3. CONSTRAINT: Guardian (B) cannot have their own Guardians (C)
-    # "If B is guardian... B cannot have C... as their guardian"
+    # 3. Find protected user (A)
+    # Use ID from cache to be safe
+    protected_user_id = cached_data["user_id"]
+    
+    # 4. CONSTRAINT: Guardian (B) cannot have their own Guardians (C)
     has_guardians = await db.execute(
         select(GuardianLink).where(
             GuardianLink.user_id == current_user.id,
@@ -226,11 +222,10 @@ async def verify_otp_and_link(
             detail="You have guardians protecting you. You cannot be a guardian for others while protected."
         )
 
-    # 4. CONSTRAINT: Protected User (A) cannot be a Guardian for others (X)
-    # (Avoid chains/loops)
+    # 5. CONSTRAINT: Protected User (A) cannot be a Guardian for others (X)
     is_protecting_others = await db.execute(
         select(GuardianLink).where(
-            GuardianLink.guardian_id == protected_user.id,
+            GuardianLink.guardian_id == protected_user_id,
             GuardianLink.status == 'active'
         )
     )
@@ -240,36 +235,35 @@ async def verify_otp_and_link(
             detail="The user you are trying to protect is already a guardian for someone else. Chains are not allowed."
         )
 
-    # 5. Find pending link
-    result = await db.execute(
+    # 6. Check if already linked
+    existing = await db.execute(
         select(GuardianLink).where(
-            GuardianLink.user_id == protected_user.id,
-            GuardianLink.otp_code == data.otp_code,
-            GuardianLink.status == "pending"
+            GuardianLink.user_id == protected_user_id,
+            GuardianLink.guardian_id == current_user.id
         )
     )
-    link = result.scalar_one_or_none()
+    if existing.scalar_one_or_none():
+         # Already active, just return success
+         redis_client.delete(f"otp:{data.otp_code}")
+         return {"message": "You are already protecting this user"}
+
+    # 7. Create ACTIVE Link
+    new_link = GuardianLink(
+        user_id=protected_user_id,
+        guardian_id=current_user.id,
+        status="active",
+        verified_at=datetime.utcnow()
+    )
     
-    if not link:
-        raise HTTPException(status_code=400, detail="Invalid OTP or no pending link")
-    
-    # 6. Check Expiry
-    if link.otp_expires_at and datetime.utcnow() > link.otp_expires_at:
-        raise HTTPException(status_code=400, detail="OTP has expired.")
-    
-    # 7. Activate Link
-    link.guardian_id = current_user.id
-    link.status = "active"
-    link.verified_at = datetime.utcnow()
-    link.otp_code = None
-    link.otp_expires_at = None
-    
+    db.add(new_link)
     await db.commit()
     
+    # 8. Remove from cache (Atomic enough for this use case)
+    redis_client.delete(f"otp:{data.otp_code}")
+    
     return {
-        "message": f"You are now protecting {protected_user.first_name}",
-        "user_name": f"{protected_user.first_name} {protected_user.last_name}",
-        "user_email": protected_user.email
+        "message": f"You are now protecting {data.user_email}",
+        "user_email": data.user_email
     }
 
 

@@ -1,6 +1,9 @@
 import json
 import base64
 import asyncio
+import torch
+import torch.nn.functional as F
+from transformers import MobileBertTokenizerFast, MobileBertForSequenceClassification
 from app.config import settings
 from app.services.sms_patterns import check_patterns
 
@@ -28,32 +31,62 @@ _GROQ_CACHE_MAX_SIZE = 1024
 class ScamDetector:
     """AI-powered scam detection service supporting Groq and OpenRouter (Gemma/Gemini)"""
     
-    # Scam detection prompt for AI
+    # Scam detection prompt for AI - Supports all 22 Indian scheduled languages
     SYSTEM_PROMPT = """You are a scam detection expert specialized in Indian SMS/WhatsApp scams.
     
-    The message may be in English, Hindi, Hinglish, or other Indian languages.
-    Translate internally if needed, then analyze logic for scam intent.
+    SUPPORTED LANGUAGES (all 22 scheduled languages of India):
+    1. Hindi (हिन्दी) - Devanagari
+    2. Bengali (বাংলা) - Bengali script
+    3. Telugu (తెలుగు) - Telugu script
+    4. Marathi (मराठी) - Devanagari
+    5. Tamil (தமிழ்) - Tamil script
+    6. Urdu (اردو) - Perso-Arabic
+    7. Gujarati (ગુજરાતી) - Gujarati script
+    8. Kannada (ಕನ್ನಡ) - Kannada script
+    9. Odia (ଓଡ଼ିଆ) - Odia script
+    10. Malayalam (മലയാളം) - Malayalam script
+    11. Punjabi (ਪੰਜਾਬੀ) - Gurmukhi
+    12. Assamese (অসমীয়া) - Assamese script
+    13. Maithili (मैथिली) - Devanagari
+    14. Sanskrit (संस्कृतम्) - Devanagari
+    15. Santali (ᱥᱟᱱᱛᱟᱲᱤ) - Ol Chiki
+    16. Nepali (नेपाली) - Devanagari
+    17. Sindhi (سنڌي) - Perso-Arabic
+    18. Konkani (कोंकणी) - Devanagari
+    19. Dogri (डोगरी) - Devanagari
+    20. Kashmiri (कॉशुर) - Perso-Arabic
+    21. Manipuri/Meitei (মৈতৈলোন্) - Meitei script
+    22. Bodo (बड़ो) - Devanagari
+
+    The message may be in:
+    - Native script (e.g., "आपका खाता ब्लॉक है")
+    - Transliterated/Romanized (e.g., "aapka khata block hai")  
+    - Mixed language - Hinglish, Tanglish, Benglish etc. (e.g., "Your account block ho gaya")
+    - Regional dialects and variations
+
+    IMPORTANT: Translate and understand the message internally, then analyze for scam intent.
 
     Analyze the message and classify as:
     - HIGH: Definite scam (phishing, fraud, money requests, fake prizes)
     - MEDIUM: Suspicious (urgency tactics, unknown links, unusual requests)
     - LOW: Likely legitimate
 
-    Common Indian scam patterns:
-    1. KYC update urgency - "Your account will be blocked"
-    2. Lottery/prize claims - "Congratulations you won Rs 50 lakh"
-    3. Job offers requiring payment - "Pay Rs 500 registration fee"
-    4. Loan pre-approval scams - "Instant loan approved"
-    5. OTP sharing requests - "Share your OTP"
+    Common Indian scam patterns (in any language):
+    1. KYC update urgency - "Your account will be blocked" / "आपका खाता ब्लॉक होगा"
+    2. Lottery/prize claims - "Congratulations you won" / "बधाई हो आपने जीता"
+    3. Job offers requiring payment - "Pay registration fee" / "रजिस्ट्रेशन फीस भरें"
+    4. Loan pre-approval scams - "Instant loan approved" / "तुरंत लोन मंजूर"
+    5. OTP sharing requests - "Share your OTP" / "अपना OTP बताएं"
     6. Bank/government impersonation - "Dear customer, account suspended"
     7. Fake delivery notifications - "Package held, pay customs"
-    8. Investment schemes - "Guaranteed 50% returns daily"
-    9. UPI fraud - "Scan QR to receive money"
-    10. Fake family emergency - "Mom is in hospital, send money"
+    8. Investment schemes - "Guaranteed returns" / "गारंटीड रिटर्न"
+    9. UPI fraud - "Scan QR to receive money" / "पैसे पाने के लिए QR स्कैन करें"
+    10. Fake family emergency - "Urgent money needed" / "तुरंत पैसे चाहिए"
 
     Return ONLY valid JSON (no markdown):
-    {"risk_level": "HIGH/MEDIUM/LOW", "reason": "brief explanation in English", "scam_type": "type or null", "confidence": 0.0-1.0, "original_language": "detected language"}"""
+    {"risk_level": "HIGH/MEDIUM/LOW", "reason": "brief explanation in English", "scam_type": "type or null", "confidence": 0.0-1.0, "original_language": "detected language (e.g., Hindi, Tamil, Bengali, English, Hinglish)"}"""
 
+    
     def __init__(self):
         self.client = None
         if GROQ_AVAILABLE and settings.GROQ_API_KEY:
@@ -69,6 +102,43 @@ class ScamDetector:
                 print("DEBUG: OpenRouter Initialized successfully")
             except Exception as e:
                 print(f"DEBUG: OpenRouter Init Failed: {e}")
+
+        # Local Model Initialization
+        self.local_model = None
+        self.local_tokenizer = None
+        try:
+            # Robust Path Logic
+            import os
+            base_dir = os.getcwd()
+            # Try multiple expected locations
+            possible_paths = [
+                os.path.join(base_dir, "ml_pipeline", "saved_model"), # If in backend/
+                os.path.join(base_dir, "backend", "ml_pipeline", "saved_model"), # If in root
+                "./ml_pipeline/saved_model" # Fallback
+            ]
+            
+            model_path = None
+            for p in possible_paths:
+                if os.path.exists(p) and os.path.exists(os.path.join(p, "config.json")):
+                    model_path = p
+                    break
+            
+            if model_path:
+                print(f"DEBUG: Loading Local Model from {model_path}...")
+                self.local_tokenizer = MobileBertTokenizerFast.from_pretrained(model_path)
+                self.local_model = MobileBertForSequenceClassification.from_pretrained(model_path)
+                self.local_model.eval()
+                
+                # Use GPU if available
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+                self.local_model.to(self.device)
+                print(f"DEBUG: Local Model Loaded on {self.device}")
+            else:
+                 print(f"WARN: Local model not found in checked paths: {possible_paths}")
+
+        except Exception as e:
+            print(f"WARN: Failed to load local model: {e}")
+
     
     async def analyze(self, message: str, sender: str) -> dict:
         """
@@ -92,6 +162,17 @@ class ScamDetector:
                 "scam_type": local_result["scam_type"],
                 "confidence": local_result["confidence"]
             }
+        
+        # Step 2: Use Local AI Model (MobileBERT)
+        if self.local_model:
+            local_ai_result = await self._analyze_with_local_model(message)
+            # If Local AI is confident, use its result and save Groq tokens
+            if local_ai_result["confidence"] > 0.90:
+                 print(f"DEBUG: Local AI confident ({local_ai_result['risk_level']}), skipping Groq.")
+                 return local_ai_result
+            
+            # If undecided but leaning towards scam, carry over context or just fall through
+
         
         # Step 2: Use AI for uncertain messages (MEDIUM or LOW from patterns)
         if self.client:
@@ -131,6 +212,54 @@ class ScamDetector:
             "scam_type": local_result["scam_type"],
             "confidence": local_result["confidence"]
         }
+
+    async def _analyze_with_local_model(self, message: str) -> dict:
+        """Run inference on the local MobileBERT model"""
+        try:
+            # Tokenize
+            inputs = self.local_tokenizer(
+                message, 
+                return_tensors="pt", 
+                truncation=True, 
+                padding=True,
+                max_length=128
+            ).to(self.device)
+            
+            # Predict
+            with torch.no_grad():
+                outputs = self.local_model(**inputs)
+                probs = F.softmax(outputs.logits, dim=1)
+                confidence, predicted_class = torch.max(probs, dim=1)
+                
+            # Map Label (0=ham, 1=otp, 2=scam) - Must match training!
+            label_idx = predicted_class.item()
+            conf_score = confidence.item()
+            
+            if label_idx == 2: # SCAM
+                return {
+                    "risk_level": "HIGH",
+                    "reason": "Flagged by Local MobileBERT",
+                    "scam_type": "Suspected Scam",
+                    "confidence": conf_score
+                }
+            elif label_idx == 1: # OTP
+                return {
+                    "risk_level": "LOW", # OTPs are safe but sensitive
+                    "reason": "Transactional OTP",
+                    "scam_type": "OTP",
+                    "confidence": conf_score
+                }
+            else: # HAM
+                return {
+                    "risk_level": "LOW",
+                    "reason": "Safe conversation",
+                    "scam_type": None,
+                    "confidence": conf_score
+                }
+                
+        except Exception as e:
+            print(f"WARN: Local Model Inference Failed: {e}")
+            return {"risk_level": "UNKNOWN", "confidence": 0.0}
     
     def _sync_groq_call(self, message: str, sender: str) -> dict:
         """Synchronous Groq API call with module-level caching"""

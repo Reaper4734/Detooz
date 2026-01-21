@@ -21,8 +21,24 @@ class FCMService:
         self._load_credentials()
     
     def _load_credentials(self):
-        """Load Firebase service account credentials"""
-        # Look for service account file
+        """Load Firebase service account credentials (Hybrid: Env Var or Local File)"""
+        
+        # 1. Try Environment Variable (Cloud Mode)
+        env_creds = os.getenv("FIREBASE_CREDENTIALS_JSON")
+        if env_creds:
+            try:
+                service_account_info = json.loads(env_creds)
+                self.project_id = service_account_info.get('project_id')
+                self.credentials = service_account.Credentials.from_service_account_info(
+                    service_account_info,
+                    scopes=['https://www.googleapis.com/auth/firebase.messaging']
+                )
+                print(f"✅ FCM Service initialized from ENV VAR with project: {self.project_id}")
+                return
+            except Exception as e:
+                print(f"❌ Failed to parse FIREBASE_CREDENTIALS_JSON: {e}")
+
+        # 2. Try Local File (College Project Mode)
         service_account_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             "firebase-service-account.json"
@@ -38,11 +54,11 @@ class FCMService:
                     service_account_path,
                     scopes=['https://www.googleapis.com/auth/firebase.messaging']
                 )
-                print(f"✅ FCM Service initialized with project: {self.project_id}")
+                print(f"✅ FCM Service initialized from LOCAL FILE with project: {self.project_id}")
             except Exception as e:
-                print(f"❌ Failed to load Firebase credentials: {e}")
+                print(f"❌ Failed to load Firebase credentials file: {e}")
         else:
-            print("⚠️ firebase-service-account.json not found. FCM push notifications disabled.")
+            print("⚠️ FCM credentials not found (Env Var or File). Push notifications disabled.")
     
     def _get_access_token(self) -> Optional[str]:
         """Get a valid access token, refreshing if necessary"""

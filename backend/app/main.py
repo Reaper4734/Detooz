@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, scan, sms, trusted_sender, user, feedback, reputation, manual_scan
-from app.routers import guardian_link, guardian_alerts, admin
+from app.routers import guardian_link, guardian_alerts, admin, privacy
 from app.db import init_db
 # Import all models so they're registered with SQLAlchemy before init_db
 from app.models import User, Scan, TrustedSender, Feedback, Blacklist, UserSettings, GuardianLink, GuardianAlert
@@ -24,7 +24,13 @@ app = FastAPI(
 )
 
 # Mount static files for image uploads
-app.mount("/api/uploads", StaticFiles(directory="app/static/uploads"), name="uploads")
+# Mount static files for image uploads
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+uploads_dir = os.path.join(BASE_DIR, "static", "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+
+app.mount("/api/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # CORS for mobile app
 app.add_middleware(
@@ -49,6 +55,7 @@ app.include_router(manual_scan.router, prefix="/api/manual", tags=["Manual Scan"
 app.include_router(guardian_link.router, prefix="/api/guardian-link", tags=["Guardian Linking"])
 app.include_router(guardian_alerts.router, prefix="/api/guardian-alerts", tags=["Guardian Alerts"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin Dashboard"])
+app.include_router(privacy.router, prefix="/api/privacy", tags=["Privacy & Consent"])
 
 
 @app.get("/")

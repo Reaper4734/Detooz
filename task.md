@@ -4,11 +4,17 @@
   - [x] Guardians (API connected)
   - [x] Settings
   - [x] Login/Register (Added Auth Logic)
-- [ ] **Running App**
+- [x] **Running App**
   - [x] Android Build (APK installed)
   - [x] Backend Server (Started on port 8000)
   - [x] Fix Startup Crash (Fixed MainActivity)
   - [x] Fix Pub Cache Build Errors (Patched local cache)
-- [x] **Containerization**
-  - [x] Create connection-ready Docker Compose
-  - [x] Update Dockerfile
+- [x] **Containerization (Removed)**
+  - [x] Decoupled backend from UI assets
+  - [x] Removed Docker files for independent deployment
+- [x] **Critical Fixes (New)**
+  - [x] Fix Permission Wizard (Native Dialogs + Status Check)
+  - [x] Fix Android 14 FGS Crash (dataSync type)
+  - [x] Fix Auto-Detection (Manifest Export + Length Threshold)
+  - [x] Fix Silent Failure (Auto-Rebind on Startup)
+  - [x] Push Code to Repository

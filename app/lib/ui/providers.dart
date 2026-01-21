@@ -6,6 +6,7 @@ import '../../contracts/risk_level.dart';
 import '../../contracts/guardian_view_model.dart';
 import '../../services/api_service.dart';
 import '../../services/offline_cache_service.dart';
+import '../../services/ai_service.dart';
 
 // ============ STATE NOTIFIERS ============
 
@@ -67,8 +68,29 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
   /// Unified manual scan (Text, URL, Phone)
   Future<ScanViewModel?> manualScan(String content) async {
     try {
-      final result = await apiService.manualScan(content: content);
+      // 1. Hybrid Shield: Check Local AI First
+      final aiPrediction = await aiService.predict(content);
+      final double aiConf = aiPrediction['confidence'];
+      final String aiLabel = aiPrediction['label'];
       
+      Map<String, dynamic> result;
+      
+      // If AI is SURE it's a scam, or if we have no internet (TODO: check connectivity)
+      if (aiLabel == 'SCAM' && aiConf > 0.90) {
+         result = {
+           'risk_level': 'HIGH',
+           'reason': 'AI detected scam pattern (Offline)',
+           'scam_type': 'AI_DETECTED',
+           'confidence': aiConf,
+           'created_at': DateTime.now().toIso8601String(),
+         };
+         // Sync with backend in background
+         apiService.manualScan(content: content).ignore();
+      } else {
+         // Fallback to Server
+         result = await apiService.manualScan(content: content);
+      }
+
       final scanMap = {
         'id': DateTime.now().millisecondsSinceEpoch,
         'sender': 'Manual Check',

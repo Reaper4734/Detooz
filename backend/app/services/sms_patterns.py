@@ -90,6 +90,9 @@ HIGH_RISK_PATTERNS = {
 
 # ============== MEDIUM RISK PATTERNS ==============
 # These patterns are suspicious but not definitive
+# NOTE: Multilingual detection (Hindi, Tamil, Telugu, Bengali, etc.) is handled
+# by the AI model (Llama 3.3) which understands all 22 Indian languages natively.
+# No hardcoded patterns needed - the AI handles them dynamically.
 
 MEDIUM_RISK_PATTERNS = {
     # Suspicious links
@@ -184,7 +187,9 @@ def check_patterns(message: str, sender: str = "") -> dict:
     matched_high = []
     matched_medium = []
     
-    # Check HIGH risk patterns
+    # Check HIGH risk patterns (English only for fast local matching)
+    # NOTE: Multilingual messages (Hindi, Tamil, Telugu, etc.) are handled by
+    # the AI model (Llama 3.3) which understands all 22 Indian languages natively.
     for scam_type, patterns in HIGH_RISK_PATTERNS.items():
         for pattern in patterns:
             if re.search(pattern, message_lower):
@@ -192,6 +197,7 @@ def check_patterns(message: str, sender: str = "") -> dict:
                     "type": scam_type,
                     "pattern": pattern
                 })
+
     
     # Check MEDIUM risk patterns
     for scam_type, patterns in MEDIUM_RISK_PATTERNS.items():

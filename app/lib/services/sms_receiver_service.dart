@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
+import '../services/ai_service.dart';
 import '../ui/components/scam_alert_overlay.dart';
 import '../ui/screens/permission_wizard_screen.dart';
 
@@ -118,11 +119,42 @@ class SmsReceiverService {
     debugPrint('📩 Received $platform message from: $sender');
     
     try {
-      // Send to backend for analysis
-      final result = await apiService.analyzeSms(
-        sender: sender,
-        message: message,
-      );
+      // 1. Hybrid Shield: Local AI Check (Zero Latency)
+      Map<String, dynamic> result;
+      
+      final aiPrediction = await aiService.predict(message);
+      final double aiConf = aiPrediction['confidence'];
+      final String aiLabel = aiPrediction['label'];
+      
+      debugPrint('🧠 AI Prediction: $aiLabel (${(aiConf * 100).toStringAsFixed(1)}%)');
+
+      // 🛡️ Fast Path: If AI is super confident it's a SCAM, block immediately without Network
+      // UNLESS: It looks like a TRAI Regulated Header (e.g. AD-HDFCBK), in which case we let the Server decide vs Marketing
+      final bool isTraiSender = RegExp(r"^[A-Z]{2}-?[A-Za-z0-9]{6}$", caseSensitive: false).hasMatch(sender);
+      
+      if (aiLabel == 'SCAM' && aiConf > 0.90 && !isTraiSender) {
+         debugPrint('🛡️ Hybrid Shield: High Confidence Local Block!');
+         result = {
+           'risk_level': 'HIGH',
+           'risk_reason': 'AI detected scam pattern (Offline)',
+           'confidence': aiConf,
+           'scam_type': 'AI_DETECTED'
+         };
+         
+         // Async: still send to backend for logging/learning, but don't wait
+         apiService.analyzeSms(sender: sender, message: message).ignore();
+         
+      } else {
+         if (isTraiSender && aiLabel == 'SCAM') {
+            debugPrint('🛡️ Hybrid Shield: Detected TRAI Header ($sender). Deferring to Server for Regulation Check.');
+         }
+         
+         // ☁️ Cloud Fallback: If unsure (or HAM), verify with Server (DeepScan)
+         result = await apiService.analyzeSms(
+          sender: sender,
+          message: message,
+        );
+      }
       
       final riskLevel = result['risk_level'] as String?;
       final reason = result['risk_reason'] as String? ?? 'Potential scam detected';
