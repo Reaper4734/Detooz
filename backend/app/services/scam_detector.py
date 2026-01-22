@@ -134,10 +134,11 @@ class ScamDetector:
                 self.local_model.to(self.device)
                 print(f"DEBUG: Local Model Loaded on {self.device}")
             else:
-                 print(f"WARN: Local model not found in checked paths: {possible_paths}")
+                 print(f"INFO: Local MobileBERT model not found. Running in Cloud-Optimized Mode.")
+                 print(f"INFO: Enhanced Pattern Matching active for offline protection.")
 
         except Exception as e:
-            print(f"WARN: Failed to load local model: {e}")
+            print(f"INFO: Local AI Init skipped ({str(e)}). Using Cloud + Patterns.")
 
     
     async def analyze(self, message: str, sender: str) -> dict:

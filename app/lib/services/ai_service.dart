@@ -114,6 +114,7 @@ class AIService {
     double maxLogit = logits.reduce(max);
     List<double> expValues = logits.map((x) => exp(x - maxLogit)).toList();
     double sumExp = expValues.reduce((a, b) => a + b);
+    return expValues.map((e) => e / sumExp).toList();
   }
 }
 

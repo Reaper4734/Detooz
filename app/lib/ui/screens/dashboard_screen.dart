@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
@@ -98,9 +99,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final recentScans = ref.watch(recentScansProvider);
+    final userStats = ref.watch(userStatsProvider);
+    final userProfile = ref.watch(userProfileProvider);
+    
+    // Greeting Logic
+    final hour = DateTime.now().hour;
+    String greeting = 'Good Morning';
+    if (hour >= 12 && hour < 17) {
+      greeting = 'Good Afternoon';
+    } else if (hour >= 17) {
+      greeting = 'Good Evening';
+    }
 
     return Scaffold(
-      backgroundColor: Colors.black, // Dark background as per design
+      backgroundColor: AppColors.backgroundDark, // True Black styling
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -111,27 +123,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Good Morning, Alex',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              '$greeting, ',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (userProfile.hasValue)
+                              Flexible(
+                                child: _MarqueeText(
+                                  text: userProfile.value!.name.split(' ').first,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Stay safe today',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                        const SizedBox(height: 4),
+                        Text(
+                          'Stay safe today',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   Container(
                     width: 48,
@@ -155,103 +184,100 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(32),
-                  color: const Color(0xFF141416), // Surface dark
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  color: AppColors.surfaceDark.withOpacity(0.8), // Zinc Glass
+                  border: Border.all(color: AppColors.borderDark),
                 ),
-                child: Stack(
-                  children: [
-                    // Gradient overlay
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      left: 0,
-                      height: 200,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                          gradient: LinearGradient(
-                            begin: Alignment.topRight,
-                            end: Alignment.bottomLeft,
-                            colors: [
-                              AppColors.primary.withOpacity(0.1),
-                              Colors.transparent,
-                            ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(32),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Stack(
+                      children: [
+                        // Gradient overlay
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          left: 0,
+                          height: 200,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                              gradient: LinearGradient(
+                                begin: Alignment.topRight,
+                                end: Alignment.bottomLeft,
+                                colors: [
+                                  AppColors.primary.withOpacity(0.1),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          // Card Header
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
                             children: [
+                              // Card Header
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1E1E24), // Slightly lighter
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.white.withOpacity(0.05)),
-                                    ),
-                                    child: const Icon(Icons.security, color: AppColors.primary, size: 24),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  Row(
                                     children: [
-                                      const Text(
-                                        'Protection Active',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
+                                      Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1E1E24), // Slightly lighter
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(color: AppColors.borderDark),
                                         ),
+                                        child: const Icon(Icons.security, color: AppColors.primary, size: 24),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Row(
+                                      const SizedBox(width: 16),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: const BoxDecoration(
-                                              color:  Color(0xFF10B981), // Success
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(color: Color(0xFF10B981), blurRadius: 8), 
-                                              ],
+                                          const Text(
+                                            'Protection Active',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
-                                          const Text(
-                                            'Monitoring active',
-                                            style: TextStyle(
-                                              color: Color(0xFF10B981),
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: const BoxDecoration(
+                                                  color: AppColors.success,
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(color: AppColors.success, blurRadius: 8), 
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              const Text(
+                                                'Monitoring active',
+                                                style: TextStyle(
+                                                  color: AppColors.success,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
                                     ],
                                   ),
+                                  Icon(Icons.more_horiz, color: Colors.grey[600]),
                                 ],
                               ),
-                              Icon(Icons.more_horiz, color: Colors.grey[600]),
-                            ],
-                          ),
                           
                           const SizedBox(height: 24),
                           
@@ -262,9 +288,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF1E1E24).withOpacity(0.6),
+                                    color: Colors.black.withOpacity(0.2), // Darker inset
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                                    border: Border.all(color: AppColors.borderDark),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,9 +304,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      const Text(
-                                        '142', // Static
-                                        style: TextStyle(
+                                      Text(
+                                        userStats.isLoading ? '-' : '${userStats.value?.totalScans ?? 0}',
+                                        style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
@@ -295,9 +321,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF1E1E24).withOpacity(0.6),
+                                    color: Colors.black.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                                    border: Border.all(color: AppColors.borderDark),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,9 +341,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         crossAxisAlignment: CrossAxisAlignment.end,
                                         children: [
-                                          const Text(
-                                            '12', // Static
-                                            style: TextStyle(
+                                          Text(
+                                            userStats.isLoading ? '-' : '${userStats.value?.highRiskBlocked ?? 0}',
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 24,
                                               fontWeight: FontWeight.bold,
@@ -326,7 +352,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                           Padding(
                                             padding: const EdgeInsets.only(bottom: 4),
                                             child: Text(
-                                              'Total today',
+                                              'Today',
                                               style: TextStyle(
                                                 color: Colors.grey[600],
                                                 fontSize: 10,
@@ -345,6 +371,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ),
                   ],
+                    ),
+                  ),
                 ),
               ),
               
@@ -389,7 +417,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     IconButton(
                       icon: Icon(Icons.camera_alt_outlined, color: Colors.grey[400]),
-                      onPressed: _pickImage, // Kept functional
+                      onPressed: _pickImage,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -400,9 +428,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         borderRadius: BorderRadius.circular(100),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 0),
+                            color: AppColors.primaryGlow.withOpacity(0.5),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
                           )
                         ],
                       ),
@@ -460,8 +488,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 },
               ),
               
-              // Spacing for bottom nav not needed if using standard Scaffold bottomNavigationBar or floating, 
-              // but design shows spacing.
               const SizedBox(height: 100),
             ],
           ),
@@ -528,9 +554,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF141416),
+        color: AppColors.surfaceDark.withOpacity(0.6),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: AppColors.borderDark),
       ),
       child: InkWell(
         onTap: () {
@@ -554,9 +580,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1E1E24),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: AppColors.borderDark),
               ),
-              child: Icon(platformIcon, color: risk == RiskLevel.low ? const Color(0xFF10B981) : (risk == RiskLevel.high ? const Color(0xFFEF4444) : const Color(0xFFEAB308)), size: 20),
+              child: Icon(platformIcon, color: risk == RiskLevel.low ? AppColors.success : (risk == RiskLevel.high ? AppColors.danger : AppColors.warning), size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -629,6 +655,71 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MarqueeText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final Duration pauseDuration;
+  final Duration animationDuration;
+
+  const _MarqueeText({
+    required this.text,
+    required this.style,
+    this.pauseDuration = const Duration(seconds: 2),
+    this.animationDuration = const Duration(seconds: 6),
+  });
+
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderStateMixin {
+  late ScrollController _scrollController;
+  late AnimationController _animationController;
+  
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _animationController = AnimationController(vsync: this);
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startAnimation());
+  }
+
+  void _startAnimation() async {
+    if (!mounted) return;
+    if (_scrollController.position.maxScrollExtent > 0) {
+      await Future.delayed(widget.pauseDuration);
+      if (!mounted) return;
+      
+      await _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: widget.animationDuration,
+        curve: Curves.linear,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      scrollDirection: Axis.horizontal,
+      physics: const NeverScrollableScrollPhysics(),
+      child: Text(
+        widget.text,
+        style: widget.style,
       ),
     );
   }
