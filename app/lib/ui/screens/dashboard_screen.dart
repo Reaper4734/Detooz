@@ -51,7 +51,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (scan != null && mounted) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
+            MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan, isCloudAnalysis: true)),
           );
       }
     } catch (e) {
