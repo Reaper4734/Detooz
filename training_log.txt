@@ -1,0 +1,39 @@
+﻿python : 2026-01-26 15:45:27.768741: I tensorflow/core/util/port.cc:153] oneDNN custom 
+operations are on. You may see slightly different numerical results due to floating-point 
+round-off errors from different computation orders. To turn them off, set the environment 
+variable `TF_ENABLE_ONEDNN_OPTS=0`.
+At line:1 char:1
++ python backend\ml_pipeline\model_training\train.py 2>&1 | Out-File -F ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-01-26 15:4...ONEDNN_OPTS=0`.:String) [], Rem 
+   oteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-01-26 15:45:32.055913: I tensorflow/core/util/port.cc:153] oneDNN custom operations are 
+on. You may see slightly different numerical results due to floating-point round-off errors 
+from different computation orders. To turn them off, set the environment variable 
+`TF_ENABLE_ONEDNN_OPTS=0`.
+WARNING:tensorflow:From C:\Users\joshi\AppData\Local\Programs\Python\Python313\Lib\site-package
+s\tf_keras\src\losses.py:2976: The name tf.losses.sparse_softmax_cross_entropy is deprecated. 
+Please use tf.compat.v1.losses.sparse_softmax_cross_entropy instead.
+
+
+============================================================
+Traceback (most recent call last):
+  File "C:\CP\plans\Detooz\backend\ml_pipeline\model_training\train.py", line 402, in <module>
+    train_model()
+    ~~~~~~~~~~~^^
+  File "C:\CP\plans\Detooz\backend\ml_pipeline\model_training\train.py", line 149, in 
+train_model
+    print_header("\U0001f680 TRAINING PIPELINE v3.0 (Production Grade)")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\CP\plans\Detooz\backend\ml_pipeline\model_training\train.py", line 50, in 
+print_header
+    print(f"  {text}")
+    ~~~~~^^^^^^^^^^^^^
+  File "C:\Users\joshi\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 
+19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f680' in position 2: 
+character maps to <undefined>

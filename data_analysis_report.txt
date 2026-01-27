@@ -1,0 +1,83 @@
+============================================================
+DEEP DATA ANALYSIS REPORT
+============================================================
+
+📊 CLEAN/BASE DATASET (final_training_set.csv)
+----------------------------------------
+Total Samples: 79042
+
+Class Distribution:
+  ham: 51549 (65.2%)
+  scam: 23406 (29.6%)
+  otp: 4087 (5.2%)
+
+Text Length (chars):
+  Mean: 123
+  Min: 1
+  Max: 2257
+  Std: 94
+
+Source Distribution:
+  hf_gandharvbakshi: 73470
+  uci_spam: 5572
+
+
+🧬 SYNTHETIC DATASET (synthetic_augment.csv)
+----------------------------------------
+Total Samples: 52326
+
+Class Distribution:
+  scam: 42135 (80.5%)
+  ham: 10191 (19.5%)
+
+Text Length (chars):
+  Mean: 114
+  Min: 30
+  Max: 275
+  Std: 26
+
+Category Breakdown (Top 10):
+  safe_personal: 5191
+  safe_promotional: 5000
+  part_time_job: 3515
+  digital_arrest: 3010
+  pig_butchering: 3010
+  stock_ipo_tip: 3000
+  romance_scam: 2510
+  family_distress: 2510
+  apk_download_malware: 2510
+  kyc_fraud: 2510
+
+Safe vs Scam:
+  Safe: 10191 (19.5%)
+  Scam: 42135 (80.5%)
+
+
+⚖️ COMPATIBILITY ANALYSIS
+----------------------------------------
+Text Length Comparison:
+  Clean Mean: 123 chars
+  Synth Mean: 114 chars
+  Difference: 7.4%
+  ✅ COMPATIBLE (< 20% difference)
+
+Class Balance Check:
+  Clean Scam%: 29.6%
+  Synth Scam%: 80.5%
+
+OTP Samples:
+  Clean: 4087
+  Synth: 0
+
+
+🏁 VERDICT
+============================================================
+
+📌 OPTION A (Continue Training):
+  ✅ Text lengths are compatible
+  ⚠️ Synthetic is heavily scam-focused (may cause bias)
+
+📌 OPTION B (Start Fresh):
+  Combined Dataset: 131368 samples
+  Synthetic Ratio: 39.8%
+  ✅ Good balance between clean and synthetic

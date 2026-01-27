@@ -35,6 +35,17 @@ Thumbs.db
 
 # Large ML Model Files (exceed GitHub limits)
 backend/results/
+results/
+**/results/
 backend/ml_pipeline/saved_model/model.safetensors
 *.safetensors
 backend/redis/
+backend/ml_pipeline/data/
+**/data/*.csv
+**/data/*.jsonl
+**/data/*.txt
+**/data/*.parquet
+build/
+app/build/
+.dart_tool/
+app/.dart_tool/
