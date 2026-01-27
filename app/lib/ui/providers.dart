@@ -84,8 +84,13 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
            'confidence': aiConf,
            'created_at': DateTime.now().toIso8601String(),
          };
-         // Sync with backend in background
-         apiService.manualScan(content: content).ignore();
+         // Sync with backend in background - PASS LOCAL VERDICT
+         apiService.manualScan(
+            content: content, 
+            localRiskLevel: 'HIGH',
+            localConfidence: aiConf,
+            localScamType: 'AI_DETECTED'
+         ).ignore();
       } else {
          // Fallback to Server
          result = await apiService.manualScan(content: content);
