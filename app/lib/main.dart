@@ -10,6 +10,7 @@ import 'ui/screens/login_screen.dart';
 import 'services/offline_cache_service.dart';
 import 'services/notification_service.dart';
 import 'services/firebase_messaging_service.dart';
+import 'services/ai_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,9 @@ void main() async {
   
   // Initialize local push notifications
   await notificationService.initialize();
+
+  // Initialize AI Model (Hybrid Shield)
+  await aiService.loadModel();
   
   runApp(const ProviderScope(child: MyApp()));
 }

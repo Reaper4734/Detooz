@@ -19,18 +19,27 @@ class AIService {
   Future<void> loadModel() async {
     if (_isLoaded) return;
     try {
+      debugPrint('🤖 Initializing AI Model...');
       // Load Model
       _interpreter = await Interpreter.fromAsset(MODEL_PATH);
-      print('✅ AI Model Loaded');
+      debugPrint('✅ AI Model Interpreter Loaded successfully');
 
       // Load Vocab
       final vocabStr = await rootBundle.loadString(VOCAB_PATH);
-      _vocab = vocabStr.split('\n');
-      print('✅ Vocab Loaded (${_vocab.length} tokens)');
+      // Support both LF (\n) and CRLF (\r\n) line endings
+      _vocab = vocabStr.split(RegExp(r'\r?\n'));
+      
+      // Filter out empty tokens that might result from trailing newlines
+      _vocab = _vocab.where((t) => t.isNotEmpty).toList();
+      
+      debugPrint('✅ AI Vocab Loaded (${_vocab.length} tokens)');
       
       _isLoaded = true;
     } catch (e) {
-      print('❌ Failed to load AI Model: $e');
+      debugPrint('❌ CRITICAL: Failed to load AI Model ($MODEL_PATH): $e');
+      if (e is FlutterError) {
+        debugPrint('💡 Tip: Ensure the asset is correctly listed in pubspec.yaml and the file exists in assets/.');
+      }
     }
   }
 

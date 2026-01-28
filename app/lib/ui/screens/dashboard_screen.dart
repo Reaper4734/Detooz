@@ -29,6 +29,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final ImagePicker _picker = ImagePicker();
 
   @override
+  void initState() {
+    super.initState();
+    // Trigger data loading after login (now that token is confirmed)
+    // This fixes the "Red Screen" race condition by ensuring token exists before APIs are called
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(scansProvider.notifier).loadScans();
+      ref.read(userStatsProvider.notifier).loadStats();
+      ref.read(guardiansProvider.notifier).loadGuardians();
+      ref.read(userProfileProvider.notifier).loadProfile();
+      ref.read(userSettingsProvider.notifier).loadSettings();
+      ref.read(trustedSendersProvider.notifier).loadTrustedSenders();
+    });
+  }
+
+  @override
   void dispose() {
     _manualCheckController.dispose();
     super.dispose();
@@ -70,28 +86,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     setState(() => _isAnalyzing = true);
     
-    final scan = await ref.read(scansProvider.notifier).manualScan(text);
-    
-    // Refresh stats
-    ref.read(userStatsProvider.notifier).loadStats();
-    
-    setState(() => _isAnalyzing = false);
-    _manualCheckController.clear();
-    
-    if (scan != null && mounted) {
-      // Navigate directly - no overlay needed for manual check
+    try {
+      final scan = await ref.read(scansProvider.notifier).manualScan(text);
       
-      // Navigate to appropriate screen
-      if (scan.sender.startsWith('Manual')) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan)),
-          );
-      } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
-          );
+      // Refresh stats
+      ref.read(userStatsProvider.notifier).loadStats();
+      
+      setState(() => _isAnalyzing = false);
+      _manualCheckController.clear();
+      
+      if (scan != null && mounted) {
+        // Navigate directly - no overlay needed for manual check
+        
+        // Navigate to appropriate screen
+        if (scan.sender.startsWith('Manual')) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan)),
+            );
+        } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
+            );
+        }
+      }
+    } catch (e) {
+      setState(() => _isAnalyzing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Scan failed: $e'), backgroundColor: AppColors.danger),
+        );
       }
     }
   }

@@ -112,16 +112,22 @@ class ScamDetector:
             base_dir = os.getcwd()
             # Try multiple expected locations
             possible_paths = [
+                os.path.join(base_dir, "ml_pipeline", "data", "en_hinglish", "saved_model"), # Trained model location
                 os.path.join(base_dir, "ml_pipeline", "saved_model"), # If in backend/
+                os.path.join(base_dir, "backend", "ml_pipeline", "data", "en_hinglish", "saved_model"), # If in root
                 os.path.join(base_dir, "backend", "ml_pipeline", "saved_model"), # If in root
                 "./ml_pipeline/saved_model" # Fallback
             ]
             
             model_path = None
             for p in possible_paths:
-                if os.path.exists(p) and os.path.exists(os.path.join(p, "config.json")):
-                    model_path = p
-                    break
+                # Check if directory has actual model weights (safetensors or bin)
+                if os.path.exists(p):
+                    has_weights = (os.path.exists(os.path.join(p, "model.safetensors")) or 
+                                   os.path.exists(os.path.join(p, "pytorch_model.bin")))
+                    if has_weights and os.path.exists(os.path.join(p, "config.json")):
+                        model_path = p
+                        break
             
             if model_path:
                 print(f"DEBUG: Loading Local Model from {model_path}...")

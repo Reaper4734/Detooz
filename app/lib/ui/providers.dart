@@ -7,6 +7,7 @@ import '../../contracts/guardian_view_model.dart';
 import '../../services/api_service.dart';
 import '../../services/offline_cache_service.dart';
 import '../../services/ai_service.dart';
+import '../../services/connectivity_service.dart';
 
 // ============ STATE NOTIFIERS ============
 
@@ -14,12 +15,23 @@ import '../../services/ai_service.dart';
 class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
   final Ref ref;
   
-  ScansNotifier(this.ref) : super(const AsyncValue.loading()) {
-    loadScans();
-  }
+  // Removed auto-load from constructor to prevent race conditions on login/logout
+  ScansNotifier(this.ref) : super(const AsyncValue.loading());
   
   Future<void> loadScans() async {
-    // state = const AsyncValue.loading(); // Don't show loading on every refresh for UX
+    // Verify we have a valid token before making API call
+    final token = await apiService.token;
+    if (token == null) {
+      // No token available, use cached data or empty state
+      final cached = offlineCacheService.getCachedScans();
+      if (cached.isNotEmpty) {
+        state = AsyncValue.data(cached.map((s) => ScanViewModel.fromJson(s)).toList());
+      } else {
+        state = const AsyncValue.data([]);
+      }
+      return;
+    }
+    
     try {
       final history = await apiService.getHistory(limit: 50);
       final scans = history.map((scan) => ScanViewModel.fromJson(scan as Map<String, dynamic>)).toList();
@@ -31,7 +43,6 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
         }
       }
       
-      state = AsyncValue.data(scans);
       state = AsyncValue.data(scans);
     } catch (e) {
       // Don't auto-logout on 401 here to prevent race conditions or loops.
@@ -75,24 +86,48 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
       
       Map<String, dynamic> result;
       
-      // If AI is SURE it's a scam, or if we have no internet (TODO: check connectivity)
-      if (aiLabel == 'SCAM' && aiConf > 0.90) {
+      // Check connectivity status
+      final hasInternet = await connectivityService.hasInternet();
+      
+      // If AI is SURE it's a scam, OR if we have no internet → use local result
+      if ((aiLabel == 'SCAM' && aiConf > 0.90) || !hasInternet) {
+         // Map local AI labels to risk levels
+         String riskLevel = 'LOW';
+         String reason = 'Analyzed offline';
+         String? scamType;
+         
+         if (aiLabel == 'SCAM') {
+           riskLevel = aiConf > 0.70 ? 'HIGH' : 'MEDIUM';
+           reason = hasInternet ? 'AI detected scam pattern' : 'AI detected scam pattern (Offline)';
+           scamType = 'AI_DETECTED';
+         } else if (aiLabel == 'OTP') {
+           riskLevel = 'LOW';
+           reason = 'Transactional OTP message';
+           scamType = 'OTP';
+         } else {
+           riskLevel = 'LOW';
+           reason = hasInternet ? 'Safe message' : 'Safe message (Analyzed Offline)';
+         }
+         
          result = {
-           'risk_level': 'HIGH',
-           'reason': 'AI detected scam pattern (Offline)',
-           'scam_type': 'AI_DETECTED',
+           'risk_level': riskLevel,
+           'reason': reason,
+           'scam_type': scamType,
            'confidence': aiConf,
            'created_at': DateTime.now().toIso8601String(),
          };
-         // Sync with backend in background - PASS LOCAL VERDICT
-         apiService.manualScan(
-            content: content, 
-            localRiskLevel: 'HIGH',
-            localConfidence: aiConf,
-            localScamType: 'AI_DETECTED'
-         ).ignore();
+         
+         // Sync with backend in background if online
+         if (hasInternet && aiLabel == 'SCAM') {
+           apiService.manualScan(
+              content: content, 
+              localRiskLevel: riskLevel,
+              localConfidence: aiConf,
+              localScamType: 'AI_DETECTED'
+           ).ignore();
+         }
       } else {
-         // Fallback to Server
+         // Fallback to Server (we have internet and AI is uncertain)
          result = await apiService.manualScan(content: content);
       }
 
@@ -150,9 +185,8 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
 /// Manages guardians from API
 class GuardiansNotifier extends StateNotifier<AsyncValue<List<GuardianViewModel>>> {
   final Ref ref;
-  GuardiansNotifier(this.ref) : super(const AsyncValue.loading()) {
-    loadGuardians();
-  }
+  // Removed auto-load from constructor
+  GuardiansNotifier(this.ref) : super(const AsyncValue.loading());
   
   Future<void> loadGuardians() async {
     state = const AsyncValue.loading();
@@ -330,9 +364,8 @@ class UserProfile {
 }
 
 class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
-  UserProfileNotifier() : super(const AsyncValue.loading()) {
-    loadProfile();
-  }
+  // Removed auto-load from constructor
+  UserProfileNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadProfile() async {
     state = const AsyncValue.loading();
@@ -418,9 +451,8 @@ class UserSettings {
 
 /// User stats provider
 class UserStatsNotifier extends StateNotifier<AsyncValue<UserStats>> {
-  UserStatsNotifier() : super(const AsyncValue.loading()) {
-    loadStats();
-  }
+  // Removed auto-load from constructor to prevent race conditions
+  UserStatsNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadStats() async {
     state = const AsyncValue.loading();
@@ -439,9 +471,8 @@ final userStatsProvider = StateNotifierProvider<UserStatsNotifier, AsyncValue<Us
 
 /// User settings provider
 class UserSettingsNotifier extends StateNotifier<AsyncValue<UserSettings>> {
-  UserSettingsNotifier() : super(const AsyncValue.loading()) {
-    loadSettings();
-  }
+  // Removed auto-load from constructor to prevent race conditions
+  UserSettingsNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadSettings() async {
     state = const AsyncValue.loading();
@@ -527,9 +558,8 @@ class TrustedSender {
 
 /// Trusted senders provider
 class TrustedSendersNotifier extends StateNotifier<AsyncValue<List<TrustedSender>>> {
-  TrustedSendersNotifier() : super(const AsyncValue.loading()) {
-    loadTrustedSenders();
-  }
+  // Removed auto-load from constructor
+  TrustedSendersNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadTrustedSenders() async {
     state = const AsyncValue.loading();
