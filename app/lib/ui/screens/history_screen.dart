@@ -1,5 +1,15 @@
+import 'dart:ui';
+import 'dart:async'; // Added
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart'; // Added
+import '../../contracts/risk_level.dart';
+import '../../contracts/scan_view_model.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../providers.dart';
+import 'scan_detail_screen.dart';
+import '../../utils/datetime_utils.dart'; // Added
 import '../../contracts/risk_level.dart';
 import '../../contracts/scan_view_model.dart';
 import '../theme/app_colors.dart';
@@ -16,6 +26,24 @@ class HistoryScreen extends ConsumerStatefulWidget {
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   RiskLevel? _filter; // null = All
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-refresh every 30 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        ref.read(scansProvider.notifier).loadScans();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,13 +220,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           children: [
             // Icon Container
             _buildScanIcon(scan),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
                         child: Text(
@@ -212,19 +241,34 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      SizedBox(width: 8),
-                      _buildRiskBadge(scan.riskLevel),
+                      const SizedBox(width: 8),
+                      Text(
+                        DateFormat('h:mm a').format(scan.scannedAt.toLocal()),
+                        style: TextStyle(
+                          color: AppColors.textSecondaryDark.withOpacity(0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    scan.messagePreview,
-                    style: const TextStyle(
-                      color: AppColors.textSecondaryDark,
-                      fontSize: 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      _buildRiskBadge(scan.riskLevel),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          scan.messagePreview.replaceAll('\n', ' '),
+                          style: const TextStyle(
+                            color: AppColors.textSecondaryDark,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -364,16 +408,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final yesterdayScans = <ScanViewModel>[];
 
     for (var scan in scans) {
-      final scanDate = DateTime(scan.scannedAt.year, scan.scannedAt.month, scan.scannedAt.day);
+      final localScanDate = scan.scannedAt.toLocal();
+      final scanDate = DateTime(localScanDate.year, localScanDate.month, localScanDate.day);
+      
       if (scanDate == today) {
         todayScans.add(scan);
       } else if (scanDate == yesterday) {
         yesterdayScans.add(scan);
       } else {
-        // Format older dates as "MONTH DAY" (e.g., "JULY 12")
-        final months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
-                        'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-        final label = '${months[scanDate.month - 1]} ${scanDate.day}';
+        // Format older dates as "dd/MM/yy"
+        final label = DateFormat('dd/MM/yy').format(localScanDate);
         olderGroups.putIfAbsent(label, () => []).add(scan);
       }
     }

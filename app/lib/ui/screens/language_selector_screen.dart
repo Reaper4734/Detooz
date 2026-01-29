@@ -61,9 +61,10 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.7,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1F38),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF18181B), // Zinc-900
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: const Color(0xFF3F3F46), width: 1), // Zinc-700
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -153,8 +154,11 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1F38),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: const Color(0xFF18181B),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: const BorderSide(color: Color(0xFF3F3F46)),
+          ),
           title: Text(
             'Download ${lang.englishName}?',
             style: GoogleFonts.poppins(color: Colors.white),
@@ -249,8 +253,11 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F38),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: const Color(0xFF18181B),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24), 
+            side: const BorderSide(color: Color(0xFF3F3F46)),
+        ),
         icon: const Icon(Icons.refresh, color: Colors.orange, size: 48),
         title: Text(
           'Restart Required',

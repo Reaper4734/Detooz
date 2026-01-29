@@ -1,6 +1,9 @@
 import 'dart:ui';
+import 'dart:async'; // Added
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart'; 
+import '../../utils/datetime_utils.dart'; // Added
 import '../theme/app_colors.dart';
 import '../providers.dart';
 import 'scan_detail_screen.dart';
@@ -14,6 +17,10 @@ import '../components/tr.dart';
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
+  // Animation constants
+  final Duration pauseDuration = const Duration(seconds: 2);
+  final Duration animationDuration = const Duration(seconds: 4);
+
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -22,12 +29,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final TextEditingController _manualCheckController = TextEditingController();
   bool _isAnalyzing = false;
   final ImagePicker _picker = ImagePicker();
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
-    // Trigger data loading after login (now that token is confirmed)
-    // This fixes the "Red Screen" race condition by ensuring token exists before APIs are called
+    // Auto-refresh every 30 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        ref.read(scansProvider.notifier).loadScans();
+        ref.read(userStatsProvider.notifier).loadStats();
+      }
+    });
+    
+    // Existing PostFrameCallback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(scansProvider.notifier).loadScans();
@@ -41,6 +56,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _manualCheckController.dispose();
     super.dispose();
   }
@@ -134,8 +150,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark, // True Black styling
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          backgroundColor: AppColors.surfaceDark,
+          onRefresh: () async {
+            await ref.read(scansProvider.notifier).loadScans();
+            await ref.read(userStatsProvider.notifier).loadStats();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -503,71 +527,57 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
           ),
         ),
+        ), // Close RefreshIndicator
       ),
     );
   }
+
   Widget _buildScanItem(BuildContext context, ScanViewModel scan) {
     // LOGIC: Map ScanViewModel to UI
     final RiskLevel risk = scan.riskLevel;
     
     Color statusColor;
-    String statusText;
     IconData statusIcon;
 
     switch (risk) {
       case RiskLevel.high:
-        statusColor = const Color(0xFFEF4444); // Red
-        statusText = 'RISK';
-        statusIcon = Icons.warning;
-        break;
+        statusColor = const Color(0xFFF87171); // Red-400
+        statusIcon = Icons.gpp_bad_outlined;
+         break;
       case RiskLevel.medium:
-        statusColor = const Color(0xFFEAB308); // Yellow
-        statusText = 'CAUTION';
-        statusIcon = Icons.info;
+        statusColor = const Color(0xFFFBBF24); // Amber-400
+        statusIcon = Icons.warning_amber_rounded;
         break;
       case RiskLevel.low:
-        statusColor = const Color(0xFF10B981); // Green
-        statusText = 'SAFE';
-        statusIcon = Icons.verified_user;
+        statusColor = const Color(0xFF34D399); // Emerald-400
+        statusIcon = Icons.verified_user_outlined;
         break;
     }
-    
-    Color badgeBg = statusColor.withOpacity(0.1);
-    Color badgeBorder = statusColor.withOpacity(0.2);
 
     // Platform Icon logic
     IconData platformIcon;
     switch (scan.platform) {
       case PlatformType.whatsapp:
-        platformIcon = Icons.chat;
+        platformIcon = Icons.chat_bubble_outline;
         break;
       case PlatformType.telegram:
-        platformIcon = Icons.telegram;
+        platformIcon = Icons.send;
         break;
       case PlatformType.sms:
       default:
-        platformIcon = Icons.sms;
+        platformIcon = Icons.message_outlined;
         break;
     }
     
-    // Time logic
-    final now = DateTime.now();
-    final diff = now.difference(scan.scannedAt);
-    String timeAgo = '';
-    if (diff.inMinutes < 60) {
-      timeAgo = '${diff.inMinutes}m ago';
-    } else if (diff.inHours < 24) {
-      timeAgo = '${diff.inHours}h ago';
-    } else {
-      timeAgo = '${diff.inDays}d ago';
-    }
+    // Time logic using DateTimeUtils
+    final timeAgo = DateTimeUtils.formatSmartDate(scan.scannedAt);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark.withOpacity(0.6),
+        color: const Color(0xFF18181B).withOpacity(0.8), // Zinc-900 Glass
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.borderDark),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: InkWell(
         onTap: () {
@@ -585,17 +595,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         },
         child: Row(
           children: [
+            // Icon Container
             Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFF1E1E24),
+                color: const Color(0xFF27272A), // Zinc-800
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.borderDark),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
-              child: Icon(platformIcon, color: risk == RiskLevel.low ? AppColors.success : (risk == RiskLevel.high ? AppColors.danger : AppColors.warning), size: 20),
+              child: Icon(
+                platformIcon,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
+            // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,58 +624,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           scan.sender,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Inter',
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Text(
-                          timeAgo,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
+                      const SizedBox(width: 8),
+                      Text(
+                        timeAgo,
+                        style: const TextStyle(
+                            color: Color(0xFFA1A1AA), fontSize: 12),
                       ),
                     ],
                   ),
-                  SizedBox(height: 2),
-                  Text(
-                    scan.messagePreview.replaceAll('\n', ' '),
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: badgeBg,
-                borderRadius: BorderRadius.circular(100),
-                border: Border.all(color: badgeBorder),
-              ),
-              child: Row(
-                children: [
-                  Icon(statusIcon, color: statusColor, size: 14),
-                  SizedBox(width: 6),
-                  Text(
-                    statusText,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        width: 6, height: 6,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: statusColor.withOpacity(0.4), blurRadius: 4)],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          scan.messagePreview.replaceAll('\n', ' '),
+                          style: const TextStyle(
+                            color: Color(0xFFD4D4D8), // Zinc-300
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

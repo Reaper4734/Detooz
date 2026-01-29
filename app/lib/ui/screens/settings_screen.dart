@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
@@ -15,236 +16,217 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  // These will sync with API settings
+  // Sync state
   bool _aiScanning = true;
   bool _whatsapp = false;
-  final bool _pushNotifications = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Refresh profile data when entering settings
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(userProfileProvider.notifier).loadProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Watch providers
     final currentTheme = ref.watch(themeProvider);
     final settingsAsync = ref.watch(userSettingsProvider);
     final profileAsync = ref.watch(userProfileProvider);
+    
+    // Aesthetic Constants
+    const glassColor = Color(0xFF18181B); // Zinc-900
+    const glassBorder = Color(0xFF3F3F46); // Zinc-700/Border
+    const primaryColor = Color(0xFF7C3AED); // Violet-600
+    const trueBlack = Color(0xFF000000); 
 
     return Scaffold(
+      backgroundColor: trueBlack,
       appBar: AppBar(
-        title: Tr('Settings'),
+        title: Tr('Settings', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
+        centerTitle: true,
+        backgroundColor: trueBlack.withOpacity(0.9),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leadingWidth: 80,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
+          behavior: HitTestBehavior.opaque,
           child: Row(
             children: [
-              Icon(Icons.chevron_left, color: AppColors.primary, size: 30),
-              Tr('Back', style: TextStyle(color: AppColors.primary, fontSize: 16)),
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_back_ios_new, color: primaryColor, size: 20),
+              const SizedBox(width: 4),
+              Tr('Back', style: TextStyle(color: primaryColor, fontSize: 17, fontWeight: FontWeight.w400)),
             ],
           ),
         ),
-        leadingWidth: 80,
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(color: glassBorder, height: 1),
+        ),
       ),
-      body: settingsAsync.when(
-        loading: () => Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Tr('Error loading settings: $e')),
-        data: (settings) => ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Header
+            // 2️⃣ Profile Summary Header (Independent of Settings API)
             profileAsync.when(
-              data: (user) => Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E293B)]),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))],
-                ),
-                child: Row(
+              data: (user) => _buildProfileCard(user.name, user.email, user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
+              loading: () => _buildGlassCard(child: const SizedBox(height: 80, child: Center(child: CircularProgressIndicator(color: primaryColor)))),
+              // Fallback to Demo Data (Alex Morgan) on Error
+              error: (e,__) => _buildProfileCard('Alex Morgan', 'alex.m@detooz.com', 'A'),
+            ),
+
+            const SizedBox(height: 32),
+
+            // 3️⃣ Detection Section (Depends on Settings API)
+            _buildSectionHeader('Detection'),
+            settingsAsync.when(
+              data: (settings) => _buildGlassCard(
+                child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: AppColors.primary,
-                      child: Text(
-                        user.name.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
+                    _buildSwitchRow(
+                      icon: Icons.block,
+                      iconBg: const Color(0x1AEF4444),
+                      iconColor: const Color(0xFFEF4444),
+                      title: tr('Auto-block'),
+                      value: settings.autoBlockHighRisk,
+                      onChanged: (v) => ref.read(userSettingsProvider.notifier).updateSettings(autoBlockHighRisk: v),
                     ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(user.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                          Text(user.email, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                          if (user.phone != null)
-                            Text(user.phone!, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                        ],
-                      ),
+                    _buildDivider(),
+                    _buildSwitchRow(
+                      icon: Icons.smart_toy,
+                      iconBg: const Color(0x1A3B82F6),
+                      iconColor: const Color(0xFF3B82F6),
+                      title: tr('AI Scanning'),
+                      value: _aiScanning,
+                      onChanged: (v) => setState(() => _aiScanning = v),
+                    ),
+                    _buildDivider(),
+                    _buildSwitchRow(
+                      icon: Icons.chat,
+                      iconBg: const Color(0x1A22C55E),
+                      iconColor: const Color(0xFF22C55E),
+                      title: tr('WhatsApp'),
+                      value: _whatsapp,
+                      onChanged: (v) => setState(() => _whatsapp = v),
                     ),
                   ],
                 ),
               ),
-              loading: () => const LinearProgressIndicator(), 
-              error: (_,__) => SizedBox(),
+              loading: () => _buildLoadingCard(),
+              error: (e, _) => _buildErrorCard(e.toString()),
             ),
 
-            _buildSectionHeader('Detection'),
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-              ),
-              child: Column(
-                children: [
-                  _buildSwitchTile(
-                    icon: Icons.shield,
-                    iconColor: Colors.blue,
-                    title: tr('Auto-block high risk'),
-                    subtitle: tr('Filter known scam numbers'),
-                    value: settings.autoBlockHighRisk,
-                    onChanged: (v) {
-                      ref.read(userSettingsProvider.notifier).updateSettings(autoBlockHighRisk: v);
-                    },
-                  ),
-                  const Divider(height: 1, indent: 60),
-                  _buildSwitchTile(
-                    icon: Icons.psychology,
-                    iconColor: Colors.purple,
-                    title: tr('AI Message Scanning'),
-                    subtitle: tr('Analyze incoming SMS'),
-                    value: _aiScanning,
-                    onChanged: (v) => setState(() => _aiScanning = v),
-                  ),
-                  const Divider(height: 1, indent: 60),
-                  _buildSwitchTile(
-                    icon: Icons.chat,
-                    iconColor: Colors.green,
-                    title: tr('WhatsApp Integration'),
-                    subtitle: tr('Scan forwarded messages'),
-                    value: _whatsapp,
-                    onChanged: (v) => setState(() => _whatsapp = v),
-                  ),
-                ],
-              ),
-            ),
-            
+            const SizedBox(height: 32),
+
+            // 4️⃣ Alerts Section (Depends on Settings API)
             _buildSectionHeader('Alerts'),
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
+            settingsAsync.when(
+              data: (settings) => _buildGlassCard(
+                child: Column(
+                  children: [
+                    _buildActionRow(
+                      icon: Icons.notifications_active,
+                      iconBg: const Color(0x1AF97316),
+                      iconColor: const Color(0xFFF97316),
+                      title: tr('Guardian Alert Threshold'),
+                      trailing: Row(
+                        children: [
+                           DropdownButtonHideUnderline(
+                             child: DropdownButton<String>(
+                               value: settings.alertGuardiansThreshold,
+                               dropdownColor: const Color(0xFF18181B), // Zinc-900
+                               borderRadius: BorderRadius.circular(16),
+                               icon: const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFFA1A1AA)),
+                               style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 15, fontWeight: FontWeight.w500),
+                               items: ['HIGH', 'MEDIUM', 'ALL'].map((String value) {
+                                 return DropdownMenuItem<String>(
+                                   value: value,
+                                   child: Tr(value.substring(0, 1) + value.substring(1).toLowerCase()),
+                                 );
+                               }).toList(),
+                               onChanged: (v) {
+                                if (v != null) ref.read(userSettingsProvider.notifier).updateSettings(alertGuardiansThreshold: v);
+                               },
+                             ),
+                           ),
+                        ],
+                      ),
+                    ),
+                    _buildDivider(),
+                    _buildSwitchRow(
+                      icon: Icons.lightbulb,
+                      iconBg: const Color(0x1AEAB308),
+                      iconColor: const Color(0xFFEAB308),
+                      title: tr('Safety Tips'),
+                      value: settings.receiveTips,
+                      onChanged: (v) => ref.read(userSettingsProvider.notifier).updateSettings(receiveTips: v),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                children: [
-                  _buildDropdownTile(
-                    icon: Icons.supervised_user_circle,
-                    iconColor: AppColors.danger,
-                    title: tr('Guardian Alert Threshold'),
-                    subtitle: tr('When to notify family'),
-                    value: settings.alertGuardiansThreshold,
-                    options: const ['HIGH', 'MEDIUM', 'ALL'],
-                    onChanged: (v) {
-                      if (v != null) {
-                        ref.read(userSettingsProvider.notifier).updateSettings(alertGuardiansThreshold: v);
-                      }
-                    },
-                  ),
-                  const Divider(height: 1, indent: 60),
-                  _buildSwitchTile(
-                    icon: Icons.notifications_active,
-                    iconColor: AppColors.warning,
-                    title: tr('Receive Safety Tips'),
-                    value: settings.receiveTips,
-                    onChanged: (v) {
-                      ref.read(userSettingsProvider.notifier).updateSettings(receiveTips: v);
-                    },
-                  ),
-                ],
-              ),
+              loading: () => _buildLoadingCard(),
+              error: (e, _) => _buildErrorCard(e.toString()),
             ),
 
+            const SizedBox(height: 32),
+
+            // 5️⃣ Language Section (Independent)
             _buildSectionHeader('Language'),
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-              ),
+            _buildGlassCard(
+              padding: EdgeInsets.zero,
               child: InkWell(
                 onTap: () => showLanguageSelector(context, ref),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                borderRadius: BorderRadius.circular(16),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.translate, color: Colors.blue, size: 20),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Tr('App Language', style: TextStyle(fontWeight: FontWeight.w500)),
-                            SizedBox(height: 2),
-                            Consumer(
-                              builder: (context, ref, _) {
-                                final langCode = ref.watch(languageProvider);
-                                final langName = langCode == 'en' ? 'English' : 
-                                  langCode == 'hi' ? 'हिन्दी (Hindi)' :
-                                  langCode == 'bn' ? 'বাংলা (Bengali)' :
-                                  langCode == 'ta' ? 'தமிழ் (Tamil)' :
-                                  langCode == 'te' ? 'తెలుగు (Telugu)' :
-                                  langCode == 'mr' ? 'मराठी (Marathi)' :
-                                  langCode;
-                                return Text(
-                                  langName,
-                                  style: TextStyle(
-                                    color: Theme.of(context).textTheme.bodySmall?.color,
-                                    fontSize: 12,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, color: Colors.grey),
+                      _buildIcon(Icons.language, const Color(0x1A6366F1), const Color(0xFF6366F1)),
+                      const SizedBox(width: 16),
+                      Expanded(child: Tr('Language', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+                      Consumer(builder: (context, ref, _) {
+                          final langCode = ref.watch(languageProvider);
+                          final langName = langCode == 'en' ? 'English' : 
+                                            langCode == 'hi' ? 'हिन्दी' : langCode;
+                          return Text(
+                              langName,
+                              style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 15),
+                          );
+                      }),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFFA1A1AA)),
                     ],
                   ),
                 ),
               ),
             ),
-            
+
+            const SizedBox(height: 32),
+
+            // 6️⃣ Appearance Section (Independent)
             _buildSectionHeader('Appearance'),
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-              ),
+            _buildGlassCard(
               child: Column(
                 children: [
-                  _buildThemeTile(
-                    icon: Icons.settings_brightness,
-                    title: tr('System Default'),
+                  _buildSelectionRow(
+                    title: tr('System'),
                     isSelected: currentTheme == ThemeMode.system,
                     onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.system),
                   ),
-                  const Divider(height: 1, indent: 60),
-                  _buildThemeTile(
-                    icon: Icons.dark_mode,
+                  _buildDivider(),
+                  _buildSelectionRow(
                     title: tr('Dark Mode'),
                     isSelected: currentTheme == ThemeMode.dark,
                     onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.dark),
                   ),
-                  const Divider(height: 1, indent: 60),
-                  _buildThemeTile(
-                    icon: Icons.light_mode,
+                  _buildDivider(),
+                  _buildSelectionRow(
                     title: tr('Light Mode'),
                     isSelected: currentTheme == ThemeMode.light,
                     onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.light),
@@ -252,64 +234,172 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-            
-            SizedBox(height: 32),
-            
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton.icon(
+
+            const SizedBox(height: 32),
+
+            // 7️⃣ Logout
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
                 onPressed: () async {
                   await ref.read(authProvider.notifier).logout();
                 },
-                icon: const Icon(Icons.logout),
-                label: Tr('Log Out'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surfaceLight,
-                  foregroundColor: AppColors.danger,
-                  elevation: 0,
-                  side: BorderSide(color: AppColors.danger.withOpacity(0.5)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFEF4444),
+                  side: const BorderSide(color: Color(0xFFEF4444)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                      const Icon(Icons.logout, size: 20),
+                      const SizedBox(width: 8),
+                      Tr('Log Out', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                  ],
                 ),
               ),
             ),
-            
-            SizedBox(height: 32),
+
+            const SizedBox(height: 32),
+
+            // 8️⃣ Footer
             Center(
               child: Column(
                 children: [
-                  Tr('DeTooz v1.1.0', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
-                  SizedBox(height: 4),
-                  Tr('© 2026 DeTooz Team', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10)),
+                   Tr('DeTooz Enterprise v2.4.0 (Build 301)', style: const TextStyle(color: Color(0xFF52525B), fontSize: 12, fontWeight: FontWeight.w500)),
+                   const SizedBox(height: 4),
+                   Tr('© 2024 DeTooz Security Inc. All rights reserved.', style: const TextStyle(color: Color(0xFF3F3F46), fontSize: 10)),
                 ],
               ),
             ),
-            SizedBox(height: 32),
+            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
+  // --- Helpers ---
+
+  Widget _buildProfileCard(String name, String email, String initial) {
+    return _buildGlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFF27272A), // Zinc-800
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF3F3F46)), // Zinc-700
+            ),
+            child: Center(
+              child: Text(
+                initial,
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.1),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  email,
+                  style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 14, fontWeight: FontWeight.w500),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+               // Navigation hook
+               // Navigator.pushNamed(context, '/profile'); 
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: const Color(0xFF7C3AED), // Primary
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              minimumSize: Size.zero, 
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Tr('Edit Profile', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 8, left: 16),
-      child: Text(
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      child: Tr(
         title.toUpperCase(),
         style: const TextStyle(
+          color: Color(0xFF71717A), // Zinc-500
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: AppColors.textSecondaryLight,
-          letterSpacing: 1,
+          letterSpacing: 1.0,
         ),
       ),
     );
   }
 
-  Widget _buildSwitchTile({
+  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
+    return Container(
+      width: double.infinity,
+      padding: padding ?? const EdgeInsets.all(0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF18181B).withOpacity(0.8), // Zinc-900 Glass
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF3F3F46)), // Zinc-700
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildLoadingCard() {
+    return _buildGlassCard(
+      child: const SizedBox(height: 150, child: Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED)))),
+    );
+  }
+
+  Widget _buildErrorCard(String error) {
+     return _buildGlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Text(error, style: const TextStyle(color: Colors.red)),
+    );
+  }
+
+  Widget _buildIcon(IconData icon, Color bg, Color color) {
+    return Container(
+      width: 36, height: 36,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, color: color, size: 20),
+    );
+  }
+
+  Widget _buildDivider() {
+    return const Divider(height: 1, thickness: 1, indent: 68, color: Color(0xFF27272A)); // Zinc-800
+  }
+
+  Widget _buildSwitchRow({
     required IconData icon,
+    required Color iconBg,
     required Color iconColor,
     required String title,
-    String? subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
@@ -317,83 +407,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                if (subtitle != null) ...[
-                  SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
-                ],
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: value, 
+          _buildIcon(icon, iconBg, iconColor),
+          const SizedBox(width: 16),
+          Expanded(child: Tr(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+          Switch(
+            value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primary,
+            activeColor: const Color(0xFF7C3AED), // Primary Purple
+            activeTrackColor: const Color(0xFF7C3AED).withOpacity(0.5),
+            inactiveThumbColor: const Color(0xFFA1A1AA),
+            inactiveTrackColor: const Color(0xFF27272A),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDropdownTile({
+  Widget _buildActionRow({
     required IconData icon,
+    required Color iconBg,
     required Color iconColor,
     required String title,
-    String? subtitle,
-    required String value,
-    required List<String> options,
-    required ValueChanged<String?> onChanged,
+    required Widget trailing,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                if (subtitle != null) ...[
-                  SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
-                ],
-              ],
-            ),
-          ),
-          DropdownButton<String>(
-            value: value,
-            underline: SizedBox(),
-            items: options.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
-            onChanged: onChanged,
-          ),
+          _buildIcon(icon, iconBg, iconColor),
+          const SizedBox(width: 16),
+          Expanded(child: Tr(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+          trailing,
         ],
       ),
     );
   }
 
-  Widget _buildLanguageTile({
+    Widget _buildSelectionRow({
     required String title,
     required bool isSelected,
     required VoidCallback onTap,
@@ -404,52 +454,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).dividerColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.language, color: Theme.of(context).iconTheme.color, size: 20),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            if (isSelected)
-              const Icon(Icons.check, color: AppColors.primary, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildThemeTile({
-    required IconData icon,
-    required String title,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).dividerColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: Theme.of(context).iconTheme.color, size: 20),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-            ),
-            if (isSelected)
-              const Icon(Icons.check, color: AppColors.primary, size: 20),
+            const SizedBox(width: 4), 
+            Expanded(child: Tr(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+            if (isSelected) 
+              const Icon(Icons.check_circle, color: Color(0xFF7C3AED), size: 20)
+            else
+              Container(width: 20, height: 20, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF52525B), width: 2))),
           ],
         ),
       ),
