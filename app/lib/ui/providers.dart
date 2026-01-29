@@ -1,12 +1,12 @@
-import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../contracts/scan_view_model.dart';
-import '../../contracts/risk_level.dart';
 import '../../contracts/guardian_view_model.dart';
 import '../../services/api_service.dart';
 import '../../services/offline_cache_service.dart';
 import '../../services/ai_service.dart';
+import '../../services/connectivity_service.dart';
+import '../../services/translation/translation_service.dart';
 
 // ============ STATE NOTIFIERS ============
 
@@ -14,12 +14,23 @@ import '../../services/ai_service.dart';
 class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
   final Ref ref;
   
-  ScansNotifier(this.ref) : super(const AsyncValue.loading()) {
-    loadScans();
-  }
+  // Removed auto-load from constructor to prevent race conditions on login/logout
+  ScansNotifier(this.ref) : super(const AsyncValue.loading());
   
   Future<void> loadScans() async {
-    // state = const AsyncValue.loading(); // Don't show loading on every refresh for UX
+    // Verify we have a valid token before making API call
+    final token = await apiService.token;
+    if (token == null) {
+      // No token available, use cached data or empty state
+      final cached = offlineCacheService.getCachedScans();
+      if (cached.isNotEmpty) {
+        state = AsyncValue.data(cached.map((s) => ScanViewModel.fromJson(s)).toList());
+      } else {
+        state = const AsyncValue.data([]);
+      }
+      return;
+    }
+    
     try {
       final history = await apiService.getHistory(limit: 50);
       final scans = history.map((scan) => ScanViewModel.fromJson(scan as Map<String, dynamic>)).toList();
@@ -31,7 +42,6 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
         }
       }
       
-      state = AsyncValue.data(scans);
       state = AsyncValue.data(scans);
     } catch (e) {
       // Don't auto-logout on 401 here to prevent race conditions or loops.
@@ -75,19 +85,43 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
       
       Map<String, dynamic> result;
       
-      // If AI is SURE it's a scam, or if we have no internet (TODO: check connectivity)
-      if (aiLabel == 'SCAM' && aiConf > 0.90) {
+      // Check connectivity status
+      final hasInternet = await connectivityService.hasInternet();
+      
+      // If AI is SURE it's a scam, OR if we have no internet → use local result
+      if ((aiLabel == 'SCAM' && aiConf > 0.90) || !hasInternet) {
+         // Map local AI labels to risk levels
+         String riskLevel = 'LOW';
+         String reason = 'Analyzed offline';
+         String? scamType;
+         
+         if (aiLabel == 'SCAM') {
+           riskLevel = aiConf > 0.70 ? 'HIGH' : 'MEDIUM';
+           reason = hasInternet ? 'AI detected scam pattern' : 'AI detected scam pattern (Offline)';
+           scamType = 'AI_DETECTED';
+         } else if (aiLabel == 'OTP') {
+           riskLevel = 'LOW';
+           reason = 'Transactional OTP message';
+           scamType = 'OTP';
+         } else {
+           riskLevel = 'LOW';
+           reason = hasInternet ? 'Safe message' : 'Safe message (Analyzed Offline)';
+         }
+         
          result = {
-           'risk_level': 'HIGH',
-           'reason': 'AI detected scam pattern (Offline)',
-           'scam_type': 'AI_DETECTED',
+           'risk_level': riskLevel,
+           'reason': reason,
+           'scam_type': scamType,
            'confidence': aiConf,
            'created_at': DateTime.now().toIso8601String(),
          };
-         // Sync with backend in background
-         apiService.manualScan(content: content).ignore();
+         
+         // Sync with backend in background if online
+         if (hasInternet && aiLabel == 'SCAM') {
+           apiService.manualScan(content: content).ignore();
+         }
       } else {
-         // Fallback to Server
+         // Fallback to Server (we have internet and AI is uncertain)
          result = await apiService.manualScan(content: content);
       }
 
@@ -145,9 +179,8 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
 /// Manages guardians from API
 class GuardiansNotifier extends StateNotifier<AsyncValue<List<GuardianViewModel>>> {
   final Ref ref;
-  GuardiansNotifier(this.ref) : super(const AsyncValue.loading()) {
-    loadGuardians();
-  }
+  // Removed auto-load from constructor
+  GuardiansNotifier(this.ref) : super(const AsyncValue.loading());
   
   Future<void> loadGuardians() async {
     state = const AsyncValue.loading();
@@ -325,9 +358,8 @@ class UserProfile {
 }
 
 class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
-  UserProfileNotifier() : super(const AsyncValue.loading()) {
-    loadProfile();
-  }
+  // Removed auto-load from constructor
+  UserProfileNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadProfile() async {
     state = const AsyncValue.loading();
@@ -413,9 +445,8 @@ class UserSettings {
 
 /// User stats provider
 class UserStatsNotifier extends StateNotifier<AsyncValue<UserStats>> {
-  UserStatsNotifier() : super(const AsyncValue.loading()) {
-    loadStats();
-  }
+  // Removed auto-load from constructor to prevent race conditions
+  UserStatsNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadStats() async {
     state = const AsyncValue.loading();
@@ -434,9 +465,8 @@ final userStatsProvider = StateNotifierProvider<UserStatsNotifier, AsyncValue<Us
 
 /// User settings provider
 class UserSettingsNotifier extends StateNotifier<AsyncValue<UserSettings>> {
-  UserSettingsNotifier() : super(const AsyncValue.loading()) {
-    loadSettings();
-  }
+  // Removed auto-load from constructor to prevent race conditions
+  UserSettingsNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadSettings() async {
     state = const AsyncValue.loading();
@@ -522,9 +552,8 @@ class TrustedSender {
 
 /// Trusted senders provider
 class TrustedSendersNotifier extends StateNotifier<AsyncValue<List<TrustedSender>>> {
-  TrustedSendersNotifier() : super(const AsyncValue.loading()) {
-    loadTrustedSenders();
-  }
+  // Removed auto-load from constructor
+  TrustedSendersNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadTrustedSenders() async {
     state = const AsyncValue.loading();
@@ -612,3 +641,74 @@ Future<bool> reportScam(String value, String type, {String? reason}) async {
     return false;
   }
 }
+
+// ============ TRANSLATION ============
+
+/// Language state notifier for translation
+/// When language changes, widgets that watch this will rebuild
+class LanguageNotifier extends StateNotifier<String> {
+  LanguageNotifier() : super('en') {
+    // Load the actual current language from TranslationService
+    _initLanguage();
+  }
+  
+  Future<void> _initLanguage() async {
+    // Get current language from TranslationService (which loaded from SharedPreferences)
+    final currentLang = TranslationService().currentLanguage;
+    
+    // Preload common UI strings into translation cache for sync access
+    if (currentLang != 'en') {
+      await TranslationService().preloadTranslations([
+        // Navigation
+        'Home', 'History', 'Guardians', 'Profile', 'Settings',
+        'Back', 'Scan', 'English',
+        // History filter chips
+        'All', 'High Risk', 'Medium Risk', 'Safe',
+        // Guardian tabs
+        'Protect Me', 'Protect Others', 'Guardian Network',
+        'Add New Guardian', 'My Guardians', 'People I Protect',
+        // Common actions
+        'Download', 'Cancel', 'OK', 'Restart Now', 'Later',
+        // Dashboard
+        'Protection Active', 'High Risk Blocked',
+      ]);
+    }
+    
+    // Set state AFTER preload completes to trigger rebuild with cached translations
+    // Always set state (even if same value) by using a temp value trick
+    if (currentLang != 'en') {
+      state = 'en'; // Temp change
+      state = currentLang; // Actual change - triggers rebuild
+    } else {
+      state = currentLang;
+    }
+  }
+  
+  Future<void> setLanguage(String code) async {
+    state = code;
+    
+    // Preload common translations when language changes
+    if (code != 'en') {
+      await TranslationService().preloadTranslations([
+        // Navigation
+        'Home', 'History', 'Guardians', 'Profile', 'Settings',
+        'Back', 'Scan', 'English',
+        // History filter chips
+        'All', 'High Risk', 'Medium Risk', 'Safe',
+        // Guardian tabs
+        'Protect Me', 'Protect Others', 'Guardian Network',
+        'Add New Guardian', 'My Guardians', 'People I Protect',
+        // Common actions
+        'Download', 'Cancel', 'OK', 'Restart Now', 'Later',
+        // Dashboard
+        'Protection Active', 'High Risk Blocked',
+      ]);
+    }
+  }
+}
+
+/// Language provider - watch this to rebuild when language changes
+final languageProvider = StateNotifierProvider<LanguageNotifier, String>((ref) {
+  return LanguageNotifier();
+});
+

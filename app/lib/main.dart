@@ -10,6 +10,9 @@ import 'ui/screens/login_screen.dart';
 import 'services/offline_cache_service.dart';
 import 'services/notification_service.dart';
 import 'services/firebase_messaging_service.dart';
+import 'services/ai_service.dart';
+import 'services/translation/translation_service.dart';
+import '../ui/components/tr.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +32,12 @@ void main() async {
   
   // Initialize local push notifications
   await notificationService.initialize();
+
+  // Initialize AI Model (Hybrid Shield)
+  await aiService.loadModel();
+  
+  // Initialize Translation Service (ML Kit)
+  await TranslationService().initialize();
   
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -41,7 +50,7 @@ class MyApp extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(
-      title: 'Detooz',
+      title: tr('Detooz'),
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

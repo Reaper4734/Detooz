@@ -1,12 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../contracts/risk_level.dart';
 import '../../contracts/scan_view_model.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
 import '../providers.dart';
 import 'scan_detail_screen.dart';
+import '../components/tr.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -20,6 +19,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch language provider to rebuild when translations are loaded
+    ref.watch(languageProvider);
+    
     final allScans = ref.watch(scanHistoryProvider);
     final filteredScans = _filter == null
         ? allScans
@@ -39,8 +41,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Scan History',
+                  Tr('Scan History',
                     style: TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w700,
@@ -61,11 +62,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 child: Row(
                   children: [
                     _buildFilterChip('All', null),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     _buildFilterChip('High Risk', RiskLevel.high),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     _buildFilterChip('Medium Risk', RiskLevel.medium),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     _buildFilterChip('Safe', RiskLevel.low),
                   ],
                 ),
@@ -137,7 +138,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               : null,
         ),
         child: Text(
-          label,
+          tr(label),
           style: TextStyle(
             color: isSelected ? Colors.white : AppColors.textSecondaryDark,
             fontSize: 14,
@@ -191,7 +192,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           children: [
             // Icon Container
             _buildScanIcon(scan),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             // Content
             Expanded(
               child: Column(
@@ -211,11 +212,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       _buildRiskBadge(scan.riskLevel),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     scan.messagePreview,
                     style: const TextStyle(
@@ -332,18 +333,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             size: 64,
             color: AppColors.textSecondaryDark.withOpacity(0.5),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'No scan history',
+          SizedBox(height: 16),
+          Tr('No scan history',
             style: TextStyle(
               color: AppColors.textSecondaryDark,
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Your scanned items will appear here',
+          SizedBox(height: 8),
+          Tr('Your scanned items will appear here',
             style: TextStyle(
               color: AppColors.textSecondaryDark.withOpacity(0.7),
               fontSize: 14,

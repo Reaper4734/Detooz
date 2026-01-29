@@ -5,8 +5,8 @@ import '../../contracts/scan_view_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
-import '../components/platform_icon.dart';
 import '../../services/api_service.dart';
+import '../components/tr.dart';
 
 class ScanDetailScreen extends StatelessWidget {
   final ScanViewModel scan;
@@ -57,7 +57,7 @@ class ScanDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Scan Result', style: TextStyle(fontSize: 16)),
+        title: Tr('Scan Result', style: TextStyle(fontSize: 16)),
         centerTitle: true,
       ),
       body: Stack(
@@ -101,8 +101,7 @@ class ScanDetailScreen extends StatelessWidget {
                               backgroundColor: Colors.black.withOpacity(0.2),
                               color: Colors.white,
                             ),
-                            Text(
-                              '$score%',
+                            Tr('$score%',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -112,7 +111,7 @@ class ScanDetailScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.lg),
+                      SizedBox(width: AppSpacing.lg),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,7 +127,7 @@ class ScanDetailScreen extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(badgeIcon, size: 12, color: Colors.white),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Text(badgeText, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                                 ],
                               ),
@@ -142,7 +141,7 @@ class ScanDetailScreen extends StatelessWidget {
                                 height: 1.0,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Text(
                               riskDesc,
                               style: const TextStyle(
@@ -158,7 +157,7 @@ class ScanDetailScreen extends StatelessWidget {
                   ),
                 ),
                 
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: AppSpacing.lg),
                 
                 // Metadata Card
                 Container(
@@ -172,7 +171,7 @@ class ScanDetailScreen extends StatelessWidget {
                       _buildMetadataRow(
                         context,
                         icon: Icons.person,
-                        label: 'Sender',
+                        label: tr('Sender'),
                         value: isManual ? 'Manual Check' : scan.sender,
                         isFirst: true,
                       ),
@@ -180,7 +179,7 @@ class ScanDetailScreen extends StatelessWidget {
                       _buildMetadataRow(
                         context,
                         icon: Icons.chat, // Should dynamic based on platform
-                        label: 'Platform',
+                        label: tr('Platform'),
                         value: scan.platform.name.toUpperCase(),
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -195,33 +194,33 @@ class ScanDetailScreen extends StatelessWidget {
                       _buildMetadataRow(
                         context,
                         icon: Icons.schedule,
-                        label: 'Received',
+                        label: tr('Received'),
                         value: DateFormat('h:mm a').format(scan.scannedAt),
-                        trailing: Text('Today', style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color)),
+                        trailing: Tr('Today', style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color)),
                         isLast: true,
                       ),
                     ],
                   ),
                 ),
                 
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: AppSpacing.lg),
                 
                 // Message Preview
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Message Preview', style: AppTypography.h3.copyWith(fontSize: 14)),
+                    Tr('Message Preview', style: AppTypography.h3.copyWith(fontSize: 14)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: Theme.of(context).dividerColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text('Text Match', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
+                      child: Tr('Text Match', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                SizedBox(height: AppSpacing.sm),
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
@@ -252,36 +251,35 @@ class ScanDetailScreen extends StatelessWidget {
                               height: 150,
                               width: double.infinity,
                               color: Colors.grey.withOpacity(0.1),
-                              child: const Column(
+                              child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.broken_image, color: Colors.grey),
                                   SizedBox(height: 8),
-                                  Text('Failed to load image preview', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                  Tr('Failed to load image preview', style: TextStyle(color: Colors.grey, fontSize: 12)),
                                 ],
                               ),
                             ),
                           ),
                         )
                       else
-                        Text(
-                          '"${scan.messagePreview}"',
+                        Tr('"${scan.messagePreview}"',
                           style: Theme.of(context).textTheme.bodyLarge!.copyWith(height: 1.5),
                         ),
-                      const SizedBox(height: AppSpacing.md),
+                      SizedBox(height: AppSpacing.md),
                       if (scan.riskLevel != RiskLevel.low)
                         Row(
                           children: [
                             const Icon(Icons.link_off, size: 16, color: Colors.grey),
-                            const SizedBox(width: 8),
-                            Text('Links Automatically Disabled', style: Theme.of(context).textTheme.bodySmall),
+                            SizedBox(width: 8),
+                            Tr('Links Automatically Disabled', style: Theme.of(context).textTheme.bodySmall),
                           ],
                         ),
                     ],
                   ),
                 ),
                 
-                 const SizedBox(height: AppSpacing.lg),
+                 SizedBox(height: AppSpacing.lg),
                  
                  // Analysis Box
                  Container(
@@ -302,13 +300,13 @@ class ScanDetailScreen extends StatelessWidget {
                          ),
                          child: Icon(Icons.smart_toy, color: isManual ? Colors.orange : Colors.blue, size: 20),
                        ),
-                       const SizedBox(width: AppSpacing.md),
+                       SizedBox(width: AppSpacing.md),
                        Expanded(
                          child: Column(
                            crossAxisAlignment: CrossAxisAlignment.start,
                            children: [
-                             Text('Guardian Analysis', style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold)),
-                             const SizedBox(height: 4),
+                             Tr('Guardian Analysis', style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold)),
+                             SizedBox(height: 4),
                              Text(
                                scan.riskReason ?? 'Analysis complete.',
                                style: Theme.of(context).textTheme.bodySmall,
@@ -355,7 +353,7 @@ class ScanDetailScreen extends StatelessWidget {
                           }
                         },
                         icon: const Icon(Icons.block),
-                        label: const Text('Block this Sender'),
+                        label: Tr('Block this Sender'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.danger,
                           foregroundColor: Colors.white,
@@ -364,7 +362,7 @@ class ScanDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(height: AppSpacing.sm),
                     TextButton(
                       onPressed: () async {
                         // Report safe / trusted
@@ -378,7 +376,7 @@ class ScanDetailScreen extends StatelessWidget {
                             );
                         }
                       },
-                      child: Text('Report as Safe', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
+                      child: Tr('Report as Safe', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
                     ),
                   ],
                 ),
@@ -410,13 +408,13 @@ class ScanDetailScreen extends StatelessWidget {
             ),
             child: Icon(icon, size: 20, color: Theme.of(context).iconTheme.color),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ],
             ),

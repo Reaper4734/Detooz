@@ -2,19 +2,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
-import '../theme/app_typography.dart';
-import '../components/scan_card.dart';
 import '../providers.dart';
 import 'scan_detail_screen.dart';
 import 'manual_result_screen.dart';
-import 'settings_screen.dart';
-import '../components/scam_alert_overlay.dart';
 import '../../contracts/scan_view_model.dart';
 import '../../contracts/risk_level.dart';
 
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import '../components/tr.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -27,6 +22,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final TextEditingController _manualCheckController = TextEditingController();
   bool _isAnalyzing = false;
   final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    // Trigger data loading after login (now that token is confirmed)
+    // This fixes the "Red Screen" race condition by ensuring token exists before APIs are called
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(scansProvider.notifier).loadScans();
+      ref.read(userStatsProvider.notifier).loadStats();
+      ref.read(guardiansProvider.notifier).loadGuardians();
+      ref.read(userProfileProvider.notifier).loadProfile();
+      ref.read(userSettingsProvider.notifier).loadSettings();
+      ref.read(trustedSendersProvider.notifier).loadTrustedSenders();
+    });
+  }
 
   @override
   void dispose() {
@@ -58,7 +69,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
        setState(() => _isAnalyzing = false);
        if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Image analysis failed: $e'), backgroundColor: AppColors.danger),
+           SnackBar(content: Tr('Image analysis failed: $e'), backgroundColor: AppColors.danger),
          );
        }
     }
@@ -70,28 +81,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     setState(() => _isAnalyzing = true);
     
-    final scan = await ref.read(scansProvider.notifier).manualScan(text);
-    
-    // Refresh stats
-    ref.read(userStatsProvider.notifier).loadStats();
-    
-    setState(() => _isAnalyzing = false);
-    _manualCheckController.clear();
-    
-    if (scan != null && mounted) {
-      // Navigate directly - no overlay needed for manual check
+    try {
+      final scan = await ref.read(scansProvider.notifier).manualScan(text);
       
-      // Navigate to appropriate screen
-      if (scan.sender.startsWith('Manual')) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan)),
-          );
-      } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
-          );
+      // Refresh stats
+      ref.read(userStatsProvider.notifier).loadStats();
+      
+      setState(() => _isAnalyzing = false);
+      _manualCheckController.clear();
+      
+      if (scan != null && mounted) {
+        // Navigate directly - no overlay needed for manual check
+        
+        // Navigate to appropriate screen
+        if (scan.sender.startsWith('Manual')) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan)),
+            );
+        } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
+            );
+        }
+      }
+    } catch (e) {
+      setState(() => _isAnalyzing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Tr('Scan failed: $e'), backgroundColor: AppColors.danger),
+        );
       }
     }
   }
@@ -129,8 +149,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              '$greeting, ',
+                            Tr('$greeting, ',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 24,
@@ -150,9 +169,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Stay safe today',
+                        SizedBox(height: 4),
+                        Tr('Stay safe today',
                           style: TextStyle(
                             color: Colors.grey[400],
                             fontSize: 14,
@@ -177,7 +195,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
               
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
               
               // Protection Active Card
               Container(
@@ -234,19 +252,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         ),
                                         child: const Icon(Icons.security, color: AppColors.primary, size: 24),
                                       ),
-                                      const SizedBox(width: 16),
+                                      SizedBox(width: 16),
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
-                                            'Protection Active',
+                                          Tr('Protection Active',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 18,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
+                                          SizedBox(height: 4),
                                           Row(
                                             children: [
                                               Container(
@@ -260,9 +277,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                                   ],
                                                 ),
                                               ),
-                                              const SizedBox(width: 8),
-                                              const Text(
-                                                'Monitoring active',
+                                              SizedBox(width: 8),
+                                              Tr('Monitoring active',
                                                 style: TextStyle(
                                                   color: AppColors.success,
                                                   fontSize: 12,
@@ -279,7 +295,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ],
                               ),
                           
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
                           
                           // Metrics Grid
                           Row(
@@ -295,15 +311,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        'Items Scanned',
+                                      Tr('Items Scanned',
                                         style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      SizedBox(height: 4),
                                       Text(
                                         userStats.isLoading ? '-' : '${userStats.value?.totalScans ?? 0}',
                                         style: const TextStyle(
@@ -316,7 +331,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              SizedBox(width: 16),
                               Expanded(
                                 child: Container(
                                   padding: const EdgeInsets.all(16),
@@ -328,15 +343,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        'High Risk Blocked',
+                                      Tr('High Risk Blocked',
                                         style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      SizedBox(height: 4),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -351,8 +365,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                           ),
                                           Padding(
                                             padding: const EdgeInsets.only(bottom: 4),
-                                            child: Text(
-                                              'Today',
+                                            child: Tr('Today',
                                               style: TextStyle(
                                                 color: Colors.grey[600],
                                                 fontSize: 10,
@@ -376,13 +389,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               
-              const SizedBox(height: 36),
+              SizedBox(height: 36),
               
               // Manual Check
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 4, bottom: 12),
-                child: Text(
-                  'Manual Check',
+                child: Tr('Manual Check',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -399,15 +411,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Icon(Icons.search, color: Colors.grey[600], size: 24),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: TextField(
                         controller: _manualCheckController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          hintText: 'Check text, URL, or number',
+                          hintText: tr('Check text, URL, or number'),
                           hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.zero,
@@ -421,7 +433,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Container(
                       height: 44,
                       decoration: BoxDecoration(
@@ -444,24 +456,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                         ),
                         child: _isAnalyzing 
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Scan', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : Tr('Scan', style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
                 ),
               ),
               
-              const SizedBox(height: 36),
+              SizedBox(height: 36),
               
               // Recent Scans
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(left: 4),
-                    child: Text(
-                      'Recent Scans',
+                    child: Tr('Recent Scans',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -471,24 +482,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   TextButton(
                     onPressed: () {}, // View All
-                    child: const Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                    child: Tr('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               
               // Dynamic List
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: recentScans.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) => SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   return _buildScanItem(context, recentScans[index]);
                 },
               ),
               
-              const SizedBox(height: 100),
+              SizedBox(height: 100),
             ],
           ),
         ),
@@ -584,7 +595,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               child: Icon(platformIcon, color: risk == RiskLevel.low ? AppColors.success : (risk == RiskLevel.high ? AppColors.danger : AppColors.warning), size: 20),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,7 +627,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     scan.messagePreview.replaceAll('\n', ' '),
                     style: TextStyle(
@@ -629,7 +640,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -640,7 +651,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Row(
                 children: [
                   Icon(statusIcon, color: statusColor, size: 14),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Text(
                     statusText,
                     style: TextStyle(
@@ -669,8 +680,8 @@ class _MarqueeText extends StatefulWidget {
   const _MarqueeText({
     required this.text,
     required this.style,
-    this.pauseDuration = const Duration(seconds: 2),
-    this.animationDuration = const Duration(seconds: 6),
+    this.pauseDuration = const Duration(seconds: 1),
+    this.animationDuration = const Duration(seconds: 3),
   });
 
   @override

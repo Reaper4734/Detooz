@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'tr.dart';
+import '../providers.dart';
 
-class BottomNavBar extends StatelessWidget {
+class BottomNavBar extends ConsumerWidget {
   final int currentIndex;
   final Function(int) onTap;
 
@@ -12,29 +14,32 @@ class BottomNavBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch language provider to rebuild when language changes
+    ref.watch(languageProvider);
+    
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: onTap,
-      items: const [
+      items: [
         BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard),
-          label: 'Home',
+          icon: const Icon(Icons.dashboard_outlined),
+          activeIcon: const Icon(Icons.dashboard),
+          label: tr('Home'),
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.history),
-          label: 'History',
+          icon: const Icon(Icons.history),
+          label: tr('History'),
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.shield_outlined),
-          activeIcon: Icon(Icons.shield),
-          label: 'Guardians',
+          icon: const Icon(Icons.shield_outlined),
+          activeIcon: const Icon(Icons.shield),
+          label: tr('Guardians'),
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
-          label: 'Profile',
+          icon: const Icon(Icons.person_outline),
+          activeIcon: const Icon(Icons.person),
+          label: tr('Profile'),
         ),
       ],
     );

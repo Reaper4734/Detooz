@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../../services/api_service.dart';
+import '../components/tr.dart';
+import '../providers.dart';
 
 /// Guardian Network Screen with premium dark glassmorphism UI
 class GuardiansScreen extends ConsumerStatefulWidget {
@@ -17,6 +19,9 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch language provider to rebuild when translations are loaded
+    ref.watch(languageProvider);
+    
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       body: SafeArea(
@@ -27,10 +32,9 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 children: [
-                  const SizedBox(width: 40), // Spacer for alignment
-                  const Expanded(
-                    child: Text(
-                      'Guardian Network',
+                  SizedBox(width: 40), // Spacer for alignment
+                  Expanded(
+                    child: Tr('Guardian Network',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 18,
@@ -39,7 +43,7 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 40), // Spacer for alignment
+                  SizedBox(width: 40), // Spacer for alignment
                 ],
               ),
             ),
@@ -90,7 +94,7 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
               : null,
         ),
         child: Text(
-          label,
+          tr(label),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
@@ -149,7 +153,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
       if (mounted) {
         setState(() => _isGeneratingOtp = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
+          SnackBar(content: Tr('Error: $e'), backgroundColor: AppColors.danger),
         );
       }
     }
@@ -162,15 +166,14 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Share This Code', style: TextStyle(color: Colors.white)),
+        title: Tr('Share This Code', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Share this code with the person you want to be your guardian.',
+            Tr('Share this code with the person you want to be your guardian.',
               style: TextStyle(color: AppColors.textSecondaryDark),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -190,12 +193,12 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                       letterSpacing: 8,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   IconButton(
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: _currentOtp!));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Copied to clipboard!')),
+                        const SnackBar(content: Tr('Copied to clipboard!')),
                       );
                     },
                     icon: const Icon(Icons.copy, color: AppColors.primary),
@@ -203,9 +206,8 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Expires in 10 minutes',
+            SizedBox(height: 12),
+            Tr('Expires in 10 minutes',
               style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12),
             ),
           ],
@@ -213,7 +215,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Done', style: TextStyle(color: AppColors.primary)),
+            child: Tr('Done', style: TextStyle(color: AppColors.primary)),
           ),
         ],
       ),
@@ -242,45 +244,43 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                   ),
                   child: const Icon(Icons.shield_outlined, color: AppColors.primary, size: 22),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Guardians get alerts when you receive scam messages.',
+                  child: Tr('Guardians get alerts when you receive scam messages.',
                     style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 14),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // Add Guardian Button
           _buildPrimaryButton(
             onPressed: _isGeneratingOtp ? null : _generateOtp,
             icon: _isGeneratingOtp
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.add, color: Colors.white),
-            label: 'Add New Guardian',
+            label: tr('Add New Guardian'),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Section Header
-          const Text(
-            'My Guardians',
+          Tr('My Guardians',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // Guardian List
           if (_isLoading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: AppColors.primary)))
+            Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: AppColors.primary)))
           else if (_error != null)
-            Center(child: Padding(padding: const EdgeInsets.all(32), child: Text('Error: $_error', style: TextStyle(color: AppColors.danger))))
+            Center(child: Padding(padding: const EdgeInsets.all(32), child: Tr('Error: $_error', style: TextStyle(color: AppColors.danger))))
           else if (_guardians.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Text('No guardians linked yet.', style: TextStyle(color: AppColors.textSecondaryDark)),
+                child: Tr('No guardians linked yet.', style: TextStyle(color: AppColors.textSecondaryDark)),
               ),
             )
           else
@@ -334,7 +334,7 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
 
     if (email.isEmpty || otp.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please enter email and OTP'), backgroundColor: AppColors.warning),
+        SnackBar(content: Tr('Please enter email and OTP'), backgroundColor: AppColors.warning),
       );
       return;
     }
@@ -347,7 +347,7 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
         _emailController.clear();
         _otpController.clear();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Successfully linked!'), backgroundColor: AppColors.success),
+          const SnackBar(content: Tr('Successfully linked!'), backgroundColor: AppColors.success),
         );
         _loadProtectedUsers();
       }
@@ -355,7 +355,7 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
       if (mounted) {
         setState(() => _isLinking = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: AppColors.danger),
+          SnackBar(content: Tr('Failed: $e'), backgroundColor: AppColors.danger),
         );
       }
     }
@@ -386,76 +386,76 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
                       ),
                       child: const Icon(Icons.person_add_outlined, color: AppColors.primary, size: 22),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Protect Someone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                          Text('Add a new user to your monitoring network', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark)),
+                          Tr('Protect Someone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                          Tr('Add a new user to your monitoring network', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark)),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Email Input
                 _buildInputLabel('User Email'),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 _buildGlassInput(
                   controller: _emailController,
                   icon: Icons.mail_outline,
                   hint: 'user@example.com',
                   keyboardType: TextInputType.emailAddress,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 // OTP Input
                 _buildInputLabel('OTP Code'),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 _buildGlassInput(
                   controller: _otpController,
                   icon: Icons.lock_outline,
                   hint: 'Enter 6-digit code',
                   keyboardType: TextInputType.number,
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Link Button
                 _buildPrimaryButton(
                   onPressed: _isLinking ? null : _linkUser,
                   icon: _isLinking
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : null,
-                  label: 'Link & Protect',
+                  label: tr('Link & Protect'),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Section Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('People I Protect', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              Tr('People I Protect', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
               TextButton(
                 onPressed: () {},
-                child: const Text('View All', style: TextStyle(color: AppColors.primary, fontSize: 12)),
+                child: Tr('View All', style: TextStyle(color: AppColors.primary, fontSize: 12)),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // Protected Users List
           if (_isLoading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: AppColors.primary)))
+            Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: AppColors.primary)))
           else if (_protectedUsers.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Text('You are not protecting anyone yet.', style: TextStyle(color: AppColors.textSecondaryDark)),
+                child: Tr('You are not protecting anyone yet.', style: TextStyle(color: AppColors.textSecondaryDark)),
               ),
             )
           else
@@ -509,7 +509,7 @@ Widget _buildPrimaryButton({
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon != null) ...[icon, const SizedBox(width: 8)],
+          if (icon != null) ...[icon, SizedBox(width: 8)],
           Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
         ],
       ),
@@ -585,14 +585,14 @@ Widget _buildPersonCard({
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         // Info
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
+              SizedBox(height: 2),
               Text(email, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12)),
             ],
           ),

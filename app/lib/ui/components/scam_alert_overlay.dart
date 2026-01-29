@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'tr.dart';
+import 'tr.dart';
 
 /// Full-screen scam alert overlay shown when HIGH risk detected
 class ScamAlertOverlay extends StatelessWidget {
@@ -43,11 +45,10 @@ class ScamAlertOverlay extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               
               // Title
-              Text(
-                '🚨 SCAM DETECTED!',
+              Tr('🚨 SCAM DETECTED!',
                 style: GoogleFonts.inter(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
@@ -55,7 +56,7 @@ class ScamAlertOverlay extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               
               // Confidence Badge
               Container(
@@ -64,8 +65,7 @@ class ScamAlertOverlay extends StatelessWidget {
                   color: Colors.black26,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  '${(confidence * 100).toInt()}% Confidence',
+                child: Tr('${(confidence * 100).toInt()}% Confidence',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -73,7 +73,7 @@ class ScamAlertOverlay extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
               
               // Sender Info
               Container(
@@ -86,15 +86,14 @@ class ScamAlertOverlay extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'From: $sender',
+                    Tr('From: $sender',
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       message.length > 150 
                           ? '${message.substring(0, 150)}...' 
@@ -107,7 +106,7 @@ class ScamAlertOverlay extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               
               // Reason
               Container(
@@ -121,7 +120,7 @@ class ScamAlertOverlay extends StatelessWidget {
                 child: Row(
                   children: [
                     const Icon(Icons.info_outline, color: Colors.orangeAccent),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         reason,
@@ -152,8 +151,7 @@ class ScamAlertOverlay extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(
-                        'DISMISS',
+                      child: Tr('DISMISS',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -161,7 +159,7 @@ class ScamAlertOverlay extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: onBlock,
@@ -173,8 +171,7 @@ class ScamAlertOverlay extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(
-                        'BLOCK SENDER',
+                      child: Tr('BLOCK SENDER',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
@@ -184,7 +181,7 @@ class ScamAlertOverlay extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               
               // Guardian Alert Notice
               Container(
@@ -197,10 +194,9 @@ class ScamAlertOverlay extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'Guardian has been alerted via Telegram',
+                      child: Tr('Guardian has been alerted via Telegram',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
