@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import '../theme/app_typography.dart';
 import '../theme/theme_provider.dart';
 import '../providers.dart';
+import 'language_selector_screen.dart';
+import '../components/tr.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -17,7 +18,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // These will sync with API settings
   bool _aiScanning = true;
   bool _whatsapp = false;
-  bool _pushNotifications = true;
+  final bool _pushNotifications = true;
 
   @override
   Widget build(BuildContext context) {
@@ -27,21 +28,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Tr('Settings'),
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Row(
-            children: const [
+            children: [
               Icon(Icons.chevron_left, color: AppColors.primary, size: 30),
-              Text('Back', style: TextStyle(color: AppColors.primary, fontSize: 16)),
+              Tr('Back', style: TextStyle(color: AppColors.primary, fontSize: 16)),
             ],
           ),
         ),
         leadingWidth: 80,
       ),
       body: settingsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error loading settings: $e')),
+        loading: () => Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Tr('Error loading settings: $e')),
         data: (settings) => ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
@@ -65,7 +66,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +82,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               loading: () => const LinearProgressIndicator(), 
-              error: (_,__) => const SizedBox(),
+              error: (_,__) => SizedBox(),
             ),
 
             _buildSectionHeader('Detection'),
@@ -96,8 +97,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _buildSwitchTile(
                     icon: Icons.shield,
                     iconColor: Colors.blue,
-                    title: 'Auto-block high risk',
-                    subtitle: 'Filter known scam numbers',
+                    title: tr('Auto-block high risk'),
+                    subtitle: tr('Filter known scam numbers'),
                     value: settings.autoBlockHighRisk,
                     onChanged: (v) {
                       ref.read(userSettingsProvider.notifier).updateSettings(autoBlockHighRisk: v);
@@ -107,8 +108,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _buildSwitchTile(
                     icon: Icons.psychology,
                     iconColor: Colors.purple,
-                    title: 'AI Message Scanning',
-                    subtitle: 'Analyze incoming SMS',
+                    title: tr('AI Message Scanning'),
+                    subtitle: tr('Analyze incoming SMS'),
                     value: _aiScanning,
                     onChanged: (v) => setState(() => _aiScanning = v),
                   ),
@@ -116,8 +117,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _buildSwitchTile(
                     icon: Icons.chat,
                     iconColor: Colors.green,
-                    title: 'WhatsApp Integration',
-                    subtitle: 'Scan forwarded messages',
+                    title: tr('WhatsApp Integration'),
+                    subtitle: tr('Scan forwarded messages'),
                     value: _whatsapp,
                     onChanged: (v) => setState(() => _whatsapp = v),
                   ),
@@ -137,8 +138,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _buildDropdownTile(
                     icon: Icons.supervised_user_circle,
                     iconColor: AppColors.danger,
-                    title: 'Guardian Alert Threshold',
-                    subtitle: 'When to notify family',
+                    title: tr('Guardian Alert Threshold'),
+                    subtitle: tr('When to notify family'),
                     value: settings.alertGuardiansThreshold,
                     options: const ['HIGH', 'MEDIUM', 'ALL'],
                     onChanged: (v) {
@@ -151,7 +152,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _buildSwitchTile(
                     icon: Icons.notifications_active,
                     iconColor: AppColors.warning,
-                    title: 'Receive Safety Tips',
+                    title: tr('Receive Safety Tips'),
                     value: settings.receiveTips,
                     onChanged: (v) {
                       ref.read(userSettingsProvider.notifier).updateSettings(receiveTips: v);
@@ -168,20 +169,54 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                 border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
               ),
-              child: Column(
-                children: [
-                  _buildLanguageTile(
-                    title: 'English',
-                    isSelected: settings.language == 'en',
-                    onTap: () => ref.read(userSettingsProvider.notifier).setLanguage('en'),
+              child: InkWell(
+                onTap: () => showLanguageSelector(context, ref),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.translate, color: Colors.blue, size: 20),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Tr('App Language', style: TextStyle(fontWeight: FontWeight.w500)),
+                            SizedBox(height: 2),
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final langCode = ref.watch(languageProvider);
+                                final langName = langCode == 'en' ? 'English' : 
+                                  langCode == 'hi' ? 'हिन्दी (Hindi)' :
+                                  langCode == 'bn' ? 'বাংলা (Bengali)' :
+                                  langCode == 'ta' ? 'தமிழ் (Tamil)' :
+                                  langCode == 'te' ? 'తెలుగు (Telugu)' :
+                                  langCode == 'mr' ? 'मराठी (Marathi)' :
+                                  langCode;
+                                return Text(
+                                  langName,
+                                  style: TextStyle(
+                                    color: Theme.of(context).textTheme.bodySmall?.color,
+                                    fontSize: 12,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Colors.grey),
+                    ],
                   ),
-                  const Divider(height: 1, indent: 60),
-                  _buildLanguageTile(
-                    title: 'हिंदी (Hindi)',
-                    isSelected: settings.language == 'hi',
-                    onTap: () => ref.read(userSettingsProvider.notifier).setLanguage('hi'),
-                  ),
-                ],
+                ),
               ),
             ),
             
@@ -196,21 +231,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   _buildThemeTile(
                     icon: Icons.settings_brightness,
-                    title: 'System Default',
+                    title: tr('System Default'),
                     isSelected: currentTheme == ThemeMode.system,
                     onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.system),
                   ),
                   const Divider(height: 1, indent: 60),
                   _buildThemeTile(
                     icon: Icons.dark_mode,
-                    title: 'Dark Mode',
+                    title: tr('Dark Mode'),
                     isSelected: currentTheme == ThemeMode.dark,
                     onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.dark),
                   ),
                   const Divider(height: 1, indent: 60),
                   _buildThemeTile(
                     icon: Icons.light_mode,
-                    title: 'Light Mode',
+                    title: tr('Light Mode'),
                     isSelected: currentTheme == ThemeMode.light,
                     onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.light),
                   ),
@@ -218,7 +253,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
             
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -227,7 +262,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   await ref.read(authProvider.notifier).logout();
                 },
                 icon: const Icon(Icons.logout),
-                label: const Text('Log Out'),
+                label: Tr('Log Out'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.surfaceLight,
                   foregroundColor: AppColors.danger,
@@ -238,17 +273,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
             Center(
               child: Column(
                 children: [
-                  Text('DeTooz v1.1.0', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text('© 2026 DeTooz Team', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10)),
+                  Tr('DeTooz v1.1.0', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
+                  SizedBox(height: 4),
+                  Tr('© 2026 DeTooz Team', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 10)),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
           ],
         ),
       ),
@@ -290,14 +325,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             child: Icon(icon, color: iconColor, size: 20),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(subtitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
                 ],
               ],
@@ -334,14 +369,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             child: Icon(icon, color: iconColor, size: 20),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(subtitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
                 ],
               ],
@@ -349,7 +384,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           DropdownButton<String>(
             value: value,
-            underline: const SizedBox(),
+            underline: SizedBox(),
             items: options.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
             onChanged: onChanged,
           ),
@@ -377,7 +412,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               child: Icon(Icons.language, color: Theme.of(context).iconTheme.color, size: 20),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
             ),
@@ -409,7 +444,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               child: Icon(icon, color: Theme.of(context).iconTheme.color, size: 20),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
             ),

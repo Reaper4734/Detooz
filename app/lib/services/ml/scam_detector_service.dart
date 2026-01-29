@@ -27,10 +27,11 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 
 import 'vocab_loader.dart';
 import 'token_encoder.dart';
+import '../ui/components/tr.dart';
 
 /// Result of scam detection inference
 class DetectionResult {
-  /// Raw label: "HAM", "OTP", or "SCAM"
+  /// Raw label: tr("HAM"), "OTP", or "SCAM"
   final String label;
   
   /// Confidence score (0.0 to 1.0)

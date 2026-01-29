@@ -5,6 +5,7 @@ import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
 
 import 'package:permission_handler/permission_handler.dart';
+import '../components/tr.dart';
 
 class PermissionWizardScreen extends StatefulWidget {
   const PermissionWizardScreen({super.key});
@@ -16,7 +17,7 @@ class PermissionWizardScreen extends StatefulWidget {
 class _PermissionWizardScreenState extends State<PermissionWizardScreen> with WidgetsBindingObserver {
   bool _notificationGranted = false;
   bool _autostartDone = false;
-  bool _batteryDone = false;
+  final bool _batteryDone = false;
 
   @override
   void initState() {
@@ -59,7 +60,7 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       appBar: AppBar(
-        title: const Text('Setup Detooz Protection'),
+        title: Tr('Setup Detooz Protection'),
         centerTitle: true,
         automaticallyImplyLeading: false, 
         backgroundColor: AppColors.backgroundDark,
@@ -70,8 +71,7 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'To protect you 24/7, Detooz needs 3 permissions.',
+            Tr('To protect you 24/7, Detooz needs 3 permissions.',
               style: AppTypography.bodySmall,
             ),
             SizedBox(height: AppSpacing.xl),
@@ -79,7 +79,7 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
             // Step 1: Notification Access (Critical)
             _buildStepCard(
               index: 1,
-              title: "Scam Detection Access",
+              title: tr("Scam Detection Access"),
               description: "Required to read incoming SMS/WhatsApp messages.",
               icon: Icons.notifications_active,
               isDone: _notificationGranted,
@@ -99,7 +99,7 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
             // Step 2: Autostart (Xiaomi/Oppo/Vivo)
             _buildStepCard(
               index: 2,
-              title: "Run in Background",
+              title: tr("Run in Background"),
               description: "Prevents the system from killing Detooz. Enable 'Autostart'.",
               icon: Icons.flash_on,
               isDone: _autostartDone,
@@ -128,7 +128,7 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   disabledBackgroundColor: Colors.grey[800],
                 ),
-                child: const Text('Start Protecting Me', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Tr('Start Protecting Me', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -169,16 +169,16 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
               size: 24,
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(description, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
                 if (!isDone) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   SizedBox(
                     height: 36,
                     child: OutlinedButton(

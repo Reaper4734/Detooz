@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../contracts/scan_view_model.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'risk_badge.dart';

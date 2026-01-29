@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../contracts/risk_level.dart';
 import '../../contracts/scan_view_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import '../theme/app_typography.dart';
-import '../../services/api_service.dart';
+import '../components/tr.dart';
 
 class ManualResultScreen extends StatelessWidget {
   final ScanViewModel scan;
@@ -54,7 +52,7 @@ class ManualResultScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Manual Check Result', style: TextStyle(fontSize: 16)),
+        title: Tr('Manual Check Result', style: TextStyle(fontSize: 16)),
         centerTitle: true,
       ),
       body: Stack(
@@ -92,8 +90,7 @@ class ManualResultScreen extends StatelessWidget {
                               backgroundColor: Colors.black.withOpacity(0.2),
                               color: Colors.white,
                             ),
-                            Text(
-                              '$score%',
+                            Tr('$score%',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -103,7 +100,7 @@ class ManualResultScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.lg),
+                      SizedBox(width: AppSpacing.lg),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +116,7 @@ class ManualResultScreen extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(badgeIcon, size: 12, color: Colors.white),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Text(badgeText, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                                 ],
                               ),
@@ -133,7 +130,7 @@ class ManualResultScreen extends StatelessWidget {
                                 height: 1.0,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Text(
                               riskDesc,
                               style: const TextStyle(
@@ -149,7 +146,7 @@ class ManualResultScreen extends StatelessWidget {
                   ),
                 ),
                 
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: AppSpacing.lg),
                 
                 // Content Preview
                 Container(
@@ -163,11 +160,10 @@ class ManualResultScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'CHECKED CONTENT',
+                      Tr('CHECKED CONTENT',
                         style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         scan.messagePreview,
                         style: Theme.of(context).textTheme.bodyLarge,
@@ -176,7 +172,7 @@ class ManualResultScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: AppSpacing.lg),
 
                 // Analysis Box
                  Container(
@@ -197,13 +193,13 @@ class ManualResultScreen extends StatelessWidget {
                          ),
                          child: const Icon(Icons.analytics, color: Colors.purple, size: 20),
                        ),
-                       const SizedBox(width: AppSpacing.md),
+                       SizedBox(width: AppSpacing.md),
                        Expanded(
                          child: Column(
                            crossAxisAlignment: CrossAxisAlignment.start,
                            children: [
-                             Text('AI Assessment', style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold)),
-                             const SizedBox(height: 4),
+                             Tr('AI Assessment', style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold)),
+                             SizedBox(height: 4),
                              Text(
                                scan.riskReason ?? 'Analysis complete.',
                                style: Theme.of(context).textTheme.bodySmall,
@@ -239,7 +235,7 @@ class ManualResultScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text('Back to Dashboard'),
+                  child: Tr('Back to Dashboard'),
                 ),
               ),
             ),

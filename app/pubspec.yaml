@@ -64,7 +64,12 @@ dependencies:
   # Connectivity Check (for offline-first)
   connectivity_plus: ^6.0.3
 
+  # ML Kit Translation (for dynamic multi-language support)
+  google_mlkit_translation: ^0.13.0
+  shared_preferences: ^2.2.2
 
+
+  diacritic: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

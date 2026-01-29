@@ -1,14 +1,13 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
 // import 'guardian_login_screen.dart'; // Removed
 import 'guardians_screen.dart';
 import 'admin/admin_login_screen.dart';
+import '../components/tr.dart';
 
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -105,7 +104,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             content: Text(e.toString().replaceAll('Exception: ', '')),
             backgroundColor: AppColors.danger,
             duration: const Duration(seconds: 5),
-            action: SnackBarAction(label: 'OK', onPressed: () {}, textColor: Colors.white),
+            action: SnackBarAction(label: tr('OK'), onPressed: () {}, textColor: Colors.white),
           ),
         );
       }
@@ -117,9 +116,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Registration Successful'),
-        content: const Text(
-          'Enhance your safety by adding a trusted Guardian.\n'
+        title: Tr('Registration Successful'),
+        content: Tr('Enhance your safety by adding a trusted Guardian.\n'
           'Share an OTP with them to link accounts instantly.',
         ),
         actions: [
@@ -127,7 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onPressed: () {
               Navigator.pop(context);
             },
-            child: const Text('Later'),
+            child: Tr('Later'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -137,7 +135,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 MaterialPageRoute(builder: (_) => const GuardiansScreen()),
               );
             },
-            child: const Text('Add Guardian'),
+            child: Tr('Add Guardian'),
           ),
         ],
       ),
@@ -211,7 +209,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     child: const Icon(Icons.security, size: 32, color: primaryColor),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Text(
                     _isLogin ? 'Welcome Back' : 'Create Account',
                     style: const TextStyle(
@@ -221,9 +219,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       fontFamily: 'Inter',
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Log in to continue your protection',
+                  SizedBox(height: 8),
+                  Tr('Log in to continue your protection',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -231,7 +228,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       fontWeight: FontWeight.normal,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Glass Card
                   ClipRRect(
@@ -262,36 +259,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             children: [
                               if (!_isLogin) ...[
                                 _buildInputLabel('First Name'),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 _buildDarkTextField(
                                   controller: _firstNameController,
                                   hint: 'Enter your first name',
                                   icon: Icons.person_outline,
                                   validator: (v) => v?.isEmpty == true ? 'Required' : null,
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
 
                                 _buildInputLabel('Middle Name (Optional)'),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 _buildDarkTextField(
                                   controller: _middleNameController,
                                   hint: 'Enter your middle name',
                                   icon: Icons.person_outline,
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
 
                                 _buildInputLabel('Last Name'),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 _buildDarkTextField(
                                   controller: _lastNameController,
                                   hint: 'Enter your last name',
                                   icon: Icons.person_outline,
                                   validator: (v) => v?.isEmpty == true ? 'Required' : null,
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
 
                                 _buildInputLabel('Phone Number'),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Row(
                                   children: [
                                     _HoverableCountryCodePicker(
@@ -308,21 +305,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16),
                               ],
 
                               _buildInputLabel('Email Address'),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               _buildDarkTextField(
                                 controller: _emailController,
                                 hint: 'name@example.com',
                                 icon: Icons.email_outlined,
                                 validator: _validateEmail,
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
 
                               _buildInputLabel('Password'),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               _buildDarkTextField(
                                 controller: _passwordController,
                                 hint: 'Enter your password',
@@ -332,7 +329,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
 
                               if (_isLogin) ...[
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
@@ -342,15 +339,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       minimumSize: Size.zero,
                                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                    child: const Text(
-                                      'Forgot Password?',
+                                    child: Tr('Forgot Password?',
                                       style: TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
                                     ),
                                   ),
                                 ),
                               ],
 
-                              const SizedBox(height: 24),
+                              SizedBox(height: 24),
 
                               // Primary Button
                               Container(
@@ -374,7 +370,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     elevation: 0,
                                   ),
                                   child: _isLoading
-                                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                      ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                                       : Text(
                                           _isLogin ? 'Log In' : 'Register',
                                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -383,14 +379,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
 
                               if (_isLogin) ...[
-                                const SizedBox(height: 32),
+                                SizedBox(height: 32),
                                 Row(
                                   children: [
-                                    const Expanded(child: Divider(color: borderColor)),
+                                    Expanded(child: Divider(color: borderColor)),
                                     Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text(
-                                        'OR CONTINUE WITH',
+                                      child: Tr('OR CONTINUE WITH',
                                         style: TextStyle(
                                           color: Colors.grey[600],
                                           fontSize: 10,
@@ -399,10 +394,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         ),
                                       ),
                                     ),
-                                    const Expanded(child: Divider(color: borderColor)),
+                                    Expanded(child: Divider(color: borderColor)),
                                   ],
                                 ),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
 
                                 // Pinterest-style Social Buttons
                                 OutlinedButton(
@@ -416,15 +411,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
+                                    children: [
                                       // Using generic icon for Gmail as assets might not exist, verify later if I should use logic
                                       Icon(Icons.mail_outline, size: 20), 
                                       SizedBox(width: 12),
-                                      Text('Continue with Gmail', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                                      Tr('Continue with Gmail', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 OutlinedButton(
                                   onPressed: () {},
                                   style: OutlinedButton.styleFrom(
@@ -436,10 +431,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
+                                    children: [
                                       Icon(Icons.smartphone, size: 20),
                                       SizedBox(width: 12),
-                                      Text('Continue with Mobile Number', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                                      Tr('Continue with Mobile Number', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                                     ],
                                   ),
                                 ),
@@ -452,7 +447,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
 
                   // Footer
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -473,7 +468,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                   
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   // Admin login link kept low profile
                   TextButton(
                     onPressed: () {
@@ -482,8 +477,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
                       );
                     },
-                    child: Text(
-                      'Admin Login',
+                    child: Tr('Admin Login',
                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
                   ),
@@ -663,7 +657,7 @@ class _HoverableCountryCodePickerState extends State<_HoverableCountryCodePicker
           barrierColor: Colors.black.withOpacity(0.8),
           closeIcon: const Icon(Icons.close, color: Colors.white),
           searchDecoration: InputDecoration(
-            hintText: 'Search country',
+            hintText: tr('Search country'),
             hintStyle: TextStyle(color: Colors.grey[600]),
             filled: true,
             fillColor: Colors.white.withOpacity(0.05),

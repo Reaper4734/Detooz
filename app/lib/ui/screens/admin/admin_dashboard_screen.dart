@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../services/api_service.dart';
-import '../../theme/app_colors.dart';
 import 'admin_login_screen.dart';
+import '../../components/tr.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -54,7 +54,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Tr('Error: $e')));
       }
     }
   }
@@ -106,27 +106,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: surfaceDark,
-        title: Text('Edit User', style: TextStyle(color: textPrimary)),
+        title: Tr('Edit User', style: TextStyle(color: textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildDarkTextField('Full Name', nameCtrl),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _buildDarkTextField('Phone', phoneCtrl),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Tr('Cancel')),
           FilledButton(
             onPressed: () async {
               try {
                 await apiService.updateUser(user['id'], nameCtrl.text, phoneCtrl.text);
                 Navigator.pop(ctx, true);
               } catch (e) {
-                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Tr('Error: $e')));
               }
             },
-            child: const Text('Save'),
+            child: Tr('Save'),
           ),
         ],
       ),
@@ -146,11 +146,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         title: Text(title, style: TextStyle(color: textPrimary)),
         content: Text(content, style: TextStyle(color: textSecondary)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Tr('Cancel')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true), 
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Tr('Delete'),
           ),
         ],
       ),
@@ -209,14 +209,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                    decoration: BoxDecoration(color: accentColor.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
                    child: Icon(Icons.shield, color: accentColor, size: 28),
                  ),
-                 const SizedBox(width: 16),
-                 Text('DETOOZ', style: TextStyle(color: textPrimary, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                 SizedBox(width: 16),
+                 Tr('DETOOZ', style: TextStyle(color: textPrimary, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
               ],
             ),
           ),
           Divider(color: Colors.white.withOpacity(0.05)),
           
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           
           _buildNavItem(0, 'Dashboard', Icons.dashboard_rounded),
           _buildNavItem(1, 'Users', Icons.people_rounded),
@@ -226,7 +226,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const Spacer(),
           Divider(color: Colors.white.withOpacity(0.05)),
           _buildNavItem(-1, 'Back to Login', Icons.logout_rounded, isLogout: true),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
         ],
       ),
     );
@@ -257,7 +257,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Row(
             children: [
               Icon(icon, color: color, size: 22),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Text(
                 title,
                 style: TextStyle(
@@ -293,15 +293,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _selectedIndex == 2 ? 'Guardian Network' : 'Security Alerts',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary),
               ),
-              Text('Welcome back, Admin', style: TextStyle(fontSize: 14, color: textSecondary)),
+              Tr('Welcome back, Admin', style: TextStyle(fontSize: 14, color: textSecondary)),
             ],
           ),
           const Spacer(),
           IconButton(onPressed: _loadAllData, icon: const Icon(Icons.refresh, color: Colors.white70), tooltip: 'Refresh'),
-          const SizedBox(width: 24),
+          SizedBox(width: 24),
           CircleAvatar(
             backgroundColor: accentColor,
-            child: const Text('A', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            child: Tr('A', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           ),
         ],
       ),
@@ -314,13 +314,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 1: return _buildUsersList();
       case 2: return _buildGuardiansList();
       case 3: return _buildAlertsList();
-      default: return const SizedBox();
+      default: return SizedBox();
     }
   }
 
   // ============ 1. OVERVIEW DASHBOARD ============
   Widget _buildOverviewStats() {
-    if (_stats == null) return const SizedBox();
+    if (_stats == null) return SizedBox();
     
     return SingleChildScrollView(
        padding: const EdgeInsets.all(32),
@@ -335,9 +335,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                _buildStatCard('Scams Blocked', _stats!['total_scams_detected'].toString(), Icons.gpp_bad, const Color(0xFFEF4444)),
              ],
            ),
-           const SizedBox(height: 48),
-           Text('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary)),
-           const SizedBox(height: 24),
+           SizedBox(height: 48),
+           Tr('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary)),
+           SizedBox(height: 24),
            _buildAlertsRefinedList(limit: 5),
          ],
        ),
@@ -367,7 +367,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               child: Icon(icon, color: color, size: 28),
             ),
-            const SizedBox(width: 20),
+            SizedBox(width: 20),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -399,14 +399,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Row(
             children: [
               CircleAvatar(backgroundColor: Colors.white10, child: Text(u['name']?[0] ?? 'U', style: const TextStyle(color: Colors.white))),
-              const SizedBox(width: 20),
+              SizedBox(width: 20),
               Expanded(
                 flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(u['name'] ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary)),
-                    Text('#${u['id']}', style: TextStyle(color: textSecondary, fontSize: 12)),
+                    Tr('#${u['id']}', style: TextStyle(color: textSecondary, fontSize: 12)),
                   ],
                 ),
               ),
@@ -419,7 +419,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Text(u['phone'] ?? '-', style: TextStyle(color: textSecondary)),
               ),
               Text(u['created_at']?.split('T')[0] ?? '', style: TextStyle(color: textSecondary)),
-              const SizedBox(width: 24),
+              SizedBox(width: 24),
               IconButton(onPressed: () => _editUser(u), icon: const Icon(Icons.edit, color: Colors.blue), tooltip: 'Edit'),
               IconButton(onPressed: () => _deleteUser(u['id'], u['name'] ?? ''), icon: const Icon(Icons.delete, color: Colors.redAccent), tooltip: 'Delete'),
             ],
@@ -447,7 +447,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Row(
             children: [
               const Icon(Icons.shield, color: Colors.greenAccent),
-              const SizedBox(width: 20),
+              SizedBox(width: 20),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +486,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                a['risk_level'] == 'HIGH' ? Icons.error : Icons.warning,
                color: a['risk_level'] == 'HIGH' ? Colors.red : Colors.orange,
              ),
-             const SizedBox(width: 16),
+             SizedBox(width: 16),
              Expanded(
                child: Column(
                  crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,12 +497,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                      overflow: TextOverflow.ellipsis,
                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: textPrimary),
                    ),
-                   const SizedBox(height: 4),
+                   SizedBox(height: 4),
                    Row(
                      children: [
-                       Text('User: ${a['user_name']}', style: TextStyle(fontSize: 12, color: textSecondary)),
-                       const SizedBox(width: 12),
-                       Text('Time: ${a['created_at']?.substring(11, 16)}', style: TextStyle(fontSize: 12, color: textSecondary)),
+                       Tr('User: ${a['user_name']}', style: TextStyle(fontSize: 12, color: textSecondary)),
+                       SizedBox(width: 12),
+                       Tr('Time: ${a['created_at']?.substring(11, 16)}', style: TextStyle(fontSize: 12, color: textSecondary)),
                      ],
                    ),
                  ],
@@ -521,7 +521,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: TextStyle(color: textSecondary, fontSize: 12)),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         TextField(
           controller: controller,
           style: TextStyle(color: textPrimary),

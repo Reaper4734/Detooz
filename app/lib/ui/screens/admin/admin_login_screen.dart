@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../services/api_service.dart';
 import 'admin_dashboard_screen.dart';
+import '../../components/tr.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -83,10 +83,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 ),
                 child: Icon(Icons.security, size: 48, color: accentColor),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
               
-              Text(
-                'Detooz Command Center',
+              Tr('Detooz Command Center',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 24,
@@ -95,27 +94,26 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Restricted Access',
+              SizedBox(height: 8),
+              Tr('Restricted Access',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: textSecondary),
               ),
               
-              const SizedBox(height: 48),
+              SizedBox(height: 48),
               
               // Email Field
               _buildDarkTextField(
                 controller: _emailController,
-                label: 'Admin Email',
+                label: tr('Admin Email'),
                 icon: Icons.admin_panel_settings_outlined,
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               
               // Password Field
               _buildDarkTextField(
                 controller: _passwordController,
-                label: 'Password',
+                label: tr('Password'),
                 icon: Icons.lock_outline,
                 isPassword: true,
                 onSubmitted: (_) => _login(),
@@ -134,14 +132,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     child: Row(
                       children: [
                         const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(child: Text(_error!, style: const TextStyle(color: Colors.redAccent))),
                       ],
                     ),
                   ),
                 ),
                 
-              const SizedBox(height: 40),
+              SizedBox(height: 40),
               
               SizedBox(
                 width: double.infinity,
@@ -153,18 +151,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
-                      : const Text('AUTHENTICATE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                      : Tr('AUTHENTICATE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Return to Application', style: TextStyle(color: textSecondary)),
+                child: Tr('Return to Application', style: TextStyle(color: textSecondary)),
               ),
             ],
           ),
@@ -184,7 +182,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         TextField(
           controller: controller,
           obscureText: isPassword,
