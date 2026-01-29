@@ -1,13 +1,12 @@
-import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../contracts/scan_view_model.dart';
-import '../../contracts/risk_level.dart';
 import '../../contracts/guardian_view_model.dart';
 import '../../services/api_service.dart';
 import '../../services/offline_cache_service.dart';
 import '../../services/ai_service.dart';
 import '../../services/connectivity_service.dart';
+import '../../services/translation/translation_service.dart';
 
 // ============ STATE NOTIFIERS ============
 
@@ -119,12 +118,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
          
          // Sync with backend in background if online
          if (hasInternet && aiLabel == 'SCAM') {
-           apiService.manualScan(
-              content: content, 
-              localRiskLevel: riskLevel,
-              localConfidence: aiConf,
-              localScamType: 'AI_DETECTED'
-           ).ignore();
+           apiService.manualScan(content: content).ignore();
          }
       } else {
          // Fallback to Server (we have internet and AI is uncertain)
@@ -647,3 +641,74 @@ Future<bool> reportScam(String value, String type, {String? reason}) async {
     return false;
   }
 }
+
+// ============ TRANSLATION ============
+
+/// Language state notifier for translation
+/// When language changes, widgets that watch this will rebuild
+class LanguageNotifier extends StateNotifier<String> {
+  LanguageNotifier() : super('en') {
+    // Load the actual current language from TranslationService
+    _initLanguage();
+  }
+  
+  Future<void> _initLanguage() async {
+    // Get current language from TranslationService (which loaded from SharedPreferences)
+    final currentLang = TranslationService().currentLanguage;
+    
+    // Preload common UI strings into translation cache for sync access
+    if (currentLang != 'en') {
+      await TranslationService().preloadTranslations([
+        // Navigation
+        'Home', 'History', 'Guardians', 'Profile', 'Settings',
+        'Back', 'Scan', 'English',
+        // History filter chips
+        'All', 'High Risk', 'Medium Risk', 'Safe',
+        // Guardian tabs
+        'Protect Me', 'Protect Others', 'Guardian Network',
+        'Add New Guardian', 'My Guardians', 'People I Protect',
+        // Common actions
+        'Download', 'Cancel', 'OK', 'Restart Now', 'Later',
+        // Dashboard
+        'Protection Active', 'High Risk Blocked',
+      ]);
+    }
+    
+    // Set state AFTER preload completes to trigger rebuild with cached translations
+    // Always set state (even if same value) by using a temp value trick
+    if (currentLang != 'en') {
+      state = 'en'; // Temp change
+      state = currentLang; // Actual change - triggers rebuild
+    } else {
+      state = currentLang;
+    }
+  }
+  
+  Future<void> setLanguage(String code) async {
+    state = code;
+    
+    // Preload common translations when language changes
+    if (code != 'en') {
+      await TranslationService().preloadTranslations([
+        // Navigation
+        'Home', 'History', 'Guardians', 'Profile', 'Settings',
+        'Back', 'Scan', 'English',
+        // History filter chips
+        'All', 'High Risk', 'Medium Risk', 'Safe',
+        // Guardian tabs
+        'Protect Me', 'Protect Others', 'Guardian Network',
+        'Add New Guardian', 'My Guardians', 'People I Protect',
+        // Common actions
+        'Download', 'Cancel', 'OK', 'Restart Now', 'Later',
+        // Dashboard
+        'Protection Active', 'High Risk Blocked',
+      ]);
+    }
+  }
+}
+
+/// Language provider - watch this to rebuild when language changes
+final languageProvider = StateNotifierProvider<LanguageNotifier, String>((ref) {
+  return LanguageNotifier();
+});
+
