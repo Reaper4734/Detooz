@@ -4,6 +4,8 @@ import 'dashboard_screen.dart';
 import 'history_screen.dart';
 import 'guardians_screen.dart';
 import 'settings_screen.dart';
+import 'education_screen.dart';
+
 import '../../services/sms_receiver_service.dart';
 import '../../services/firebase_messaging_service.dart';
 
@@ -21,6 +23,7 @@ class _MainScreenState extends State<MainScreen> {
     const DashboardScreen(),
     const HistoryScreen(),
     const GuardiansScreen(),
+    const EducationScreen(),
     const SettingsScreen(),
   ];
 

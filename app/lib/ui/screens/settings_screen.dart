@@ -6,6 +6,7 @@ import '../theme/app_spacing.dart';
 import '../theme/theme_provider.dart';
 import '../providers.dart';
 import 'language_selector_screen.dart';
+import 'edit_profile_screen.dart';
 import '../components/tr.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -323,7 +324,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           TextButton(
             onPressed: () {
                // Navigation hook
-               // Navigator.pushNamed(context, '/profile'); 
+               Navigator.push(
+                 context, 
+                 MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+               );
             },
             style: TextButton.styleFrom(
               backgroundColor: const Color(0xFF7C3AED), // Primary

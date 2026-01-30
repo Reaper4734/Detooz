@@ -37,9 +37,14 @@ class BottomNavBar extends ConsumerWidget {
           label: tr('Guardians'),
         ),
         BottomNavigationBarItem(
-          icon: const Icon(Icons.person_outline),
-          activeIcon: const Icon(Icons.person),
-          label: tr('Profile'),
+          icon: const Icon(Icons.school_outlined),
+          activeIcon: const Icon(Icons.school),
+          label: tr('Learn'),
+        ),
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.settings_outlined),
+          activeIcon: const Icon(Icons.settings),
+          label: tr('Settings'),
         ),
       ],
     );

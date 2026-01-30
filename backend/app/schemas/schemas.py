@@ -111,6 +111,13 @@ class ScanResponse(BaseModel):
     guardian_alerted: bool
     created_at: datetime
     
+    @validator("created_at")
+    def set_utc_timezone(cls, v):
+        if v.tzinfo is None:
+            from datetime import timezone
+            return v.replace(tzinfo=timezone.utc)
+        return v
+    
     class Config:
         from_attributes = True
 
