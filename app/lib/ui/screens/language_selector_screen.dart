@@ -8,6 +8,7 @@ import '../../services/translation/translation_service.dart';
 import '../../services/translation/language_config.dart';
 import '../../services/connectivity_service.dart';
 import '../providers.dart';
+import '../components/tr.dart';
 
 /// Shows a bottom sheet with language options
 /// Returns the selected language code or null if dismissed
@@ -142,8 +143,8 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
       
       if (!isOnline) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No internet. Connect to download language.'),
+          SnackBar(
+            content: Tr('No internet. Connect to download language.'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -170,12 +171,12 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
+              child: Tr('Cancel'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-              child: const Text('Download'),
+              child: Tr('Download'),
             ),
           ],
         ),
@@ -214,7 +215,7 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
       if (mounted) {
         setState(() => _downloadingLang = null); // Clear loading on error
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Download failed: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Tr('Download failed: $e'), backgroundColor: Colors.red),
         );
       }
     }
