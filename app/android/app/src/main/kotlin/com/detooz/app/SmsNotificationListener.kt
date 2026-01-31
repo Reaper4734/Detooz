@@ -133,14 +133,21 @@ class SmsNotificationListener : NotificationListenerService() {
         val extras = notification.extras ?: return
         
         // Extract sender (notification title)
-        val sender = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: return
+        val sender = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+        if (sender == null) {
+            Log.d(TAG, "❌ DEBUG: Sender is NULL for notification from $packageName")
+            return
+        }
         
         // Extract full message content
-        val message = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
-            ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
-            ?: ""
+        val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
+        val smallText = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+        val message = bigText ?: smallText ?: ""
+        
+        Log.d(TAG, "📋 DEBUG: sender='$sender', bigText=${bigText?.take(30)}, smallText=${smallText?.take(30)}")
         
         if (message.isBlank() || message.length < 3) {
+            Log.d(TAG, "❌ DEBUG: Message is blank or too short: '$message'")
             return
         }
         
@@ -153,6 +160,7 @@ class SmsNotificationListener : NotificationListenerService() {
         // Create unique key to prevent duplicates
         val messageKey = "${platform}_${sender}_${message.hashCode()}"
         if (recentMessages.contains(messageKey)) {
+            Log.d(TAG, "⏭️ DEBUG: Duplicate message skipped: $messageKey")
             return
         }
         

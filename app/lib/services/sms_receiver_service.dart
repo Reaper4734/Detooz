@@ -7,6 +7,7 @@ import '../services/ai_service.dart';
 import '../services/connectivity_service.dart';
 import '../ui/components/scam_alert_overlay.dart';
 import '../ui/screens/permission_wizard_screen.dart';
+import '../services/offline_cache_service.dart';
 
 /// Unified Message Receiver Service
 /// Handles incoming messages from SMS, WhatsApp, and Telegram via Notification Listener
@@ -109,6 +110,8 @@ class SmsReceiverService {
     });
   }
   
+
+
   /// Handle incoming message from any source (SMS or WhatsApp)
   Future<void> _handleIncomingMessage({
     required String message,
@@ -132,52 +135,98 @@ class SmsReceiverService {
       // Check connectivity
       final hasInternet = await connectivityService.hasInternet();
 
-      // 🛡️ Fast Path: If AI is super confident it's a SCAM, block immediately without Network
-      // UNLESS: It looks like a TRAI Regulated Header (e.g. AD-HDFCBK), in which case we let the Server decide vs Marketing
+      // TRAI Regulated Header check (e.g. AD-HDFCBK)
       final bool isTraiSender = RegExp(r"^[A-Z]{2}-?[A-Za-z0-9]{6}$", caseSensitive: false).hasMatch(sender);
       
-      // Use local result if: (high confidence scam) OR (no internet)
-      if ((aiLabel == 'SCAM' && aiConf > 0.90 && !isTraiSender) || !hasInternet) {
-         debugPrint('🛡️ Hybrid Shield: ${hasInternet ? "High Confidence Local Block" : "Offline Mode - Using Local AI"}!');
+      // 🛡️ Decision Logic:
+      // - HAM/OTP: Always handle locally (privacy)
+      // - SCAM with >90% confidence (non-TRAI): Handle locally (fast block)
+      // - SCAM with <90% confidence OR TRAI header: Defer to cloud for verification
+      // - No internet: Always local
+      
+      final bool useLocal = !hasInternet || 
+                            aiLabel == 'HAM' || 
+                            aiLabel == 'OTP' || 
+                            (aiLabel == 'SCAM' && aiConf > 0.90 && !isTraiSender);
+      
+      if (useLocal) {
+         String localReason = '';
+         if (!hasInternet) {
+           localReason = 'Offline Mode';
+         } else if (aiLabel == 'HAM' || aiLabel == 'OTP') {
+           localReason = 'Local AI (Safe Message)';
+         } else {
+           localReason = 'High Confidence Local Block';
+         }
+         debugPrint('🛡️ Hybrid Shield: $localReason!');
          
          // Map local AI result
          String riskLevel = 'LOW';
-         String riskReason = 'Analyzed offline';
+         String riskReason = 'Safe message';
          
          if (aiLabel == 'SCAM') {
            riskLevel = aiConf > 0.70 ? 'HIGH' : 'MEDIUM';
-           riskReason = 'AI detected scam pattern${hasInternet ? "" : " (Offline)"}';
+           riskReason = 'AI detected scam pattern${!hasInternet ? " (Offline)" : ""}';
          } else if (aiLabel == 'OTP') {
            riskLevel = 'LOW';
            riskReason = 'Transactional OTP';
+         } else {
+           // HAM
+           riskLevel = 'LOW';
+           riskReason = 'Safe message (AI verified)';
          }
          
          result = {
            'risk_level': riskLevel,
            'risk_reason': riskReason,
            'confidence': aiConf,
-           'scam_type': aiLabel == 'SCAM' ? 'AI_DETECTED' : null
+           'scam_type': aiLabel == 'SCAM' ? 'AI_DETECTED' : null,
+           'source': 'local'  // Mark as local AI analysis
          };
          
-         // Async: still send to backend for logging/learning when online
-         if (hasInternet) {
-           apiService.analyzeSms(sender: sender, message: message).ignore();
+         // Async: still send SCAM detections to backend for logging/learning when online
+         if (hasInternet && aiLabel == 'SCAM') {
+           apiService.analyzeSms(sender: sender, message: message).then((remoteResult) {
+              debugPrint('✅ Synced local scan to backend');
+           }).catchError((e) {
+              debugPrint('❌ Background sync failed: $e');
+           });
          }
          
       } else {
-         if (isTraiSender && aiLabel == 'SCAM') {
+         // Only reaches here for: SCAM <90% OR TRAI headers (need cloud verification)
+         if (isTraiSender) {
             debugPrint('🛡️ Hybrid Shield: Detected TRAI Header ($sender). Deferring to Server for Regulation Check.');
+         } else {
+            debugPrint('🛡️ Hybrid Shield: Uncertain ($aiLabel ${(aiConf * 100).toStringAsFixed(0)}%). Deferring to Cloud.');
          }
          
-         // ☁️ Cloud Fallback: If unsure (or HAM), verify with Server (DeepScan)
+         // ☁️ Cloud Fallback: Verify with Server (DeepScan)
          result = await apiService.analyzeSms(
           sender: sender,
           message: message,
         );
+        // Cloud result doesn't have 'source', it will default to 'cloud'
       }
       
       final riskLevel = result['risk_level'] as String?;
       final reason = result['risk_reason'] as String? ?? 'Potential scam detected';
+      
+      // Save to Local History Cache immediately
+      final scanEntry = {
+          'id': result['scan_id'] ?? DateTime.now().millisecondsSinceEpoch,
+          'sender': sender,
+          'message': message,
+          'platform': platform.toUpperCase(),
+          'risk_level': riskLevel,
+          'risk_reason': reason,
+          'scam_type': result['scam_type'],
+          'confidence': result['confidence'] ?? 0.0,
+          'created_at': DateTime.now().toIso8601String(),
+          'guardian_alerted': false,
+          'source': result['source'] ?? 'cloud',  // 'local' or 'cloud'
+      };
+      await offlineCacheService.cacheScan(scanEntry);
       
       // Show push notification for HIGH and MEDIUM risk (works in background)
       if (riskLevel == 'HIGH' || riskLevel == 'MEDIUM') {

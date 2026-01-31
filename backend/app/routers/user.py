@@ -49,6 +49,25 @@ class UserSettingsResponse(BaseModel):
         from_attributes = True
 
 
+class UserProfileUpdate(BaseModel):
+    """Update user profile"""
+    first_name: str | None = None
+    middle_name: str | None = None
+    last_name: str | None = None
+    phone: str | None = None
+
+
+class UserProfileResponse(BaseModel):
+    """User profile response"""
+    id: int
+    email: str
+    name: str
+    phone: str | None
+    
+    class Config:
+        from_attributes = True
+
+
 # ============== Endpoints ==============
 
 @router.get("/stats", response_model=UserStats)
@@ -235,6 +254,55 @@ async def set_language(
     return {"message": f"Language set to {lang}", "language": lang}
 
 
+# ============== Profile Update ==============
+
+@router.get("/profile", response_model=UserProfileResponse)
+async def get_profile(
+    current_user: User = Depends(get_current_user)
+):
+    """Get current user profile"""
+    return UserProfileResponse(
+        id=current_user.id,
+        email=current_user.email,
+        name=current_user.name,
+        phone=current_user.phone
+    )
+
+
+@router.put("/profile", response_model=UserProfileResponse)
+async def update_profile(
+    update: UserProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update user profile (name, phone)"""
+    
+    # Build new name from parts
+    name_parts = []
+    if update.first_name is not None:
+        name_parts.append(update.first_name.strip())
+    if update.middle_name is not None and update.middle_name.strip():
+        name_parts.append(update.middle_name.strip())
+    if update.last_name is not None:
+        name_parts.append(update.last_name.strip())
+    
+    if name_parts:
+        current_user.name = " ".join(name_parts)
+    
+    if update.phone is not None:
+        current_user.phone = update.phone.strip() if update.phone else None
+    
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return UserProfileResponse(
+        id=current_user.id,
+        email=current_user.email,
+        name=current_user.name,
+        phone=current_user.phone
+    )
+
+
 # ============== FCM Token ==============
 
 class FCMTokenRequest(BaseModel):
@@ -268,4 +336,160 @@ async def remove_fcm_token(
     await db.commit()
     
     return {"message": "FCM token removed", "success": True}
+
+
+# ============== Security & Privacy ==============
+
+class ChangePasswordRequest(BaseModel):
+    """Change password request"""
+    current_password: str
+    new_password: str
+
+
+class DeleteAccountRequest(BaseModel):
+    """Delete account request"""
+    password: str
+
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Change user password.
+    Requires current password for verification.
+    """
+    from app.routers.auth import verify_password, get_password_hash
+    
+    # Verify current password
+    if not verify_password(request.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Validate new password
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    if request.current_password == request.new_password:
+        raise HTTPException(status_code=400, detail="New password must be different")
+    
+    # Update password
+    current_user.password_hash = get_password_hash(request.new_password)
+    await db.commit()
+    
+    return {"message": "Password changed successfully", "success": True}
+
+
+@router.get("/export-data")
+async def export_user_data(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Export all user data as formatted TXT.
+    GDPR-compliant data export.
+    """
+    from fastapi.responses import PlainTextResponse
+    
+    # Get user scans
+    scans_result = await db.execute(
+        select(Scan)
+        .where(Scan.user_id == current_user.id)
+        .order_by(Scan.created_at.desc())
+        .limit(500)
+    )
+    scans = scans_result.scalars().all()
+    
+    # Get trusted senders
+    trusted_result = await db.execute(
+        select(TrustedSender).where(TrustedSender.user_id == current_user.id)
+    )
+    trusted = trusted_result.scalars().all()
+    
+    # Get settings
+    settings_result = await db.execute(
+        select(UserSettings).where(UserSettings.user_id == current_user.id)
+    )
+    settings = settings_result.scalar_one_or_none()
+    
+    # Build TXT content
+    lines = [
+        "=" * 50,
+        "  DETOOZ - YOUR DATA EXPORT",
+        f"  Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "=" * 50,
+        "",
+        "PROFILE",
+        "-" * 30,
+        f"Name: {current_user.first_name} {current_user.middle_name or ''} {current_user.last_name}".strip(),
+        f"Email: {current_user.email}",
+        f"Phone: {current_user.phone or 'Not set'}",
+        f"Joined: {current_user.created_at.strftime('%Y-%m-%d')}",
+        "",
+        f"SCAN HISTORY ({len(scans)} scans)",
+        "-" * 30,
+    ]
+    
+    for i, scan in enumerate(scans, 1):
+        lines.append(f"{i}. [{scan.risk_level.value}] {scan.created_at.strftime('%Y-%m-%d %H:%M')}")
+        lines.append(f"   Sender: {scan.sender or 'Unknown'}")
+        lines.append(f"   Message: {(scan.message_preview or scan.message or '')[:100]}...")
+        if scan.scam_type:
+            lines.append(f"   Scam Type: {scan.scam_type}")
+        lines.append("")
+    
+    lines.extend([
+        f"TRUSTED SENDERS ({len(trusted)})",
+        "-" * 30,
+    ])
+    
+    for ts in trusted:
+        lines.append(f"- {ts.sender} ({ts.name or 'No name'})")
+    
+    lines.extend([
+        "",
+        "SETTINGS",
+        "-" * 30,
+    ])
+    
+    if settings:
+        lines.append(f"Language: {settings.language}")
+        lines.append(f"Auto-block high risk: {settings.auto_block_high_risk}")
+        lines.append(f"Guardian alert threshold: {settings.alert_guardians_threshold}")
+        lines.append(f"Receive tips: {settings.receive_tips}")
+    else:
+        lines.append("Default settings")
+    
+    lines.extend([
+        "",
+        "=" * 50,
+        "  End of Export",
+        "=" * 50,
+    ])
+    
+    return PlainTextResponse("\n".join(lines))
+
+
+@router.delete("/delete-account")
+async def delete_account(
+    request: DeleteAccountRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Permanently delete user account and all associated data.
+    Requires password confirmation.
+    """
+    from app.routers.auth import verify_password
+    
+    # Verify password
+    if not verify_password(request.password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect password")
+    
+    # Delete user (cascades to related data)
+    await db.delete(current_user)
+    await db.commit()
+    
+    return {"message": "Account deleted successfully", "success": True}
 

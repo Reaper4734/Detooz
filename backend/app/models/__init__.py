@@ -2,6 +2,7 @@
 from app.models.models import (
     User, Scan, PlatformType, RiskLevel,
     TrustedSender, Feedback, Blacklist, UserSettings,
-    GuardianLink, GuardianAlert, ConsentLog
+    GuardianLink, GuardianAlert, ConsentLog,
+    FeedArticle, CuratedArticle, UserBookmark, ArticleCategory
 )
 

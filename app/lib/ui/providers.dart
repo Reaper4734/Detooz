@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../contracts/scan_view_model.dart';
@@ -33,7 +34,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
     
     try {
       final history = await apiService.getHistory(limit: 50);
-      final scans = history.map((scan) => ScanViewModel.fromJson(scan as Map<String, dynamic>)).toList();
+      final apiScans = history.map((scan) => ScanViewModel.fromJson(scan as Map<String, dynamic>)).toList();
       
       // Cache locally
       for (final scanMap in history) {
@@ -42,7 +43,20 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
         }
       }
       
-      state = AsyncValue.data(scans);
+      // Merge: API + Local-only (unsynced) logic
+      // This ensures we show "Pending" or "Offline" scans that haven't synced yet
+      final allCached = offlineCacheService.getCachedScans();
+      final apiIds = apiScans.map((s) => s.id.toString()).toSet();
+      
+      final localOnly = allCached
+          .where((s) => !apiIds.contains(s['id']?.toString()))
+          .map((s) => ScanViewModel.fromJson(s));
+          
+      final merged = [...apiScans, ...localOnly].toList();
+      // Sort by date desc (ScanViewModel needs strict comparison, usually createdAt is DateTime)
+      merged.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
+      
+      state = AsyncValue.data(merged);
     } catch (e) {
       // Don't auto-logout on 401 here to prevent race conditions or loops.
       // Just show error state. AuthNotifier handles session validity.
@@ -114,6 +128,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
            'scam_type': scamType,
            'confidence': aiConf,
            'created_at': DateTime.now().toIso8601String(),
+           'source': 'local',  // Mark as local AI analysis
          };
          
          // Sync with backend in background if online
@@ -136,6 +151,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
         'confidence': result['confidence'],
         'created_at': DateTime.now().toIso8601String(),
         'guardian_alerted': false,
+        'source': result['source'] ?? 'cloud',  // 'local' or 'cloud'
       };
 
       final scan = ScanViewModel.fromJson(scanMap);
@@ -235,24 +251,48 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
   }
   
   Future<void> checkAuth() async {
-    // Artificial delay to ensure splash is visible (optional, but good for UX)
-    // await Future.delayed(const Duration(milliseconds: 500)); 
+    debugPrint('🔐 checkAuth: Starting...');
     final token = await apiService.token;
+    debugPrint('🔐 checkAuth: Token = ${token != null ? "exists" : "null"}');
+    
     if (token == null) {
       await offlineCacheService.clearAll();
       state = const AsyncValue.data(false);
+      debugPrint('🔐 checkAuth: No token, going to login');
       return;
+    }
+
+    // Check connectivity first
+    final hasInternet = await connectivityService.hasInternet();
+    if (!hasInternet) {
+       debugPrint('🔐 checkAuth: Offline mode, assuming Valid Token');
+       state = const AsyncValue.data(true);
+       return;
     }
 
     try {
       // Validate token by fetching profile
-      await apiService.getUserProfile();
+      debugPrint('🔐 checkAuth: Validating token with /auth/me...');
+      
+      // Use shorter timeout for startup check (5s) to avoid "stuck on loading"
+      await apiService.getUserProfile().timeout(const Duration(seconds: 5));
+      
       state = const AsyncValue.data(true);
+      debugPrint('🔐 checkAuth: Token valid, authenticated!');
     } catch (e) {
-      // Token invalid (e.g. user deleted from DB)
-      await apiService.clearToken();
-      await offlineCacheService.clearAll();
-      state = const AsyncValue.data(false);
+      debugPrint('🔐 checkAuth: Validation failed - $e');
+      
+      // Only logout if explicitly Unauthorized
+      if (e.toString().contains('Unauthorized')) {
+         debugPrint('🔐 checkAuth: Token expired/invalid. Logging out.');
+         await apiService.clearToken();
+         await offlineCacheService.clearAll();
+         state = const AsyncValue.data(false);
+      } else {
+         // Network error / Timeout -> Assume Offline Mode (Allow Access)
+         debugPrint('🔐 checkAuth: Network error ($e), entering Offline Mode');
+         state = const AsyncValue.data(true);
+      }
     }
   }
   
@@ -342,16 +382,32 @@ final scanHistoryProvider = Provider<List<ScanViewModel>>((ref) {
 class UserProfile {
   final int id;
   final String email;
-  final String name;
+  final String firstName;
+  final String? middleName;
+  final String lastName;
   final String? phone;
   
-  UserProfile({required this.id, required this.email, required this.name, this.phone});
+  UserProfile({
+    required this.id,
+    required this.email,
+    required this.firstName,
+    this.middleName,
+    required this.lastName,
+    this.phone,
+  });
+  
+  /// Computed full name
+  String get name => [firstName, middleName, lastName]
+      .where((s) => s != null && s.isNotEmpty)
+      .join(' ');
   
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id'],
-      email: json['email'],
-      name: json['name'],
+      email: json['email'] ?? '',
+      firstName: json['first_name'] ?? '',
+      middleName: json['middle_name'],
+      lastName: json['last_name'] ?? '',
       phone: json['phone'],
     );
   }
@@ -368,6 +424,26 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
       state = AsyncValue.data(UserProfile.fromJson(data));
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
+    }
+  }
+
+  /// Update profile and refresh
+  Future<void> updateProfile({
+    required String firstName,
+    String? middleName,
+    required String lastName,
+    String? phone,
+  }) async {
+    try {
+      final data = await apiService.updateProfile(
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
+        phone: phone,
+      );
+      state = AsyncValue.data(UserProfile.fromJson(data));
+    } catch (e) {
+      rethrow; // Let UI handle the error
     }
   }
 }

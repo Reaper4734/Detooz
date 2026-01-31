@@ -1,10 +1,10 @@
 package com.detooz.app
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity: FlutterActivity() {
+class MainActivity: FlutterFragmentActivity() {
     
     companion object {
         private const val SMS_CHANNEL = "com.detooz.app/sms_notifications"

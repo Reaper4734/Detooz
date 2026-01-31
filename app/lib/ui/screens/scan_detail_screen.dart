@@ -63,8 +63,8 @@ class ScanDetailScreen extends StatelessWidget {
     }
 
     final isManual = scan.sender.startsWith('Manual');
-    // Logic for Analysis Source 
-    final isCloudAnalysis = scan.message.startsWith('/api/uploads/') || !(scan.riskReason?.contains('(Offline)') ?? false);
+    // Logic for Analysis Source - use explicit source field
+    final isLocalModel = scan.source == 'local';
 
     return Scaffold(
       backgroundColor: const Color(0xFF000000), // True Black
@@ -290,7 +290,7 @@ class ScanDetailScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  isCloudAnalysis ? 'Cloud Model' : 'Local Model',
+                                  isLocalModel ? 'Local Model' : 'Cloud Model',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,

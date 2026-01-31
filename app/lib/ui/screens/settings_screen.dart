@@ -7,6 +7,8 @@ import '../theme/theme_provider.dart';
 import '../providers.dart';
 import 'language_selector_screen.dart';
 import 'edit_profile_screen.dart';
+import 'privacy_security_screen.dart';
+import 'bookmarks_screen.dart';
 import '../components/tr.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -17,25 +19,23 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  // Sync state
-  bool _aiScanning = true;
-  bool _whatsapp = false;
   
   @override
   void initState() {
     super.initState();
-    // Refresh profile data when entering settings
+    // Load profile data when entering settings
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(userProfileProvider.notifier).loadProfile();
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
     // Watch providers
     final currentTheme = ref.watch(themeProvider);
     final settingsAsync = ref.watch(userSettingsProvider);
-    final profileAsync = ref.watch(userProfileProvider);
+
     
     // Aesthetic Constants
     const glassColor = Color(0xFF18181B); // Zinc-900
@@ -74,101 +74,94 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 2️⃣ Profile Summary Header (Independent of Settings API)
-            profileAsync.when(
-              data: (user) => _buildProfileCard(user.name, user.email, user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
-              loading: () => _buildGlassCard(child: const SizedBox(height: 80, child: Center(child: CircularProgressIndicator(color: primaryColor)))),
-              // Fallback to Demo Data (Alex Morgan) on Error
-              error: (e,__) => _buildProfileCard('Alex Morgan', 'alex.m@detooz.com', 'A'),
-            ),
-
+            // Profile Summary Card (name + email, no edit button)
+            _buildProfileCard(),
+            
             const SizedBox(height: 32),
-
-            // 3️⃣ Detection Section (Depends on Settings API)
-            _buildSectionHeader('Detection'),
-            settingsAsync.when(
-              data: (settings) => _buildGlassCard(
-                child: Column(
-                  children: [
-                    _buildSwitchRow(
-                      icon: Icons.block,
-                      iconBg: const Color(0x1AEF4444),
-                      iconColor: const Color(0xFFEF4444),
-                      title: tr('Auto-block'),
-                      value: settings.autoBlockHighRisk,
-                      onChanged: (v) => ref.read(userSettingsProvider.notifier).updateSettings(autoBlockHighRisk: v),
-                    ),
-                    _buildDivider(),
-                    _buildSwitchRow(
-                      icon: Icons.smart_toy,
-                      iconBg: const Color(0x1A3B82F6),
-                      iconColor: const Color(0xFF3B82F6),
-                      title: tr('AI Scanning'),
-                      value: _aiScanning,
-                      onChanged: (v) => setState(() => _aiScanning = v),
-                    ),
-                    _buildDivider(),
-                    _buildSwitchRow(
-                      icon: Icons.chat,
-                      iconBg: const Color(0x1A22C55E),
-                      iconColor: const Color(0xFF22C55E),
-                      title: tr('WhatsApp'),
-                      value: _whatsapp,
-                      onChanged: (v) => setState(() => _whatsapp = v),
-                    ),
-                  ],
+            
+            // Account Section
+            _buildSectionHeader('Account'),
+            _buildGlassCard(
+              padding: EdgeInsets.zero,
+              child: InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                ),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      _buildIcon(Icons.person, const Color(0x1A7C3AED), primaryColor),
+                      const SizedBox(width: 16),
+                      Expanded(child: Tr('My Profile', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+                      const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
+                    ],
+                  ),
                 ),
               ),
-              loading: () => _buildLoadingCard(),
-              error: (e, _) => _buildErrorCard(e.toString()),
+            ),
+            const SizedBox(height: 8),
+            // Privacy & Security Row
+            _buildGlassCard(
+              padding: EdgeInsets.zero,
+              child: InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PrivacySecurityScreen()),
+                ),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      _buildIcon(Icons.security, const Color(0x1A22C55E), const Color(0xFF22C55E)),
+                      const SizedBox(width: 16),
+                      Expanded(child: Tr('Privacy & Security', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+                      const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // My Bookmarks Row
+            _buildGlassCard(
+              padding: EdgeInsets.zero,
+              child: InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const BookmarksScreen()),
+                ),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      _buildIcon(Icons.bookmark, const Color(0x1AF59E0B), const Color(0xFFF59E0B)),
+                      const SizedBox(width: 16),
+                      Expanded(child: Tr('My Bookmarks', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+                      const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
+                    ],
+                  ),
+                ),
+              ),
             ),
 
             const SizedBox(height: 32),
 
-            // 4️⃣ Alerts Section (Depends on Settings API)
+            // Alerts Section (Only Safety Tips)
             _buildSectionHeader('Alerts'),
             settingsAsync.when(
               data: (settings) => _buildGlassCard(
-                child: Column(
-                  children: [
-                    _buildActionRow(
-                      icon: Icons.notifications_active,
-                      iconBg: const Color(0x1AF97316),
-                      iconColor: const Color(0xFFF97316),
-                      title: tr('Guardian Alert Threshold'),
-                      trailing: Row(
-                        children: [
-                           DropdownButtonHideUnderline(
-                             child: DropdownButton<String>(
-                               value: settings.alertGuardiansThreshold,
-                               dropdownColor: const Color(0xFF18181B), // Zinc-900
-                               borderRadius: BorderRadius.circular(16),
-                               icon: const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFFA1A1AA)),
-                               style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 15, fontWeight: FontWeight.w500),
-                               items: ['HIGH', 'MEDIUM', 'ALL'].map((String value) {
-                                 return DropdownMenuItem<String>(
-                                   value: value,
-                                   child: Tr(value.substring(0, 1) + value.substring(1).toLowerCase()),
-                                 );
-                               }).toList(),
-                               onChanged: (v) {
-                                if (v != null) ref.read(userSettingsProvider.notifier).updateSettings(alertGuardiansThreshold: v);
-                               },
-                             ),
-                           ),
-                        ],
-                      ),
-                    ),
-                    _buildDivider(),
-                    _buildSwitchRow(
-                      icon: Icons.lightbulb,
-                      iconBg: const Color(0x1AEAB308),
-                      iconColor: const Color(0xFFEAB308),
-                      title: tr('Safety Tips'),
-                      value: settings.receiveTips,
-                      onChanged: (v) => ref.read(userSettingsProvider.notifier).updateSettings(receiveTips: v),
-                    ),
-                  ],
+                child: _buildSwitchRow(
+                  icon: Icons.lightbulb,
+                  iconBg: const Color(0x1AEAB308),
+                  iconColor: const Color(0xFFEAB308),
+                  title: tr('Safety Tips'),
+                  value: settings.receiveTips,
+                  onChanged: (v) => ref.read(userSettingsProvider.notifier).updateSettings(receiveTips: v),
                 ),
               ),
               loading: () => _buildLoadingCard(),
@@ -283,62 +276,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   // --- Helpers ---
 
-  Widget _buildProfileCard(String name, String email, String initial) {
-    return _buildGlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFF27272A), // Zinc-800
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF3F3F46)), // Zinc-700
-            ),
-            child: Center(
-              child: Text(
-                initial,
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+  Widget _buildProfileCard() {
+    final profileAsync = ref.watch(userProfileProvider);
+    
+    return profileAsync.when(
+      data: (user) => _buildGlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 56, height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFF27272A),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF3F3F46)),
+              ),
+              child: Center(
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.1),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  email,
-                  style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 14, fontWeight: FontWeight.w500),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                ),
-              ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.name,
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.1),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    user.email,
+                    style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 14, fontWeight: FontWeight.w500),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: () {
-               // Navigation hook
-               Navigator.push(
-                 context, 
-                 MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-               );
-            },
-            style: TextButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED), // Primary
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              minimumSize: Size.zero, 
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            // No Edit button - just arrow to indicate tappable
+          ],
+        ),
+      ),
+      loading: () => _buildGlassCard(child: const SizedBox(height: 80, child: Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED))))),
+      error: (e, __) => _buildGlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 56, height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFF27272A),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF3F3F46)),
+              ),
+              child: const Center(
+                child: Text('?', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              ),
             ),
-            child: Tr('Edit Profile', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
-        ],
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('User', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 2),
+                  Text('Loading...', style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 14)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

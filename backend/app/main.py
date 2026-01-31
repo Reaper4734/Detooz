@@ -3,17 +3,51 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, scan, sms, trusted_sender, user, feedback, reputation, manual_scan
-from app.routers import guardian_link, guardian_alerts, admin, privacy
+from app.routers import guardian_link, guardian_alerts, admin, privacy, education
 from app.db import init_db
 # Import all models so they're registered with SQLAlchemy before init_db
-from app.models import User, Scan, TrustedSender, Feedback, Blacklist, UserSettings, GuardianLink, GuardianAlert
+from app.models import User, Scan, TrustedSender, Feedback, Blacklist, UserSettings, GuardianLink, GuardianAlert, FeedArticle, CuratedArticle, UserBookmark
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def auto_sync_feeds():
+    """Background task to sync RSS feeds periodically"""
+    from app.db.database import async_session
+    from app.services.feed_aggregator import sync_feeds_to_db
+    
+    while True:
+        try:
+            async with async_session() as db:
+                added = await sync_feeds_to_db(db)
+                logger.info(f"Auto-sync: Added {added} new articles")
+        except Exception as e:
+            logger.error(f"Auto-sync error: {e}")
+        
+        # Wait 30 minutes before next sync
+        await asyncio.sleep(30 * 60)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database on startup"""
+    """Initialize database on startup and start background tasks"""
     await init_db()
+    
+    # Start feed auto-sync in background
+    sync_task = asyncio.create_task(auto_sync_feeds())
+    logger.info("Started RSS feed auto-sync (every 30 minutes)")
+    
     yield
+    
+    # Cancel background task on shutdown
+    sync_task.cancel()
+    try:
+        await sync_task
+    except asyncio.CancelledError:
+        pass
+
 
 
 app = FastAPI(
@@ -56,6 +90,7 @@ app.include_router(guardian_link.router, prefix="/api/guardian-link", tags=["Gua
 app.include_router(guardian_alerts.router, prefix="/api/guardian-alerts", tags=["Guardian Alerts"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin Dashboard"])
 app.include_router(privacy.router, prefix="/api/privacy", tags=["Privacy & Consent"])
+app.include_router(education.router, prefix="/api", tags=["Education"])
 
 
 @app.get("/")

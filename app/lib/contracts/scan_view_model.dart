@@ -16,6 +16,7 @@ class ScanViewModel {
   final PlatformType platform;
   final String? riskReason;
   final double? confidence;
+  final String source;  // 'local' or 'cloud'
   final DateTime scannedAt;
 
   ScanViewModel({
@@ -27,6 +28,7 @@ class ScanViewModel {
     required this.platform,
     this.riskReason,
     this.confidence,
+    this.source = 'cloud',
     required this.scannedAt,
   });
   
@@ -41,6 +43,7 @@ class ScanViewModel {
       platform: _parsePlatform(json['platform']),
       riskReason: json['risk_reason'],
       confidence: (json['confidence'] as num?)?.toDouble(),
+      source: json['source'] ?? 'cloud',
       scannedAt: json['created_at'] != null 
           ? DateTime.tryParse(json['created_at']) ?? DateTime.now()
           : DateTime.now(),

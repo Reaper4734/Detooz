@@ -12,8 +12,8 @@ class ApiService {
   // Smart URL detection
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:8000/api';
-    // Android - using ADB Reverse (tcp:8000 tcp:8000)
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+    // Android - using ADB Reverse (tcp:8000 tcp:8000), tested working
+    if (!kIsWeb && Platform.isAndroid) return 'http://127.0.0.1:8000/api';
     // iOS and Desktop (Windows/Mac) use localhost
     return 'http://127.0.0.1:8000/api';
   }
@@ -66,6 +66,32 @@ class ApiService {
       Uri.parse('$baseUrl/auth/me'),
       headers: await _getHeaders(),
     ).timeout(const Duration(seconds: 45));
+    return _processResponse(response);
+  }
+
+  /// Update user profile (name, phone)
+  Future<Map<String, dynamic>> updateProfile({
+    required String firstName,
+    String? middleName,
+    required String lastName,
+    String? phone,
+  }) async {
+    final body = <String, dynamic>{
+      'first_name': firstName,
+      'last_name': lastName,
+    };
+    if (middleName != null && middleName.isNotEmpty) {
+      body['middle_name'] = middleName;
+    }
+    if (phone != null) {
+      body['phone'] = phone;
+    }
+    
+    final response = await http.put(
+      Uri.parse('$baseUrl/user/profile'),
+      headers: await _getHeaders(),
+      body: json.encode(body),
+    ).timeout(const Duration(seconds: 30));
     return _processResponse(response);
   }
 
@@ -660,6 +686,63 @@ class ApiService {
   Future<void> deleteAlert(int alertId) async {
     final response = await http.delete(Uri.parse('$baseUrl/admin/alerts/$alertId'));
     if (response.statusCode >= 400) throw Exception('Failed to delete alert');
+  }
+
+  // ============== Security & Privacy ==============
+
+  /// Change password (requires current password for verification)
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/user/change-password'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      }),
+    ).timeout(const Duration(seconds: 30));
+    
+    if (response.statusCode == 400) {
+      final data = jsonDecode(response.body);
+      throw Exception(data['detail'] ?? 'Invalid current password');
+    }
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to change password');
+    }
+  }
+
+  /// Export all user data as formatted TXT
+  Future<String> exportData() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/user/export-data'),
+      headers: await _getHeaders(),
+    ).timeout(const Duration(seconds: 60));
+    
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to export data');
+    }
+    return response.body; // Returns plain text
+  }
+
+  /// Delete account permanently (requires password confirmation)
+  Future<void> deleteAccount({required String password}) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/user/delete-account'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'password': password}),
+    ).timeout(const Duration(seconds: 30));
+    
+    if (response.statusCode == 400) {
+      final data = jsonDecode(response.body);
+      throw Exception(data['detail'] ?? 'Invalid password');
+    }
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to delete account');
+    }
+    // Clear local token after successful deletion
+    await clearToken();
   }
 }
 

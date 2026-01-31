@@ -235,3 +235,73 @@ class ConsentLog(Base):
     def __repr__(self):
         return f"<GuardianAlert id={self.id} status={self.status}>"
 
+
+# ============================================
+# Education Feed Models
+# ============================================
+
+class ArticleCategory(str, enum.Enum):
+    ALERT = "alert"
+    TIP = "tip"
+    NEWS = "news"
+
+
+class FeedArticle(Base):
+    """Cached articles from RSS feeds"""
+    __tablename__ = "feed_articles"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(500), nullable=False)
+    summary = Column(Text, nullable=True)
+    image_url = Column(String(1000), nullable=True)
+    source = Column(String(100), nullable=False)  # "Quick Heal", "GBHackers"
+    category = Column(SQLEnum(ArticleCategory), default=ArticleCategory.NEWS)
+    read_time_mins = Column(Integer, default=3)
+    url = Column(String(1000), unique=True, nullable=False)
+    published_at = Column(DateTime, nullable=True)
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    
+    def __repr__(self):
+        return f"<FeedArticle {self.title[:30]}>"
+
+
+class CuratedArticle(Base):
+    """Detooz team curated educational content"""
+    __tablename__ = "curated_articles"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(500), nullable=False)
+    summary = Column(Text, nullable=False)
+    content = Column(Text, nullable=True)  # Full article for in-app reading
+    image_url = Column(String(1000), nullable=True)
+    category = Column(SQLEnum(ArticleCategory), default=ArticleCategory.TIP)
+    read_time_mins = Column(Integer, default=3)
+    is_featured = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_by = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<CuratedArticle {self.title[:30]}>"
+
+
+class UserBookmark(Base):
+    """User's saved/bookmarked articles"""
+    __tablename__ = "user_bookmarks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Either feed_article_id OR curated_article_id will be set
+    feed_article_id = Column(Integer, ForeignKey("feed_articles.id", ondelete="CASCADE"), nullable=True)
+    curated_article_id = Column(Integer, ForeignKey("curated_articles.id", ondelete="CASCADE"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", backref="bookmarks")
+    feed_article = relationship("FeedArticle", backref="bookmarks")
+    curated_article = relationship("CuratedArticle", backref="bookmarks")
+    
+    def __repr__(self):
+        return f"<UserBookmark user={self.user_id}>"

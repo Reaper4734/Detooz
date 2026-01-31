@@ -50,6 +50,11 @@ class AIService {
 
     // 1. Tokenize 
     List<int> inputIds = _tokenize(smsText);
+    
+    // DEBUG: Log tokenization
+    debugPrint('🔤 Tokenizing: "$smsText"');
+    final nonZeroTokens = inputIds.where((t) => t != 0).toList();
+    debugPrint('🔤 Token IDs (non-zero): $nonZeroTokens');
 
     // 2. Prepare Inputs/Outputs
     // Input: [1, 128] int32
@@ -64,6 +69,10 @@ class AIService {
     // 4. Process Output (Softmax)
     List<double> logits = List<double>.from(output[0]);
     List<double> probs = _softmax(logits);
+    
+    // DEBUG: Log all scores
+    debugPrint('📊 Logits: ${logits.map((l) => l.toStringAsFixed(2)).toList()}');
+    debugPrint('📊 Probs: HAM=${(probs[0]*100).toStringAsFixed(1)}%, OTP=${(probs[1]*100).toStringAsFixed(1)}%, SCAM=${(probs[2]*100).toStringAsFixed(1)}%');
     
     int maxIdx = 0;
     double maxConf = 0.0;
