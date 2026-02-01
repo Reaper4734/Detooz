@@ -22,16 +22,23 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    first_name = Column(String(100), nullable=False)
+    password_hash = Column(String(255), nullable=True)  # Nullable for OTP-only users
+    first_name = Column(String(100), nullable=True)  # Nullable for OTP-only users
     middle_name = Column(String(100), nullable=True)
-    last_name = Column(String(100), nullable=False)
-    phone = Column(String(20), nullable=True)
+    last_name = Column(String(100), nullable=True)  # Nullable for OTP-only users
+    phone = Column(String(20), nullable=True, unique=True, index=True)
     country_code = Column(String(5), default="+91", nullable=True)
     is_active = Column(Boolean, default=True)
     fcm_token = Column(String(255), nullable=True)  # Firebase Cloud Messaging token
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # OTP Authentication fields
+    email_verified = Column(Boolean, default=False)
+    phone_verified = Column(Boolean, default=False)
+    firebase_uid = Column(String(128), nullable=True, unique=True)  # Firebase Phone Auth
+    google_uid = Column(String(128), nullable=True, unique=True)  # Google Sign-In
+    verification_grace_period_end = Column(DateTime, nullable=True)  # 30-day grace period
     
     # Privacy & Consent
     consent_training_data = Column(Boolean, default=False)  # LLM training consent

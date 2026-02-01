@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../components/tr.dart';
 import '../theme/app_colors.dart';
 import '../providers.dart';
+import '../../services/api_service.dart';
+import 'otp_verification_screen.dart';
+
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -192,6 +195,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ],
                 ),
               ),
+              
+              const SizedBox(height: 24),
+              
+              // Account Verification
+              _buildSectionHeader('Account Verification'),
+              _buildGlassCard(
+                child: Column(
+                  children: [
+                    _buildVerificationRow(
+                      label: 'Email',
+                      value: profile.email,
+                      isVerified: profile.emailVerified,
+                      onVerify: () => _verifyEmail(profile.email),
+                    ),
+
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -365,4 +386,149 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ],
     );
   }
+
+  Widget _buildVerificationRow({
+    required String label,
+    required String value,
+    required bool isVerified,
+    VoidCallback? onVerify,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          // Icon
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isVerified 
+                  ? AppColors.success.withValues(alpha: 0.15)
+                  : Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              isVerified ? Icons.verified : Icons.warning_amber_rounded,
+              color: isVerified ? AppColors.success : Colors.orange,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          
+          // Label and Value
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Tr(label, style: const TextStyle(color: Color(0xFF71717A), fontSize: 12)),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          
+          // Status Badge or Verify Button
+          if (isVerified)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: AppColors.success, size: 14),
+                  const SizedBox(width: 4),
+                  Tr('Verified', style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            )
+          else if (onVerify != null)
+            TextButton(
+              onPressed: onVerify,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Tr('Verify', style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF27272A),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Tr('Set up first', style: const TextStyle(color: Color(0xFF71717A), fontSize: 12)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _verifyEmail(String email) async {
+    // First, send the email OTP
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sending verification code...'), duration: Duration(seconds: 2)),
+      );
+      
+      final sendResult = await ApiService().sendEmailOTP(email: email);
+      if (sendResult['success'] != true && sendResult['message'] != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(sendResult['message']), backgroundColor: AppColors.danger),
+        );
+        return;
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send OTP: $e'), backgroundColor: AppColors.danger),
+      );
+      return;
+    }
+    
+    if (!mounted) return;
+    
+    // Navigate to OTP verification screen
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OTPVerificationScreen(
+          identifier: email,
+          isPhone: false,
+          onVerifyOTP: (otp) async {
+            // Call backend to verify email OTP
+            // Throws on error (caught by OTP screen's try-catch)
+            final response = await ApiService().verifyEmailOTP(email: email, otp: otp);
+            // Backend returns access_token on success
+            if (response['access_token'] != null) {
+              return true;
+            }
+            return false;
+          },
+          onResendOTP: () async {
+            await ApiService().sendEmailOTP(email: email);
+          },
+        ),
+      ),
+    );
+    
+    // Refresh profile if verified
+    if (result == true && mounted) {
+      ref.read(userProfileProvider.notifier).loadProfile();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email verified!'), backgroundColor: AppColors.success),
+      );
+    }
+  }
+
+
 }

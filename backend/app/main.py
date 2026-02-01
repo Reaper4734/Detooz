@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, scan, sms, trusted_sender, user, feedback, reputation, manual_scan
+from app.routers import auth, auth_otp, auth_google, scan, sms, trusted_sender, user, feedback, reputation, manual_scan
 from app.routers import guardian_link, guardian_alerts, admin, privacy, education
 from app.db import init_db
 # Import all models so they're registered with SQLAlchemy before init_db
@@ -77,6 +77,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(auth_otp.router, prefix="/api/auth", tags=["OTP Authentication"])
+app.include_router(auth_google.router, prefix="/api/auth", tags=["Google Sign-In"])
 app.include_router(scan.router, prefix="/api/scan", tags=["Scam Detection"])
 app.include_router(sms.router, prefix="/api/sms", tags=["SMS Detection"])
 app.include_router(trusted_sender.router, prefix="/api/trusted", tags=["Trusted Senders"])

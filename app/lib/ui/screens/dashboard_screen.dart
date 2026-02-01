@@ -13,6 +13,8 @@ import '../../contracts/risk_level.dart';
 
 import 'package:image_picker/image_picker.dart';
 import '../components/tr.dart';
+import '../components/verification_info_card.dart';
+import 'edit_profile_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -30,6 +32,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _isAnalyzing = false;
   final ImagePicker _picker = ImagePicker();
   Timer? _refreshTimer;
+  bool _verificationCardDismissed = false;
 
   @override
   void initState() {
@@ -220,6 +223,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               
               SizedBox(height: 32),
+              
+              // Verification Info Card (dismissible)
+              if (!_verificationCardDismissed)
+                Consumer(
+                  builder: (context, ref, _) {
+                    final profileAsync = ref.watch(userProfileProvider);
+                    return profileAsync.when(
+                      data: (profile) {
+                        if (profile.emailVerified) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: VerificationInfoCard(
+                            emailVerified: profile.emailVerified,
+                            phoneVerified: profile.phoneVerified,
+                            daysRemaining: profile.daysRemainingInGracePeriod,
+                            onVerifyNow: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                              );
+                            },
+                            onDismiss: () {
+                              setState(() => _verificationCardDismissed = true);
+                            },
+                          ),
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    );
+                  },
+                ),
               
               // Protection Active Card
               Container(

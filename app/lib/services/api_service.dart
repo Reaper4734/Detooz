@@ -12,8 +12,9 @@ class ApiService {
   // Smart URL detection
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:8000/api';
-    // Android - using ADB Reverse (tcp:8000 tcp:8000), tested working
-    if (!kIsWeb && Platform.isAndroid) return 'http://127.0.0.1:8000/api';
+    // Android emulator: 10.0.2.2 is alias for host machine's localhost
+    // Physical device: use your computer's IP (e.g., 192.168.x.x)
+    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
     // iOS and Desktop (Windows/Mac) use localhost
     return 'http://127.0.0.1:8000/api';
   }
@@ -104,6 +105,8 @@ class ApiService {
     required String lastName,
     required String phone,
     String? countryCode,
+    String? emailToken,
+    String? phoneToken,
   }) async {
     print('Registering user: $email');
     try {
@@ -118,6 +121,8 @@ class ApiService {
           'last_name': lastName,
           'phone': phone,
           'country_code': countryCode ?? '+91',
+          if (emailToken != null) 'email_verification_token': emailToken,
+          if (phoneToken != null) 'firebase_phone_token': phoneToken,
         }),
       ).timeout(const Duration(seconds: 45));
       
@@ -125,7 +130,13 @@ class ApiService {
       print('Register Response: ${response.statusCode} ${response.body}');
       
       final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data['access_token'] != null) {
+      
+      // Handle error status codes
+      if (response.statusCode >= 400) {
+        throw Exception(data['detail'] ?? 'Registration failed (${response.statusCode})');
+      }
+      
+      if (data['access_token'] != null) {
         await saveToken(data['access_token']);
       }
       return data;
@@ -153,7 +164,13 @@ class ApiService {
       print('Login Response: ${response.statusCode} ${response.body}');
       
       final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data['access_token'] != null) {
+      
+      // Handle error status codes
+      if (response.statusCode >= 400) {
+        throw Exception(data['detail'] ?? 'Login failed (${response.statusCode})');
+      }
+      
+      if (data['access_token'] != null) {
         await saveToken(data['access_token']);
       }
       return data;
@@ -162,6 +179,115 @@ class ApiService {
       rethrow;
     }
 
+  }
+
+  /// Google Sign-In - send Firebase ID token
+  Future<Map<String, dynamic>> googleSignIn({required String idToken}) async {
+    print('Google Sign-In with token...');
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/google-signin'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id_token': idToken}),
+      ).timeout(const Duration(seconds: 30));
+      
+      final data = jsonDecode(response.body);
+      
+      // Handle error status codes
+      if (response.statusCode >= 400) {
+        throw Exception(data['detail'] ?? 'Google Sign-In failed (${response.statusCode})');
+      }
+      
+      if (data['access_token'] != null) {
+        await saveToken(data['access_token']);
+      }
+      return data;
+    } catch (e) {
+      print('Google Sign-In Error: $e');
+      rethrow;
+    }
+  }
+
+
+
+  /// Send Email OTP for verification
+  Future<Map<String, dynamic>> sendEmailOTP({required String email}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/send-email-otp'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'email': email}),
+      ).timeout(const Duration(seconds: 30));
+      
+      final data = jsonDecode(response.body);
+      
+      // Handle HTTP error status codes
+      if (response.statusCode >= 400) {
+        return {
+          'success': false,
+          'message': data['detail'] ?? 'Failed to send OTP (${response.statusCode})',
+        };
+      }
+      
+      return data;
+    } catch (e) {
+      print('Send Email OTP Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Verify Email OTP (Login/Auth)
+  Future<Map<String, dynamic>> verifyEmailOTP({required String email, required String otp}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/verify-email-otp'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'email': email, 'otp': otp}),
+      ).timeout(const Duration(seconds: 30));
+      
+      final data = jsonDecode(response.body);
+      
+      // Handle error status codes
+      if (response.statusCode >= 400) {
+        throw Exception(data['detail'] ?? 'Verification failed (${response.statusCode})');
+      }
+      
+      // If verification returns a new token, save it
+      if (data['access_token'] != null) {
+        await saveToken(data['access_token']);
+      }
+      return data;
+    } catch (e) {
+      print('Verify Email OTP Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Verify Email OTP Only (Registration - does not create user/token)
+  /// Verify Email OTP Only (Registration - does not create user/token)
+  /// Returns verification token if successful
+  Future<String?> verifyEmailOnly({required String email, required String otp}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/verify-email-only'),
+        headers: await _getHeaders(),
+        body: jsonEncode({'email': email, 'otp': otp}),
+      ).timeout(const Duration(seconds: 30));
+      
+      final data = jsonDecode(response.body);
+      
+      if (response.statusCode >= 400) {
+        throw Exception(data['message'] ?? data['detail'] ?? 'Verification failed');
+      }
+      
+      if (data['success'] == true) {
+        return data['verification_token'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('Verify Email Only Error: $e');
+      rethrow;
+    }
   }
 
   // ============ FCM TOKEN ============

@@ -1,0 +1,33 @@
+=== DATASET QUALITY ANALYSIS ===
+Total samples: 79042
+
+--- Class Distribution ---
+ham: 51549
+scam: 23406
+otp: 4087
+Balance Ratio: 7.9%
+
+--- Quality Issues ---
+Short texts (<10 chars): 7165
+Duplicates: 19027
+Nulls: 115
+
+--- Source Distribution ---
+hf_gandharvbakshi: 73470
+uci_spam: 5572
+
+--- Emotional Keywords (HAM vs SCAM count) ---
+help: HAM=382, SCAM=536
+urgent: HAM=20, SCAM=569
+emergency: HAM=23, SCAM=48
+hospital: HAM=93, SCAM=36
+money: HAM=366, SCAM=361
+mom: HAM=92, SCAM=32
+dad: HAM=96, SCAM=28
+mummy: HAM=8, SCAM=0
+papa: HAM=39, SCAM=0
+police: HAM=55, SCAM=23
+accident: HAM=13, SCAM=8
+trouble: HAM=24, SCAM=0
+
+--- Language Analysis ---

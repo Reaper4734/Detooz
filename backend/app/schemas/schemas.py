@@ -13,6 +13,8 @@ class UserCreate(BaseModel):
     last_name: str
     phone: str | None = None
     country_code: str | None = "+91"
+    email_verification_token: str | None = None
+    firebase_phone_token: str | None = None
 
     # @validator('password')
     # def validate_password(cls, v):
@@ -40,6 +42,8 @@ class UserResponse(BaseModel):
     last_name: str
     phone: str | None
     country_code: str | None
+    email_verified: bool = False
+    phone_verified: bool = False
     is_active: bool
     created_at: datetime
     

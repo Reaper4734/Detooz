@@ -33,10 +33,10 @@ class FCMService:
                     service_account_info,
                     scopes=['https://www.googleapis.com/auth/firebase.messaging']
                 )
-                print(f"✅ FCM Service initialized from ENV VAR with project: {self.project_id}")
+                print(f"[INFO] FCM Service initialized from ENV VAR with project: {self.project_id}")
                 return
             except Exception as e:
-                print(f"❌ Failed to parse FIREBASE_CREDENTIALS_JSON: {e}")
+                print(f"[ERROR] Failed to parse FIREBASE_CREDENTIALS_JSON: {e}")
 
         # 2. Try Local File (College Project Mode)
         service_account_path = os.path.join(
@@ -54,11 +54,11 @@ class FCMService:
                     service_account_path,
                     scopes=['https://www.googleapis.com/auth/firebase.messaging']
                 )
-                print(f"✅ FCM Service initialized from LOCAL FILE with project: {self.project_id}")
+                print(f"[INFO] FCM Service initialized from LOCAL FILE with project: {self.project_id}")
             except Exception as e:
-                print(f"❌ Failed to load Firebase credentials file: {e}")
+                print(f"[ERROR] Failed to load Firebase credentials file: {e}")
         else:
-            print("⚠️ FCM credentials not found (Env Var or File). Push notifications disabled.")
+            print("[WARN] FCM credentials not found (Env Var or File). Push notifications disabled.")
     
     def _get_access_token(self) -> Optional[str]:
         """Get a valid access token, refreshing if necessary"""
@@ -70,7 +70,7 @@ class FCMService:
                 self.credentials.refresh(Request())
             return self.credentials.token
         except Exception as e:
-            print(f"❌ Failed to get FCM access token: {e}")
+            print(f"[ERROR] Failed to get FCM access token: {e}")
             return None
     
     async def send_guardian_alert(
@@ -87,11 +87,11 @@ class FCMService:
         Send push notification to guardian about a scam alert using FCM V1 API.
         """
         if not self.project_id or not self.credentials:
-            print("⚠️ FCM not configured. Push notification skipped.")
+            print("[WARN] FCM not configured. Push notification skipped.")
             return False
         
         if not fcm_token:
-            print("⚠️ No FCM token provided")
+            print("[WARN] No FCM token provided")
             return False
         
         access_token = self._get_access_token()
@@ -106,7 +106,7 @@ class FCMService:
             "message": {
                 "token": fcm_token,
                 "notification": {
-                    "title": f"🚨 SCAM ALERT: {protected_user_name}",
+                    "title": f"[ALERT] SCAM ALERT: {protected_user_name}",
                     "body": f"{scam_type} detected from {sender}"
                 },
                 "data": {
@@ -147,14 +147,14 @@ class FCMService:
                 )
                 
                 if response.status_code == 200:
-                    print(f"✅ FCM push sent to guardian for alert #{alert_id}")
+                    print(f"[INFO] FCM push sent to guardian for alert #{alert_id}")
                     return True
                 else:
-                    print(f"❌ FCM push failed: {response.status_code} - {response.text}")
+                    print(f"[ERROR] FCM push failed: {response.status_code} - {response.text}")
                     return False
                     
         except Exception as e:
-            print(f"❌ FCM push error: {e}")
+            print(f"[ERROR] FCM push error: {e}")
             return False
     
     async def send_notification(

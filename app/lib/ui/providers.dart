@@ -307,7 +307,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
     }
   }
   
-  Future<bool> register(String email, String password, String firstName, String? middleName, String lastName, String phone, {String? countryCode}) async {
+  Future<bool> register(String email, String password, String firstName, String? middleName, String lastName, String phone, {String? countryCode, String? emailToken, String? phoneToken}) async {
     try {
       final result = await apiService.register(
         email: email,
@@ -317,6 +317,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
         lastName: lastName,
         phone: phone,
         countryCode: countryCode,
+        emailToken: emailToken,
+        phoneToken: phoneToken,
       );
       final success = result['access_token'] != null;
       state = AsyncValue.data(success);
@@ -386,6 +388,9 @@ class UserProfile {
   final String? middleName;
   final String lastName;
   final String? phone;
+  final bool emailVerified;
+  final bool phoneVerified;
+  final DateTime? gracePeriodEnd;
   
   UserProfile({
     required this.id,
@@ -394,12 +399,25 @@ class UserProfile {
     this.middleName,
     required this.lastName,
     this.phone,
+    this.emailVerified = false,
+    this.phoneVerified = false,
+    this.gracePeriodEnd,
   });
   
   /// Computed full name
   String get name => [firstName, middleName, lastName]
       .where((s) => s != null && s.isNotEmpty)
       .join(' ');
+  
+  /// Returns true if any verification is missing
+  bool get needsVerification => !emailVerified || !phoneVerified;
+  
+  /// Days remaining in grace period (null if no grace period set)
+  int? get daysRemainingInGracePeriod {
+    if (gracePeriodEnd == null) return null;
+    final diff = gracePeriodEnd!.difference(DateTime.now()).inDays;
+    return diff > 0 ? diff : 0;
+  }
   
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
@@ -409,6 +427,11 @@ class UserProfile {
       middleName: json['middle_name'],
       lastName: json['last_name'] ?? '',
       phone: json['phone'],
+      emailVerified: json['email_verified'] ?? false,
+      phoneVerified: json['phone_verified'] ?? false,
+      gracePeriodEnd: json['verification_grace_period_end'] != null 
+          ? DateTime.tryParse(json['verification_grace_period_end'])
+          : null,
     );
   }
 }

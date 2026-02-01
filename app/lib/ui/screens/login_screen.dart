@@ -7,7 +7,11 @@ import '../theme/app_colors.dart';
 // import 'guardian_login_screen.dart'; // Removed
 import 'guardians_screen.dart';
 import 'admin/admin_login_screen.dart';
+
+import 'otp_verification_screen.dart';
 import '../components/tr.dart';
+import '../../services/google_auth_service.dart';
+import '../../services/api_service.dart';
 
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -20,6 +24,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLogin = true;
+
   bool _isLoading = false;
   
   // Controllers
@@ -33,6 +38,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
 
   String _countryCode = "+91";
+  
+  // Verification states (for registration flow)
+  bool _emailVerified = false;
+  bool _isVerifyingEmail = false;
+  // Verification tokens
+  String? _emailVerificationToken;
+  
+  // Google Auth
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
+
 
   @override
   void dispose() {
@@ -64,8 +79,147 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return null;
   }
 
+  // ---------- Email OTP Verification ----------
+  Future<void> _sendEmailOTP() async {
+    final email = _emailController.text.trim();
+    if (_validateEmail(email) != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('Please enter a valid email first'))),
+      );
+      return;
+    }
+    
+    setState(() => _isVerifyingEmail = true);
+    
+    try {
+      final response = await ApiService().sendEmailOTP(email: email);
+      
+      if (response['success'] == true && mounted) {
+        // Navigate to OTP screen
+        final verified = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OTPVerificationScreen(
+              identifier: email,
+              isPhone: false,
+              onVerifyOTP: (otp) async {
+                // Use verifyEmailOnly during registration to avoid creating user too early
+                final token = await ApiService().verifyEmailOnly(email: email, otp: otp);
+                if (token != null) {
+                  _emailVerificationToken = token;
+                  return true;
+                }
+                return false;
+              },
+              onResendOTP: () async {
+                await ApiService().sendEmailOTP(email: email);
+              },
+            ),
+          ),
+        );
+        
+        if (verified == true && mounted) {
+          setState(() => _emailVerified = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(tr('Email verified successfully!')),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? tr('Failed to send OTP')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isVerifyingEmail = false);
+    }
+  }
+
+
+
+  // ---------- Pre-submit Verification Popup ----------
+  Future<bool> _showVerificationPopupIfNeeded() async {
+    // If email verified, no popup needed
+    if (_emailVerified) return true;
+    
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.verified_user_outlined, color: Color(0xFF7C3BED)),
+            const SizedBox(width: 8),
+            Flexible(child: Text(tr('Verify Your Account'), style: const TextStyle(color: Colors.white))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              tr('Your email is not verified yet.'),
+              style: TextStyle(color: Colors.grey[300]),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              tr('Verify now for full account security, or you can verify later within 30 days.'),
+              style: TextStyle(color: Colors.grey[400], fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'later'),
+            child: Text(tr('Verify Later'), style: const TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'now'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7C3BED),
+            ),
+            child: Text(tr('Verify Now')),
+          ),
+        ],
+      ),
+    );
+    
+    if (result == 'now') {
+      if (!_emailVerified) {
+        await _sendEmailOTP();
+      }
+      return _emailVerified;
+    }
+    
+    // User chose "later"
+    return true;
+  }
+
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // For registration, show verification popup if not fully verified
+    if (!_isLogin) {
+      final shouldProceed = await _showVerificationPopupIfNeeded();
+      if (!shouldProceed) return; // User cancelled during verification
+    }
     
     setState(() => _isLoading = true);
     
@@ -77,6 +231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _passwordController.text.trim(),
         );
       } else {
+        // Note: We pass verification tokens if available so backend can mark as verified
         success = await ref.read(authProvider.notifier).register(
           _emailController.text.trim(),
           _passwordController.text.trim(),
@@ -85,6 +240,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _lastNameController.text.trim(),
           _phoneController.text.trim(),
           countryCode: _countryCode,
+          emailToken: _emailVerificationToken,
+
         );
       }
       
@@ -141,6 +298,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+
+  /// Handle Google Sign-In
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // 1. Get Firebase ID token from Google Sign-In
+      final result = await _googleAuthService.signIn();
+      
+      if (!result.success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.error ?? 'Google Sign-In failed'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+      
+      // 2. Send token to backend
+      final response = await ApiService().googleSignIn(idToken: result.idToken!);
+      
+      setState(() => _isLoading = false);
+      
+      if (response['access_token'] != null) {
+        // 3. Update auth state
+        await ref.read(authProvider.notifier).checkAuth();
+        
+        // 4. Show guardian prompt if new user
+        if (response['is_new_user'] == true && mounted) {
+          _showAddGuardianPrompt();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['detail'] ?? 'Sign-In failed'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -315,6 +533,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 hint: 'name@example.com',
                                 icon: Icons.email_outlined,
                                 validator: _validateEmail,
+                                isVerified: _emailVerified,
+                                suffix: !_isLogin ? (
+                                  _isVerifyingEmail 
+                                    ? const SizedBox(
+                                        width: 20, height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7C3BED)),
+                                      )
+                                    : TextButton(
+                                        onPressed: _sendEmailOTP,
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: Text(
+                                          tr('Send Code'),
+                                          style: const TextStyle(color: Color(0xFF7C3BED), fontSize: 12),
+                                        ),
+                                      )
+                                ) : null,
                               ),
                               SizedBox(height: 16),
 
@@ -399,43 +637,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 SizedBox(height: 24),
 
-                                // Pinterest-style Social Buttons
-                                OutlinedButton(
-                                  onPressed: () {},
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    side: const BorderSide(color: borderColor),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    backgroundColor: const Color(0xFF18181B),
-                                    foregroundColor: Colors.white,
+                                // Standardized Google Sign-In Button
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: borderColor),
                                   ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      // Using generic icon for Gmail as assets might not exist, verify later if I should use logic
-                                      Icon(Icons.mail_outline, size: 20), 
-                                      SizedBox(width: 12),
-                                      Tr('Continue with Gmail', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 12),
-                                OutlinedButton(
-                                  onPressed: () {},
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    side: const BorderSide(color: borderColor),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    backgroundColor: const Color(0xFF18181B),
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.smartphone, size: 20),
-                                      SizedBox(width: 12),
-                                      Tr('Continue with Mobile Number', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                                    ],
+                                  child: Material(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: InkWell(
+                                      onTap: _isLoading ? null : _handleGoogleSignIn,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            // Google "G" Logo
+                                            Container(
+                                              width: 24,
+                                              height: 24,
+                                              child: CustomPaint(
+                                                painter: _GoogleLogoPainter(),
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Text(
+                                              'Continue with Google',
+                                              style: TextStyle(
+                                                color: Colors.black87,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -511,6 +750,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool isPassword = false,
     bool isPhone = false,
     String? Function(String?)? validator,
+    Widget? suffix,
+    bool isVerified = false,
   }) {
     if (isPassword) {
       return _PasswordProtectedField(
@@ -533,21 +774,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0x1AFFFFFF)),
+          borderSide: BorderSide(color: isVerified ? Colors.green : const Color(0x1AFFFFFF)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0x1AFFFFFF)),
+          borderSide: BorderSide(color: isVerified ? Colors.green : const Color(0x1AFFFFFF)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF7C3BED)),
+          borderSide: BorderSide(color: isVerified ? Colors.green : const Color(0xFF7C3BED)),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.redAccent),
         ),
-        prefixIcon: icon != null ? Icon(icon, color: Colors.grey[500], size: 20) : null,
+        prefixIcon: icon != null ? Icon(icon, color: isVerified ? Colors.green : Colors.grey[500], size: 20) : null,
+        suffixIcon: isVerified 
+          ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+          : suffix,
       ),
     );
   }
@@ -676,4 +920,35 @@ class _HoverableCountryCodePickerState extends State<_HoverableCountryCodePicker
       ),
     );
   }
+}
+
+/// Custom painter for the Google "G" logo with official colors
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double s = size.width;
+    final center = Offset(s / 2, s / 2);
+    final radius = s / 2;
+    
+    // Google brand colors
+    final blue = Paint()..color = const Color(0xFF4285F4)..style = PaintingStyle.stroke..strokeWidth = s * 0.18;
+    final green = Paint()..color = const Color(0xFF34A853)..style = PaintingStyle.stroke..strokeWidth = s * 0.18;
+    final yellow = Paint()..color = const Color(0xFFFBBC05)..style = PaintingStyle.stroke..strokeWidth = s * 0.18;
+    final red = Paint()..color = const Color(0xFFEA4335)..style = PaintingStyle.stroke..strokeWidth = s * 0.18;
+
+    final rect = Rect.fromCircle(center: center, radius: radius * 0.7);
+    
+    // Draw arcs (Google G shape)
+    canvas.drawArc(rect, -0.3, 1.8, false, blue);
+    canvas.drawArc(rect, 1.5, 0.8, false, green);
+    canvas.drawArc(rect, 2.3, 0.8, false, yellow);
+    canvas.drawArc(rect, 3.1, 0.9, false, red);
+    
+    // Horizontal bar
+    final barPaint = Paint()..color = const Color(0xFF4285F4)..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(s * 0.5, s * 0.42, s * 0.4, s * 0.16), barPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

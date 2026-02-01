@@ -9,6 +9,7 @@ from app.config import settings
 from app.db import get_db
 from app.models import User
 from app.schemas import UserCreate, UserResponse, Token
+from app.services.firebase_service import FirebaseService
 
 router = APIRouter()
 
@@ -82,7 +83,27 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
                 detail="Phone number already registered"
             )
     
-    # Create new user
+    # Create new user with 30-day grace period
+    # Check for verification tokens
+    email_verified = False
+    if user_data.email_verification_token:
+        try:
+            payload = jwt.decode(user_data.email_verification_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            if payload.get("sub") == normalized_email and payload.get("type") == "email_verification":
+                email_verified = True
+        except JWTError:
+            pass
+
+    phone_verified = False
+    if user_data.firebase_phone_token and user_data.phone:
+        firebase_user = FirebaseService.verify_id_token(user_data.firebase_phone_token)
+        if firebase_user:
+            # Firebase phone format: +919876543210
+            expected_phone = f"{user_data.country_code or ''}{user_data.phone.strip()}"
+            if firebase_user.get('phone_number') == expected_phone:
+                phone_verified = True
+
+    grace_period_end = datetime.utcnow() + timedelta(days=30)
     user = User(
         email=normalized_email,
         password_hash=get_password_hash(user_data.password),
@@ -90,7 +111,10 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         middle_name=user_data.middle_name,
         last_name=user_data.last_name,
         phone=user_data.phone.strip() if user_data.phone else None,
-        country_code=user_data.country_code
+        country_code=user_data.country_code,
+        email_verified=email_verified,
+        phone_verified=phone_verified,
+        verification_grace_period_end=grace_period_end
     )
     db.add(user)
     await db.commit()

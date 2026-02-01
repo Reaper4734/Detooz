@@ -62,7 +62,13 @@ class UserProfileResponse(BaseModel):
     id: int
     email: str
     name: str
+    first_name: str
+    middle_name: str | None
+    last_name: str
     phone: str | None
+    email_verified: bool = False
+    phone_verified: bool = False
+    verification_grace_period_end: str | None = None
     
     class Config:
         from_attributes = True
@@ -261,11 +267,23 @@ async def get_profile(
     current_user: User = Depends(get_current_user)
 ):
     """Get current user profile"""
+    # Parse name into parts
+    name_parts = (current_user.name or '').split(' ', 2)
+    first_name = name_parts[0] if len(name_parts) > 0 else ''
+    middle_name = name_parts[1] if len(name_parts) > 2 else None
+    last_name = name_parts[-1] if len(name_parts) > 1 else ''
+    
     return UserProfileResponse(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        phone=current_user.phone
+        first_name=first_name,
+        middle_name=middle_name,
+        last_name=last_name,
+        phone=current_user.phone,
+        email_verified=current_user.email_verified or False,
+        phone_verified=current_user.phone_verified or False,
+        verification_grace_period_end=current_user.verification_grace_period_end.isoformat() if current_user.verification_grace_period_end else None
     )
 
 
@@ -295,11 +313,23 @@ async def update_profile(
     await db.commit()
     await db.refresh(current_user)
     
+    # Parse name into parts for response
+    name_parts = (current_user.name or '').split(' ', 2)
+    first_name = name_parts[0] if len(name_parts) > 0 else ''
+    middle_name = name_parts[1] if len(name_parts) > 2 else None
+    last_name = name_parts[-1] if len(name_parts) > 1 else ''
+    
     return UserProfileResponse(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        phone=current_user.phone
+        first_name=first_name,
+        middle_name=middle_name,
+        last_name=last_name,
+        phone=current_user.phone,
+        email_verified=current_user.email_verified or False,
+        phone_verified=current_user.phone_verified or False,
+        verification_grace_period_end=current_user.verification_grace_period_end.isoformat() if current_user.verification_grace_period_end else None
     )
 
 

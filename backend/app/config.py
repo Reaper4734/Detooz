@@ -26,12 +26,21 @@ class Settings(BaseSettings):
     # Firebase Cloud Messaging (for push notifications)
     FCM_SERVER_KEY: str = ""
     
+    # SMTP Settings for Email OTP
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    
     # CallMeBot (FREE WhatsApp alerts)
     CALLMEBOT_ENABLED: bool = True
     
     # Telegram Bot (FREE, unlimited - recommended!)
     # Create bot via @BotFather on Telegram
     TELEGRAM_BOT_TOKEN: str = ""
+    
+    # Fast2SMS (FREE 10 SMS/day for phone OTP)
+    FAST2SMS_API_KEY: str = ""
     
     model_config = {
         "env_file": ".env",

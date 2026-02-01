@@ -10,6 +10,7 @@ import 'edit_profile_screen.dart';
 import 'privacy_security_screen.dart';
 import 'bookmarks_screen.dart';
 import '../components/tr.dart';
+import 'main_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -53,7 +54,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         surfaceTintColor: Colors.transparent,
         leadingWidth: 80,
         leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
+          onTap: () => Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const MainScreen()),
+            (route) => false,
+          ),
           behavior: HitTestBehavior.opaque,
           child: Row(
             children: [
@@ -314,6 +319,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 14, fontWeight: FontWeight.w500),
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
+                  // Unverified badge
+                  if (user.needsVerification) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 14),
+                          const SizedBox(width: 4),
+                          Tr('Unverified', style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
