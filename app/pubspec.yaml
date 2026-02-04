@@ -45,9 +45,8 @@ dependencies:
   
   # Backend Integration (Added by Backend Team)
   http: ^1.2.0
-  # SMS plugins disabled temporarily - AGP 8.x compatibility issue
-  # another_telephony: ^0.4.1
-  # telephony: ^0.2.0
+  # Direct SMS sending for offline guardian alerts
+  flutter_sms: ^3.0.0  # AGP 8.x compatible
   permission_handler: ^11.3.0
   flutter_local_notifications: ^17.0.0
   flutter_secure_storage: ^9.0.0

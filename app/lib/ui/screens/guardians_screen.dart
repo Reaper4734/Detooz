@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../../services/api_service.dart';
+import '../../services/offline_cache_service.dart';
 import '../components/tr.dart';
 import '../providers.dart';
 
@@ -135,6 +136,15 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
       final data = await apiService.getMyGuardians();
       if (mounted) {
         setState(() { _guardians = data; _isLoading = false; });
+        
+        // Cache first guardian's phone for offline SMS alerts
+        if (data.isNotEmpty) {
+          final guardianPhone = data[0]['guardian_phone'] ?? data[0]['phone'];
+          if (guardianPhone != null && guardianPhone.toString().isNotEmpty) {
+            await offlineCacheService.saveSetting('guardian_phone', guardianPhone.toString());
+            debugPrint('📱 Cached guardian phone for offline alerts: $guardianPhone');
+          }
+        }
       }
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
@@ -341,7 +351,17 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
 
     setState(() => _isLinking = true);
     try {
-      await apiService.verifyGuardianOtp(email, otp);
+      final result = await apiService.verifyGuardianOtp(email, otp);
+      
+      // Cache protected user's phone for offline SMS alerts
+      if (result != null && result is Map) {
+        final userPhone = result['user_phone'] ?? result['phone'];
+        if (userPhone != null && userPhone.toString().isNotEmpty) {
+          await offlineCacheService.saveSetting('guardian_phone', userPhone.toString());
+          debugPrint('📱 Cached protected user phone for offline alerts: $userPhone');
+        }
+      }
+      
       if (mounted) {
         setState(() => _isLinking = false);
         _emailController.clear();

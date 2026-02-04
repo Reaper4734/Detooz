@@ -62,14 +62,26 @@ class FirebaseService:
             Dict with user info: {uid, phone_number, email} or None if invalid
         """
         if not _init_firebase():
-            logger.error("Firebase not initialized")
+            logger.error("Firebase not initialized - check service account file")
+            return None
+        
+        # Quick validation
+        if not id_token or len(id_token) < 100:
+            logger.error(f"Token too short or empty: len={len(id_token) if id_token else 0}")
             return None
             
         try:
             from firebase_admin import auth
             
-            # Verify the token
-            decoded = auth.verify_id_token(id_token, clock_skew_seconds=60)
+            # Verify the token with max clock skew (60 seconds is max allowed)
+            # This handles slight clock drift between client and server
+            decoded = auth.verify_id_token(
+                id_token, 
+                check_revoked=False,  # Don't check revocation for faster verification
+                clock_skew_seconds=60  # Max allowed by firebase-admin
+            )
+            
+            logger.info(f"Token verified for UID: {decoded.get('uid', 'unknown')[:8]}...")
             
             return {
                 'uid': decoded.get('uid'),
@@ -79,8 +91,20 @@ class FirebaseService:
                 'name': decoded.get('name', ''),  # For Google Sign-In display name
             }
             
+        except auth.ExpiredIdTokenError as e:
+            logger.error(f"Token EXPIRED: {e}")
+            return None
+        except auth.RevokedIdTokenError as e:
+            logger.error(f"Token REVOKED: {e}")
+            return None
+        except auth.InvalidIdTokenError as e:
+            logger.error(f"Token INVALID: {e}")
+            return None
+        except auth.CertificateFetchError as e:
+            logger.error(f"Certificate fetch error (network issue?): {e}")
+            return None
         except Exception as e:
-            logger.error(f"Token verification failed: {e}")
+            logger.error(f"Unexpected token verification error: {type(e).__name__}: {e}")
             return None
     
     @staticmethod

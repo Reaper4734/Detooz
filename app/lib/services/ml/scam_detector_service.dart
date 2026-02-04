@@ -27,7 +27,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 
 import 'vocab_loader.dart';
 import 'token_encoder.dart';
-import '../ui/components/tr.dart';
+import '../../ui/components/tr.dart';
 
 /// Result of scam detection inference
 class DetectionResult {

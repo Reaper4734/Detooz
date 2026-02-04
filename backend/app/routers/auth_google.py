@@ -55,11 +55,16 @@ async def google_signin(
     - If google_uid exists, login existing user
     - Otherwise, create new user
     """
+    # Debug: Log token info
+    token_preview = request.id_token[:50] + "..." if len(request.id_token) > 50 else request.id_token
+    logger.info(f"Google Sign-In attempt: token_len={len(request.id_token)}, preview={token_preview}")
+    
     # Verify Firebase token (works for Google Sign-In too)
     # Run in threadpool because verify_id_token is blocking I/O
     firebase_user = await run_in_threadpool(FirebaseService.verify_id_token, request.id_token)
     
     if not firebase_user:
+        logger.error("Firebase token verification returned None - check firebase_service.py logs")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired Google Sign-In token"

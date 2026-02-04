@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../services/ai_service.dart';
 import '../services/connectivity_service.dart';
+import '../services/sms_sender_service.dart';
 import '../ui/components/scam_alert_overlay.dart';
 import '../ui/screens/permission_wizard_screen.dart';
 import '../services/offline_cache_service.dart';
@@ -250,6 +251,16 @@ class SmsReceiverService {
       } else if (riskLevel == 'MEDIUM') {
         debugPrint('⚠️ MEDIUM risk detected from $sender');
       }
+      
+      // Send guardian alert (HIGH risk only)
+      if (riskLevel == 'HIGH') {
+        await _sendGuardianAlert(
+          sender: sender,
+          message: message,
+          scamType: result['scam_type']?.toString() ?? 'Suspected Scam',
+          hasInternet: hasInternet,
+        );
+      }
     } catch (e) {
       debugPrint('❌ Message analysis failed: $e');
     }
@@ -282,6 +293,65 @@ class SmsReceiverService {
       debugPrint('🚫 Blocked sender: $sender');
     } catch (e) {
       debugPrint('❌ Failed to block sender: $e');
+    }
+  }
+  
+  /// Send guardian alert via API (online) or SMS (offline)
+  Future<void> _sendGuardianAlert({
+    required String sender,
+    required String message,
+    required String scamType,
+    required bool hasInternet,
+  }) async {
+    try {
+      // Get cached guardian phone number
+      final guardianPhone = offlineCacheService.getSetting('guardian_phone');
+      
+      if (guardianPhone == null || guardianPhone.isEmpty) {
+        debugPrint('ℹ️ No guardian linked, skipping alert');
+        return;
+      }
+      
+      if (hasInternet) {
+        // Online: Use API (FCM push to guardian)
+        try {
+          await apiService.sendGuardianAlert(
+            sender: sender,
+            scamType: scamType,
+          );
+          debugPrint('✅ Guardian alerted via API (FCM)');
+        } catch (e) {
+          debugPrint('⚠️ API alert failed, falling back to SMS: $e');
+          // Fallback to SMS if API fails
+          await _sendGuardianSms(guardianPhone, sender, scamType, message);
+        }
+      } else {
+        // Offline: Direct SMS (P2P via carrier)
+        await _sendGuardianSms(guardianPhone, sender, scamType, message);
+      }
+    } catch (e) {
+      debugPrint('❌ Guardian alert failed: $e');
+    }
+  }
+  
+  /// Send SMS directly to guardian (works offline)
+  Future<void> _sendGuardianSms(
+    String guardianPhone,
+    String sender,
+    String scamType,
+    String message,
+  ) async {
+    final success = await smsSenderService.sendGuardianAlert(
+      guardianPhone: guardianPhone,
+      sender: sender,
+      scamType: scamType,
+      messagePreview: message,
+    );
+    
+    if (success) {
+      debugPrint('📱 Guardian alerted via SMS (offline mode)');
+    } else {
+      debugPrint('❌ SMS to guardian failed');
     }
   }
 }

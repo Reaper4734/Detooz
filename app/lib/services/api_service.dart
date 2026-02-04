@@ -396,6 +396,22 @@ class ApiService {
     return res is List ? res : [];
   }
 
+  /// Send alert to guardian (triggers FCM push notification)
+  Future<Map<String, dynamic>> sendGuardianAlert({
+    required String sender,
+    required String scamType,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/guardian-alerts/send'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'sender': sender,
+        'scam_type': scamType,
+      }),
+    ).timeout(const Duration(seconds: 15));
+    return _processResponse(response);
+  }
+
   // ============ TRUSTED SENDERS ============
 
   /// Mark a sender as trusted

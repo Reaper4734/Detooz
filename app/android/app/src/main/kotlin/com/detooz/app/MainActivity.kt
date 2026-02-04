@@ -3,11 +3,16 @@ package com.detooz.app
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.telephony.SmsManager
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 
 class MainActivity: FlutterFragmentActivity() {
     
     companion object {
         private const val SMS_CHANNEL = "com.detooz.app/sms_notifications"
+        private const val SMS_SENDER_CHANNEL = "com.detooz.app/sms"
     }
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -41,6 +46,67 @@ class MainActivity: FlutterFragmentActivity() {
                     result.notImplemented()
                 }
             }
+        }
+        
+        // Setup SMS sender channel (for guardian alerts when offline)
+        val smsSenderChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            SMS_SENDER_CHANNEL
+        )
+        
+        smsSenderChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "sendSms" -> {
+                    val phone = call.argument<String>("phone")
+                    val message = call.argument<String>("message")
+                    
+                    if (phone == null || message == null) {
+                        result.error("INVALID_ARGS", "Phone and message are required", null)
+                        return@setMethodCallHandler
+                    }
+                    
+                    val success = sendDirectSms(phone, message)
+                    result.success(success)
+                }
+                "canSendSms" -> {
+                    result.success(hasSmsPermission())
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
+    }
+    
+    private fun hasSmsPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this, 
+            Manifest.permission.SEND_SMS
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+    
+    private fun sendDirectSms(phone: String, message: String): Boolean {
+        return try {
+            if (!hasSmsPermission()) {
+                android.util.Log.e("MainActivity", "❌ SEND_SMS permission not granted")
+                return false
+            }
+            
+            val smsManager = SmsManager.getDefault()
+            
+            // Split message if too long
+            val parts = smsManager.divideMessage(message)
+            if (parts.size > 1) {
+                smsManager.sendMultipartTextMessage(phone, null, parts, null, null)
+            } else {
+                smsManager.sendTextMessage(phone, null, message, null, null)
+            }
+            
+            android.util.Log.d("MainActivity", "📱 SMS sent to $phone")
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "❌ SMS send failed: ${e.message}")
+            false
         }
     }
 
