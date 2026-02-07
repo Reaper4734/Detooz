@@ -13,7 +13,7 @@ _firebase_app = None
 
 
 def _init_firebase():
-    """Initialize Firebase Admin SDK"""
+    """Initialize Firebase Admin SDK - supports both file and base64 env var"""
     global _firebase_app
     
     if _firebase_app is not None:
@@ -22,20 +22,32 @@ def _init_firebase():
     try:
         import firebase_admin
         from firebase_admin import credentials
+        import base64
+        import json
         
-        # Check for service account file
-        cred_path = os.getenv(
-            'FIREBASE_SERVICE_ACCOUNT',
-            'firebase-service-account.json'
-        )
+        # Method 1: Base64-encoded env var (for cloud deployment)
+        cred_base64 = os.getenv('FIREBASE_CREDENTIALS_BASE64')
+        if cred_base64:
+            try:
+                cred_json = base64.b64decode(cred_base64).decode('utf-8')
+                cred_dict = json.loads(cred_json)
+                cred = credentials.Certificate(cred_dict)
+                _firebase_app = firebase_admin.initialize_app(cred)
+                logger.info("Firebase initialized from FIREBASE_CREDENTIALS_BASE64")
+                return _firebase_app
+            except Exception as e:
+                logger.error(f"Failed to load base64 credentials: {e}")
         
+        # Method 2: File path (for local development)
+        cred_path = os.getenv('FIREBASE_SERVICE_ACCOUNT', 'firebase-service-account.json')
         if os.path.exists(cred_path):
             cred = credentials.Certificate(cred_path)
             _firebase_app = firebase_admin.initialize_app(cred)
-            logger.info("Firebase Admin SDK initialized")
-        else:
-            logger.warning(f"Firebase service account not found: {cred_path}")
-            return None
+            logger.info("Firebase initialized from file")
+            return _firebase_app
+        
+        logger.warning(f"Firebase credentials not found (file: {cred_path})")
+        return None
             
     except ImportError:
         logger.warning("firebase-admin package not installed")
