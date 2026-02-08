@@ -1,9 +1,17 @@
 import json
 import base64
 import asyncio
-import torch
-import torch.nn.functional as F
-from transformers import MobileBertTokenizerFast, MobileBertForSequenceClassification
+
+# ML dependencies are optional (for cloud-only deployment)
+try:
+    import torch
+    import torch.nn.functional as F
+    from transformers import MobileBertTokenizerFast, MobileBertForSequenceClassification
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    torch = None
+
 from app.config import settings
 from app.services.sms_patterns import check_patterns
 
@@ -103,9 +111,16 @@ class ScamDetector:
             except Exception as e:
                 print(f"DEBUG: OpenRouter Init Failed: {e}")
 
-        # Local Model Initialization
+        # Local Model Initialization (only if torch is available)
         self.local_model = None
         self.local_tokenizer = None
+        self.device = "cpu"
+        
+        if not TORCH_AVAILABLE:
+            print("INFO: PyTorch not installed. Running in Cloud-Only Mode.")
+            print("INFO: Using Groq/OpenRouter for AI analysis, Pattern Matching for offline.")
+            return
+            
         try:
             # Robust Path Logic
             import os
