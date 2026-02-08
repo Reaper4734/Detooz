@@ -9,14 +9,18 @@ import 'package:flutter/foundation.dart';
 /// API Service for connecting to Detooz Backend
 /// Created by Backend Team for Stitch
 class ApiService {
+  // AWS EC2 Production Backend
+  static const String _prodUrl = 'http://3.108.220.220:8000/api';
+  
   // Smart URL detection
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:8000/api';
-    // Android emulator: 10.0.2.2 is alias for host machine's localhost
-    // Physical device: use your computer's IP (e.g., 192.168.x.x)
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
-    // iOS and Desktop (Windows/Mac) use localhost
-    return 'http://127.0.0.1:8000/api';
+    // Use production AWS backend for all platforms
+    return _prodUrl;
+    
+    // Uncomment for local development:
+    // if (kIsWeb) return 'http://localhost:8000/api';
+    // if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+    // return 'http://127.0.0.1:8000/api';
   }
   
   final FlutterSecureStorage _storage = const FlutterSecureStorage();

@@ -19,12 +19,8 @@ class ConnectivityService {
   
   Timer? _healthCheckTimer;
   
-  /// Smart URL detection for backend
-  static String get _healthUrl {
-    if (kIsWeb) return 'http://localhost:8000/health';
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/health';
-    return 'http://127.0.0.1:8000/health';
-  }
+  /// AWS EC2 Production Backend health URL
+  static const String _healthUrl = 'http://3.108.220.220:8000/health';
 
   /// Check if device has internet connectivity
   Future<bool> hasInternet() async {
