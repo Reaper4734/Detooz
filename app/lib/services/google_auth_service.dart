@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 class GoogleAuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
+    // Web Client ID from google-services.json for ID token
+    serverClientId: '497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com',
   );
   final FirebaseAuth _auth = FirebaseAuth.instance;
   

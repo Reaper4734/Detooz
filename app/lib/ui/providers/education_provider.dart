@@ -118,7 +118,8 @@ class BookmarksNotifier extends StateNotifier<AsyncValue<List<Article>>> {
 
   Future<void> addBookmark(Article article) async {
     try {
-      await educationService.addBookmark(article.id, isCurated: article.isCurated);
+      // URL-based bookmark - pass entire article
+      await educationService.addBookmark(article);
       state.whenData((bookmarks) {
         state = AsyncValue.data([article.copyWith(isBookmarked: true), ...bookmarks]);
       });
@@ -129,9 +130,10 @@ class BookmarksNotifier extends StateNotifier<AsyncValue<List<Article>>> {
 
   Future<void> removeBookmark(Article article) async {
     try {
-      await educationService.removeBookmark(article.id, isCurated: article.isCurated);
+      // URL-based removal
+      await educationService.removeBookmark(article.url);
       state.whenData((bookmarks) {
-        state = AsyncValue.data(bookmarks.where((b) => b.id != article.id || b.isCurated != article.isCurated).toList());
+        state = AsyncValue.data(bookmarks.where((b) => b.url != article.url).toList());
       });
     } catch (e) {
       rethrow;
@@ -142,3 +144,4 @@ class BookmarksNotifier extends StateNotifier<AsyncValue<List<Article>>> {
 final bookmarksNotifierProvider = StateNotifierProvider<BookmarksNotifier, AsyncValue<List<Article>>>((ref) {
   return BookmarksNotifier();
 });
+

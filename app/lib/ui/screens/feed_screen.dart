@@ -98,13 +98,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
   Widget _buildInstagramCard(Article article) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF18181B),
-        border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.05)),
-          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-        ),
+      margin: const EdgeInsets.only(bottom: 8), // Reduced margin, spacing via header
+      decoration: const BoxDecoration(
+        color: AppColors.backgroundDark, // Pure black, no borders
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +112,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                  backgroundColor: AppColors.primary.withOpacity(0.3),
                   child: Text(
                     article.source.substring(0, 1).toUpperCase(),
                     style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
@@ -129,7 +125,12 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     children: [
                       Text(
                         article.source,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Container(
@@ -165,7 +166,12 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               height: 300,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFF27272A),
+                color: AppColors.backgroundDark, // Pure black
+                gradient: article.imageUrl == null ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.backgroundDark, AppColors.primary.withOpacity(0.1)],
+                ) : null,
                 image: article.imageUrl != null
                     ? DecorationImage(
                         image: NetworkImage(article.imageUrl!),
@@ -174,7 +180,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     : null,
               ),
               child: article.imageUrl == null
-                  ? Icon(Icons.image_not_supported, size: 64, color: Colors.white.withOpacity(0.2))
+                  ? Icon(Icons.image_not_supported, size: 64, color: AppColors.textSecondaryDark.withOpacity(0.5))
                   : null,
             ),
           ),
@@ -193,7 +199,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 const Spacer(),
                 Text(
                   '${article.readTimeMins} min read',
-                  style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
+                  style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12),
                 ),
               ],
             ),

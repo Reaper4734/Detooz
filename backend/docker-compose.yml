@@ -11,14 +11,11 @@ services:
       - ./data:/data
       # Persist uploaded images
       - ./uploads:/app/app/static/uploads
+    env_file:
+      - .env
     environment:
       # Database uses mounted volume
       - DATABASE_URL=sqlite+aiosqlite:////data/detooz.db
-      # API Keys (loaded from .env file)
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - SECRET_KEY=${SECRET_KEY}
-      - FIREBASE_CREDENTIALS_BASE64=${FIREBASE_CREDENTIALS_BASE64}
       # Production settings
       - DEBUG=false
     restart: unless-stopped

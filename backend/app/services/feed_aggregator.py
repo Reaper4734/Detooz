@@ -1,16 +1,22 @@
 """
 Feed Aggregator Service
 Fetches and processes RSS feeds from educational sources
+With in-memory caching for live feed architecture
 """
 import asyncio
 import re
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timedelta
+from typing import List, Optional, Tuple
 import logging
 
 logger = logging.getLogger(__name__)
 
-# RSS Feed sources
+# In-memory cache for RSS feeds
+_feed_cache: List[dict] = []
+_cache_timestamp: Optional[datetime] = None
+CACHE_TTL_MINUTES = 5  # Cache expires after 5 minutes
+
+# RSS Feed sources - Scam education, cybersecurity, and online safety
 FEED_SOURCES = [
     {
         "name": "Quick Heal",
@@ -20,6 +26,46 @@ FEED_SOURCES = [
     {
         "name": "GBHackers",
         "url": "https://gbhackers.com/feed/",
+        "default_category": "news"
+    },
+    {
+        "name": "The Hacker News",
+        "url": "https://feeds.feedburner.com/TheHackersNews",
+        "default_category": "news"
+    },
+    {
+        "name": "Krebs on Security",
+        "url": "https://krebsonsecurity.com/feed/",
+        "default_category": "news"
+    },
+    {
+        "name": "Naked Security",
+        "url": "https://nakedsecurity.sophos.com/feed/",
+        "default_category": "tip"
+    },
+    {
+        "name": "Dark Reading",
+        "url": "https://www.darkreading.com/rss.xml",
+        "default_category": "news"
+    },
+    {
+        "name": "Security Week",
+        "url": "https://www.securityweek.com/feed/",
+        "default_category": "news"
+    },
+    {
+        "name": "Bleeping Computer",
+        "url": "https://www.bleepingcomputer.com/feed/",
+        "default_category": "alert"
+    },
+    {
+        "name": "CERT-In",
+        "url": "https://www.cert-in.org.in/rss/rss-feed.php",
+        "default_category": "alert"
+    },
+    {
+        "name": "Cyber Security News",
+        "url": "https://cybersecuritynews.com/feed/",
         "default_category": "news"
     }
 ]
@@ -114,9 +160,14 @@ async def fetch_feed(source: dict) -> List[dict]:
         
         logger.info(f"Fetching feed from {source['name']}: {source['url']}")
         
+        # User-Agent header to avoid 403 blocks
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; DetoozBot/1.0; +https://detooz.app)'
+        }
+        
         # Use aiohttp for non-blocking fetch
         async with aiohttp.ClientSession() as session:
-            async with session.get(source['url'], timeout=10) as response:
+            async with session.get(source['url'], timeout=15, headers=headers) as response:
                 if response.status != 200:
                     logger.warning(f"Failed to fetch {source['name']}: {response.status}")
                     return []
@@ -168,8 +219,18 @@ async def fetch_feed(source: dict) -> List[dict]:
         return []
 
 
-async def fetch_all_feeds() -> List[dict]:
-    """Fetch all RSS feeds concurrently"""
+async def fetch_all_feeds(force_refresh: bool = False) -> List[dict]:
+    """Fetch all RSS feeds concurrently with caching"""
+    global _feed_cache, _cache_timestamp
+    
+    # Check cache validity
+    if not force_refresh and _cache_timestamp and _feed_cache:
+        cache_age = datetime.utcnow() - _cache_timestamp
+        if cache_age < timedelta(minutes=CACHE_TTL_MINUTES):
+            logger.info(f"Returning cached feed ({len(_feed_cache)} articles, age: {cache_age.seconds}s)")
+            return _feed_cache
+    
+    logger.info("Fetching fresh RSS feeds...")
     tasks = [fetch_feed(source) for source in FEED_SOURCES]
     results = await asyncio.gather(*tasks)
     
@@ -184,7 +245,29 @@ async def fetch_all_feeds() -> List[dict]:
         reverse=True
     )
     
+    # Update cache
+    _feed_cache = all_articles
+    _cache_timestamp = datetime.utcnow()
+    logger.info(f"Cached {len(all_articles)} articles")
+    
     return all_articles
+
+
+async def get_cached_feeds(offset: int = 0, limit: int = 20, category: Optional[str] = None) -> Tuple[List[dict], int]:
+    """
+    Get paginated feed articles with optional category filter.
+    Returns (articles, total_count) tuple.
+    """
+    all_articles = await fetch_all_feeds()
+    
+    # Filter by category if specified
+    if category and category != "all":
+        all_articles = [a for a in all_articles if a.get('category') == category]
+    
+    total = len(all_articles)
+    paginated = all_articles[offset:offset + limit]
+    
+    return paginated, total
 
 
 async def sync_feeds_to_db(db):

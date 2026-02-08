@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detooz Database Schema</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #1e1e1e;
+            --bg-canvas: #282828;
+            --table-bg: rgba(45, 45, 45, 0.8);
+            --border: #404040;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --accent-blue: #4299e1;
+            --accent-red: #fc8181;
+            --accent-purple: #b794f4;
+            --accent-green: #68d391;
+            --pk: #f6e05e;
+            --fk: #63b3ed;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            background: rgba(26, 26, 26, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 100;
+            gap: 16px;
+        }
+
+        .toolbar-title {
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-title span {
+            color: var(--accent-blue);
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+        }
+
+        .toolbar-btn {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .toolbar-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #555;
+        }
+
+        .zoom-display {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+            min-width: 45px;
+        }
+
+        .toolbar-right {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        .canvas-container {
+            position: fixed;
+            top: 48px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-canvas);
+            background-image: radial-gradient(circle, #333 1px, transparent 1px);
+            background-size: 20px 20px;
+            cursor: grab;
+            overflow: hidden;
+        }
+
+        .canvas-container:active {
+            cursor: grabbing;
+        }
+
+        .canvas {
+            position: absolute;
+            transform-origin: 0 0;
+        }
+
+        /* Glass Tables */
+        .table {
+            position: absolute;
+            background: var(--table-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            min-width: 220px;
+            font-size: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            cursor: move;
+            user-select: none;
+            transition: box-shadow 0.2s;
+        }
+
+        .table:hover {
+            border-color: #555;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .table-header {
+            padding: 10px 12px;
+            font-weight: 600;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .table-header .icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+
+        .table.core .table-header {
+            background: linear-gradient(90deg, rgba(66, 153, 225, 0.2), transparent);
+        }
+
+        .table.core .table-header .icon {
+            background: var(--accent-blue);
+        }
+
+        .table.detection .table-header {
+            background: linear-gradient(90deg, rgba(252, 129, 129, 0.2), transparent);
+        }
+
+        .table.detection .table-header .icon {
+            background: var(--accent-red);
+        }
+
+        .table.guardian .table-header {
+            background: linear-gradient(90deg, rgba(183, 148, 244, 0.2), transparent);
+        }
+
+        .table.guardian .table-header .icon {
+            background: var(--accent-purple);
+        }
+
+        .table.education .table-header {
+            background: linear-gradient(90deg, rgba(104, 211, 145, 0.2), transparent);
+        }
+
+        .table.education .table-header .icon {
+            background: var(--accent-green);
+        }
+
+        .table-columns {
+            padding: 6px 0;
+        }
+
+        .column {
+            padding: 5px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .column:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .column-name {
+            flex: 1;
+            color: var(--text);
+        }
+
+        .column-type {
+            color: var(--text-dim);
+            font-size: 10px;
+        }
+
+        .badge {
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .badge.pk {
+            background: rgba(246, 224, 94, 0.2);
+            color: var(--pk);
+        }
+
+        .badge.fk {
+            background: rgba(99, 179, 237, 0.2);
+            color: var(--fk);
+        }
+
+        .badge.uk {
+            background: rgba(183, 148, 244, 0.2);
+            color: var(--accent-purple);
+        }
+
+        /* Glass Info Panel */
+        .info-panel {
+            position: fixed;
+            right: 0;
+            top: 48px;
+            bottom: 0;
+            width: 320px;
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-left: 1px solid var(--border);
+            padding: 24px;
+            overflow-y: auto;
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            z-index: 50;
+        }
+
+        .info-panel.open {
+            transform: translateX(0);
+        }
+
+        .info-panel-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-dim);
+            width: 28px;
+            height: 28px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .info-panel-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+        }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .info-column-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .info-table-name {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-section {
+            margin-bottom: 20px;
+        }
+
+        .info-section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .info-section-content {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text);
+        }
+
+        .info-example {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .info-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: rgba(99, 179, 237, 0.1);
+            border: 1px solid rgba(99, 179, 237, 0.3);
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+
+        .info-link-arrow {
+            color: var(--fk);
+        }
+
+        .connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            overflow: visible;
+        }
+
+        .connection {
+            fill: none;
+            stroke: #666;
+            stroke-width: 1.5;
+            stroke-dasharray: none;
+            /* Solid by default */
+            opacity: 0.3;
+            /* Subtle by default */
+            transition: all 0.3s;
+        }
+
+        .connection.highlighted {
+            stroke: var(--accent-blue);
+            /* Changed to blue */
+            stroke-width: 3;
+            stroke-dasharray: 10 5;
+            opacity: 1;
+            filter: drop-shadow(0 0 5px var(--accent-blue));
+            animation: flowAnimation 1s linear infinite;
+        }
+
+        .connection.dimmed {
+            opacity: 0.1;
+        }
+
+        @keyframes flowAnimation {
+            0% {
+                stroke-dashoffset: 30;
+            }
+
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .connection-arrow {
+            fill: #666;
+            opacity: 0;
+            /* Hidden by default */
+            transition: all 0.3s;
+        }
+
+        .connection-arrow.highlighted {
+            fill: var(--accent-blue);
+            opacity: 1;
+            /* Show only when highlighted */
+        }
+
+        /* Highlight both connected columns */
+        .column.highlight-source {
+            background: rgba(66, 153, 225, 0.3);
+            border-radius: 4px;
+            color: #fff;
+        }
+
+        .column.highlight-target {
+            background: rgba(237, 137, 54, 0.3);
+            /* Different color for target */
+            border-radius: 4px;
+            color: #fff;
+        }
+
+        .badge.fk {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .badge.fk:hover {
+            background: rgba(99, 179, 237, 0.4);
+            transform: scale(1.1);
+        }
+
+        .help {
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            font-size: 11px;
+            color: var(--text-dim);
+            background: rgba(45, 45, 45, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .help kbd {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            background: rgba(45, 45, 45, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            z-index: 50;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        .legend-dot.core {
+            background: var(--accent-blue);
+        }
+
+        .legend-dot.detection {
+            background: var(--accent-red);
+        }
+
+        .legend-dot.guardian {
+            background: var(--accent-purple);
+        }
+
+        .legend-dot.education {
+            background: var(--accent-green);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toolbar">
+        <div class="toolbar-title"><span>⬡</span> Detooz Schema</div>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn" onclick="zoomOut()">−</button>
+        <span class="zoom-display" id="zoomLevel">100%</span>
+        <button class="toolbar-btn" onclick="zoomIn()">+</button>
+        <button class="toolbar-btn" onclick="resetView()">⟲ Reset</button>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn" onclick="autoArrange()">☰ Auto Layout</button>
+        <div class="toolbar-right">
+            <button class="toolbar-btn" onclick="exportPNG()">↓ Screenshot</button>
+        </div>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <svg class="connections" id="connections" width="4000" height="3000"></svg>
+        <div class="canvas" id="canvas"></div>
+    </div>
+
+    <div class="info-panel" id="infoPanel">
+        <button class="info-panel-close" onclick="closePanel()">×</button>
+        <div id="infoPanelContent"></div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-dot core"></div> Core System
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot detection"></div> Scam Detection
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot guardian"></div> Guardian
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot education"></div> Education
+        </div>
+    </div>
+
+    <div class="help">
+        <kbd>Click</kbd> field for details · <kbd>Drag</kbd> to pan · <kbd>Scroll</kbd> to zoom
+    </div>
+
+    <script>
+        const columnDescriptions = {
+            'users.id': { title: 'User ID', what: 'A unique number assigned to each user when they sign up.', why: 'Like a membership number. Every user gets their own ID to track their scans and history.', example: '1, 2, 3, 4...' },
+            'users.email': { title: 'Email Address', what: 'The email the user signed up with.', why: 'Used for logging in, security alerts, and password recovery. Each email can only be used once.', example: 'john@gmail.com' },
+            'users.password_hash': { title: 'Password (Encrypted)', what: 'The user\'s password, scrambled for security.', why: 'We never store actual passwords. Even if hackers got our database, they couldn\'t read these.', example: '$2b$12$abc... (unreadable)' },
+            'users.phone': { title: 'Phone Number', what: 'The user\'s mobile number.', why: 'Used for SMS verification, guardian alerts, and as an alternative login method.', example: '+91 98765 43210' },
+            'users.is_active': { title: 'Account Active?', what: 'Whether this account is enabled or disabled.', why: 'We can disable accounts that violate terms without deleting their data.', example: 'Yes or No' },
+            'users.fcm_token': { title: 'Push Notification ID', what: 'A code that identifies the user\'s phone for sending notifications.', why: 'When we detect a scam, we use this to send an instant alert to their phone.', example: 'dGhpcyBpcyBh...' },
+            'users.firebase_uid': { title: 'Phone Login ID', what: 'ID from phone number verification.', why: 'When users verify their phone via OTP, this confirms they own that number.', example: 'abc123xyz...' },
+            'users.google_uid': { title: 'Google Account ID', what: 'ID from Google Sign-In.', why: 'Links their Detooz account to their Google account for easy login.', example: '1234567890' },
+            'user_settings.id': { title: 'Settings ID', what: 'Unique number for this settings record.', why: 'Technical requirement to identify each settings entry.', example: '1, 2, 3...' },
+            'user_settings.user_id': { title: 'Belongs to User', what: 'Which user these settings belong to.', why: 'Links settings to the correct user.', linksTo: 'users' },
+            'user_settings.language': { title: 'Preferred Language', what: 'What language to show the app in.', why: 'Users can choose Hindi, English, Tamil, etc.', example: 'en, hi, ta, te...' },
+            'user_settings.auto_block_high_risk': { title: 'Auto-Block Scams?', what: 'Should the app automatically block obvious scams?', why: 'When ON, high-risk messages are blocked without asking.', example: 'Yes or No' },
+            'consent_logs.id': { title: 'Log Entry ID', what: 'Unique number for this consent record.', why: 'Tracks the history of user agreements.', example: '1, 2, 3...' },
+            'consent_logs.user_id': { title: 'User Who Consented', what: 'Which user gave this consent.', why: 'Links consent records to the right user.', linksTo: 'users' },
+            'consent_logs.consent_type': { title: 'What They Agreed To', what: 'The type of permission granted.', why: 'Tracks exactly what each user agreed to for legal compliance.', example: 'analytics, training_data' },
+            'consent_logs.consent_given': { title: 'Did They Agree?', what: 'Whether user said Yes or No.', why: 'We record both opt-ins and opt-outs transparently.', example: 'Yes or No' },
+            'consent_logs.ip_address': { title: 'IP Address', what: 'The internet address when consent was given.', why: 'Legal proof that consent came from a real person.', example: '192.168.1.1' },
+            'scans.id': { title: 'Scan ID', what: 'Unique number for each message scanned.', why: 'Every scan gets an ID so we can track results and feedback.', example: '1, 2, 3...' },
+            'scans.user_id': { title: 'Who Scanned This', what: 'Which user scanned this message.', why: 'Connects each scan to the user who requested it.', linksTo: 'users' },
+            'scans.sender': { title: 'Message Sender', what: 'Phone number or name of who sent the message.', why: 'Helps identify known scammers or trusted contacts.', example: '+91 99999..., "HDFC Bank"' },
+            'scans.message': { title: 'Message Content', what: 'The actual text of the suspicious message.', why: 'The AI analyzes this text to detect scam patterns.', example: '"You won ₹10 lakh! Click here..."' },
+            'scans.platform': { title: 'Message Source', what: 'Where the message came from.', why: 'Different platforms have different scam patterns.', example: 'SMS, WhatsApp, Telegram' },
+            'scans.risk_level': { title: 'Danger Level', what: 'How dangerous is this message?', why: 'Helps users prioritize which messages need attention.', example: 'HIGH 🔴, MEDIUM 🟡, LOW 🟢' },
+            'scans.confidence': { title: 'AI Confidence', what: 'How sure is the AI about its verdict?', why: '95% means very sure, 60% means uncertain.', example: '95%, 78%, 62%' },
+            'scans.is_blocked': { title: 'Was It Blocked?', what: 'Did the user block this sender?', why: 'Tracks when users take action on dangerous messages.', example: 'Yes or No' },
+            'feedback.id': { title: 'Feedback ID', what: 'Unique number for each feedback entry.', why: 'Helps track all user corrections to improve the AI.', example: '1, 2, 3...' },
+            'feedback.user_id': { title: 'Who Gave Feedback', what: 'Which user submitted this feedback.', why: 'Links feedback to the user who provided it.', linksTo: 'users' },
+            'feedback.scan_id': { title: 'About Which Scan', what: 'Which scan is this feedback about.', why: 'Connects feedback to the exact scan being corrected.', linksTo: 'scans' },
+            'feedback.user_verdict': { title: 'User\'s Correction', what: 'What the user says the message actually was.', why: 'If AI said "scam" but user says "safe", we learn from this.', example: 'safe, scam, unsure' },
+            'blacklist.id': { title: 'Blacklist Entry ID', what: 'Unique number for each blocked item.', why: 'Identifies each entry in our scam database.', example: '1, 2, 3...' },
+            'blacklist.type': { title: 'What Kind of Scam', what: 'Is it a scam URL, phone number, or domain?', why: 'Helps organize and search the blacklist.', example: 'url, phone, domain' },
+            'blacklist.value': { title: 'The Scam Content', what: 'The actual scam URL, phone number, or domain.', why: 'When a message contains this, we flag it instantly.', example: 'scam-site.com, +91 123...' },
+            'blacklist.is_verified': { title: 'Verified Scam?', what: 'Has our team confirmed this is definitely a scam?', why: 'Verified = 100% confirmed. Unverified = user-reported.', example: 'Yes or No' },
+            'trusted_senders.id': { title: 'Trust Entry ID', what: 'Unique number for this trusted sender.', why: 'Identifies each whitelist entry.', example: '1, 2, 3...' },
+            'trusted_senders.user_id': { title: 'Trust Belongs To', what: 'Which user marked this sender as trusted.', why: 'Each user has their own personal trusted list.', linksTo: 'users' },
+            'trusted_senders.sender': { title: 'Trusted Sender', what: 'The phone number or name that\'s trusted.', why: 'Messages from this sender skip scam detection.', example: 'Mom, +91 98765...' },
+            'guardian_links.id': { title: 'Link ID', what: 'Unique number for this guardian relationship.', why: 'Tracks each guardian-user pair.', example: '1, 2, 3...' },
+            'guardian_links.guardian_id': { title: 'The Guardian', what: 'User ID of the person protecting someone.', why: 'The guardian receives alerts when their family member gets scam messages.', linksTo: 'users' },
+            'guardian_links.user_id': { title: 'Protected Person', what: 'User ID of the person being protected.', why: 'Usually an elderly parent or child.', linksTo: 'users' },
+            'guardian_links.otp_code': { title: 'Verification Code', what: '6-digit code to verify the connection.', why: 'Prevents strangers from adding themselves as guardians.', example: '847291' },
+            'guardian_links.status': { title: 'Connection Status', what: 'Is this guardian link active?', why: 'Pending = waiting for OTP. Active = verified.', example: 'pending, active, revoked' },
+            'guardian_alerts.id': { title: 'Alert ID', what: 'Unique number for this alert.', why: 'Tracks each notification sent to guardians.', example: '1, 2, 3...' },
+            'guardian_alerts.guardian_id': { title: 'Alert Sent To', what: 'Which guardian received this alert.', why: 'The guardian who needs to check on family.', linksTo: 'users' },
+            'guardian_alerts.user_id': { title: 'Alert About', what: 'Which protected user triggered this alert.', why: 'The person who received the suspicious message.', linksTo: 'users' },
+            'guardian_alerts.scan_id': { title: 'Related Scan', what: 'Which scam scan triggered this alert.', why: 'Guardian can see the actual scam message.', linksTo: 'scans' },
+            'guardian_alerts.status': { title: 'Alert Status', what: 'Has the guardian acted on this?', why: 'Tracks whether alerts are pending or handled.', example: 'pending, seen, actioned' },
+            'guardian_alerts.action_taken': { title: 'Guardian\'s Action', what: 'What did the guardian do?', why: 'Records if they called the person, blocked sender, etc.', example: 'Called user, Blocked sender' },
+            'feed_articles.id': { title: 'Article ID', what: 'Unique number for this article.', why: 'Identifies each news/tip article.', example: '1, 2, 3...' },
+            'feed_articles.title': { title: 'Article Title', what: 'Headline of the article.', why: 'What users see in the education feed.', example: '"New OTP Scam Targeting Students"' },
+            'feed_articles.source': { title: 'Article Source', what: 'Which website this came from.', why: 'Shows credibility - government vs news sites.', example: 'RBI, Quick Heal, CERT-In' },
+            'feed_articles.url': { title: 'Article Link', what: 'Web address to read full article.', why: 'Users tap to open the original article.', example: 'https://rbi.org.in/...' },
+            'curated_articles.id': { title: 'Article ID', what: 'Unique number for this article.', why: 'Identifies each Detooz-created article.', example: '1, 2, 3...' },
+            'curated_articles.title': { title: 'Article Title', what: 'Headline of the article.', why: 'What users see in the tips section.', example: '"5 Signs of a Fake Bank Call"' },
+            'curated_articles.content': { title: 'Full Article', what: 'The complete article text.', why: 'Users can read tips without leaving the app.', example: 'Long article text...' },
+            'curated_articles.is_featured': { title: 'Featured Article?', what: 'Should this appear prominently?', why: 'Featured articles appear at the top for important alerts.', example: 'Yes or No' },
+            'user_bookmarks.id': { title: 'Bookmark ID', what: 'Unique number for this bookmark.', why: 'Identifies each saved article.', example: '1, 2, 3...' },
+            'user_bookmarks.user_id': { title: 'Who Saved This', what: 'Which user bookmarked this article.', why: 'Each user has their own saved articles.', linksTo: 'users' },
+            'user_bookmarks.feed_article_id': { title: 'Saved News Article', what: 'Which news article was bookmarked.', why: 'Links to external articles from news feed.', linksTo: 'feed_articles' },
+            'user_bookmarks.curated_article_id': { title: 'Saved Detooz Article', what: 'Which Detooz article was bookmarked.', why: 'Links to articles by our team.', linksTo: 'curated_articles' }
+        };
+
+        const schema = {
+            users: {
+                category: 'core', friendlyName: 'Users', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'email', type: 'varchar', uk: true },
+                    { name: 'password_hash', type: 'varchar' },
+                    { name: 'phone', type: 'varchar', uk: true },
+                    { name: 'is_active', type: 'bool' },
+                    { name: 'fcm_token', type: 'varchar' },
+                    { name: 'firebase_uid', type: 'varchar', uk: true },
+                    { name: 'google_uid', type: 'varchar', uk: true }
+                ], x: 500, y: 50
+            },
+            user_settings: {
+                category: 'core', friendlyName: 'User Settings', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'user_id', type: 'int', fk: 'users' },
+                    { name: 'language', type: 'varchar' },
+                    { name: 'auto_block_high_risk', type: 'bool' }
+                ], x: 50, y: 50
+            },
+            consent_logs: {
+                category: 'core', friendlyName: 'Consent Records', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'user_id', type: 'int', fk: 'users' },
+                    { name: 'consent_type', type: 'varchar' },
+                    { name: 'consent_given', type: 'bool' },
+                    { name: 'ip_address', type: 'varchar' }
+                ], x: 50, y: 300
+            },
+            scans: {
+                category: 'detection', friendlyName: 'Scam Scans', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'user_id', type: 'int', fk: 'users' },
+                    { name: 'sender', type: 'varchar' },
+                    { name: 'message', type: 'text' },
+                    { name: 'platform', type: 'enum' },
+                    { name: 'risk_level', type: 'enum' },
+                    { name: 'confidence', type: 'float' },
+                    { name: 'is_blocked', type: 'bool' }
+                ], x: 950, y: 50
+            },
+            feedback: {
+                category: 'detection', friendlyName: 'User Feedback', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'user_id', type: 'int', fk: 'users' },
+                    { name: 'scan_id', type: 'int', fk: 'scans' },
+                    { name: 'user_verdict', type: 'varchar' }
+                ], x: 1350, y: 50
+            },
+            blacklist: {
+                category: 'detection', friendlyName: 'Known Scams', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'type', type: 'varchar' },
+                    { name: 'value', type: 'varchar' },
+                    { name: 'is_verified', type: 'bool' }
+                ], x: 1350, y: 300
+            },
+            trusted_senders: {
+                category: 'detection', friendlyName: 'Trusted Contacts', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'user_id', type: 'int', fk: 'users' },
+                    { name: 'sender', type: 'varchar' }
+                ], x: 950, y: 380
+            },
+            guardian_links: {
+                category: 'guardian', friendlyName: 'Guardian Connections', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'guardian_id', type: 'int', fk: 'users' },
+                    { name: 'user_id', type: 'int', fk: 'users' },
+                    { name: 'otp_code', type: 'varchar' },
+                    { name: 'status', type: 'varchar' }
+                ], x: 500, y: 420
+            },
+            guardian_alerts: {
+                category: 'guardian', friendlyName: 'Guardian Alerts', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'guardian_id', type: 'int', fk: 'users' },
+                    { name: 'user_id', type: 'int', fk: 'users' },
+                    { name: 'scan_id', type: 'int', fk: 'scans' },
+                    { name: 'status', type: 'varchar' },
+                    { name: 'action_taken', type: 'varchar' }
+                ], x: 500, y: 680
+            },
+            feed_articles: {
+                category: 'education', friendlyName: 'News Articles', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'title', type: 'varchar' },
+                    { name: 'source', type: 'varchar' },
+                    { name: 'url', type: 'varchar', uk: true }
+                ], x: 50, y: 560
+            },
+            curated_articles: {
+                category: 'education', friendlyName: 'Detooz Tips', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'title', type: 'varchar' },
+                    { name: 'content', type: 'text' },
+                    { name: 'is_featured', type: 'bool' }
+                ], x: 50, y: 800
+            },
+            user_bookmarks: {
+                category: 'education', friendlyName: 'Saved Articles', columns: [
+                    { name: 'id', type: 'int', pk: true },
+                    { name: 'user_id', type: 'int', fk: 'users' },
+                    { name: 'feed_article_id', type: 'int', fk: 'feed_articles' },
+                    { name: 'curated_article_id', type: 'int', fk: 'curated_articles' }
+                ], x: 50, y: 1030
+            }
+        };
+
+        const canvas = document.getElementById('canvas');
+        const container = document.getElementById('canvasContainer');
+        const connectionsEl = document.getElementById('connections');
+        const infoPanel = document.getElementById('infoPanel');
+        const infoPanelContent = document.getElementById('infoPanelContent');
+
+        let zoom = 1, panX = 80, panY = 30;
+        let isPanning = false, startX, startY;
+        let draggingTable = null, dragOffsetX, dragOffsetY;
+
+        function showColumnInfo(tableName, colName, col) {
+            const key = `${tableName}.${colName}`;
+            const info = columnDescriptions[key] || { title: colName, what: 'No description available.', why: '' };
+
+            let badges = '';
+            if (col.pk) badges += '<span class="badge pk">Primary Key</span> ';
+            if (col.fk) badges += '<span class="badge fk">Links to ' + col.fk + '</span> ';
+            if (col.uk) badges += '<span class="badge uk">Must be Unique</span> ';
+
+            let linkHtml = '';
+            if (info.linksTo) {
+                linkHtml = `<div class="info-link"><span class="info-link-arrow">→</span><span>Connects to <strong>${schema[info.linksTo].friendlyName}</strong></span></div>`;
+            }
+
+            infoPanelContent.innerHTML = `
+                <div class="info-header"><span class="info-column-name">${info.title || colName}</span>${badges}</div>
+                <div class="info-table-name">in ${schema[tableName].friendlyName}</div>
+                <div class="info-section"><div class="info-section-title">💡 What is this?</div><div class="info-section-content">${info.what}</div></div>
+                ${info.why ? `<div class="info-section"><div class="info-section-title">🎯 Why do we need it?</div><div class="info-section-content">${info.why}</div></div>` : ''}
+                ${info.example ? `<div class="info-section"><div class="info-section-title">📝 Example</div><div class="info-example">${info.example}</div></div>` : ''}
+                ${linkHtml}
+            `;
+            infoPanel.classList.add('open');
+        }
+
+        function closePanel() { infoPanel.classList.remove('open'); }
+
+        function renderTables() {
+            canvas.innerHTML = '';
+            for (const [name, table] of Object.entries(schema)) {
+                const el = document.createElement('div');
+                el.className = `table ${table.category}`;
+                el.id = `table-${name}`;
+                el.style.left = table.x + 'px';
+                el.style.top = table.y + 'px';
+                el.innerHTML = `
+                    <div class="table-header"><div class="icon">⬡</div>${table.friendlyName}</div>
+                    <div class="table-columns">
+                        ${table.columns.map(col => `
+                            <div class="column" data-table="${name}" data-col="${col.name}">
+                                <span class="column-name">${col.name}</span>
+                                <span class="column-type">${col.type}</span>
+                                ${col.pk ? '<span class="badge pk">PK</span>' : ''}
+                                ${col.fk ? '<span class="badge fk">FK</span>' : ''}
+                                ${col.uk ? '<span class="badge uk">UK</span>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                el.querySelectorAll('.column').forEach(colEl => {
+                    colEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const t = colEl.dataset.table, c = colEl.dataset.col;
+                        const colData = schema[t].columns.find(x => x.name === c);
+                        showColumnInfo(t, c, colData);
+
+                        // If clicked on FK badge or FK column, highlight the connection
+                        if (colData.fk) {
+                            highlightConnection(t, c);
+                        } else {
+                            clearHighlights();
+                        }
+                    });
+                });
+                el.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('.table-header')) {
+                        draggingTable = { el, name };
+                        const rect = el.getBoundingClientRect();
+                        dragOffsetX = e.clientX - rect.left;
+                        dragOffsetY = e.clientY - rect.top;
+                        el.style.zIndex = 100;
+                        e.stopPropagation();
+                    }
+                });
+                canvas.appendChild(el);
+            }
+            drawConnections();
+        }
+
+        let connections = [];
+
+        function drawConnections() {
+            connections = [];
+            // Updated markers: default hidden, highlighted shown with blue color
+            let svg = `<defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon class="connection-arrow" points="0 0, 10 3.5, 0 7" />
+                </marker>
+                <marker id="arrowhead-highlight" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon class="connection-arrow highlighted" points="0 0, 10 3.5, 0 7" />
+                </marker>
+            </defs>`;
+
+            for (const [name, table] of Object.entries(schema)) {
+                // Get absolute position of the table
+                const tableEl = document.getElementById(`table-${name}`);
+                if (!tableEl) continue;
+
+                for (let i = 0; i < table.columns.length; i++) {
+                    const col = table.columns[i];
+                    if (col.fk && schema[col.fk]) {
+                        // Find positions of source and target columns
+                        // Source: Center right of the source column
+                        const sourceY = table.y + 36 + (i * 26) + 13; // Header(36) + Rows(26*i) + HalfRow(13)
+                        const sourceX = table.x + tableEl.offsetWidth;
+
+                        // Target: Center left of the target PK column (usually first column)
+                        const targetTableEl = document.getElementById(`table-${col.fk}`);
+                        if (!targetTableEl) continue;
+
+                        // Find index of PK in target table (default to 0 if not found)
+                        const targetColIndex = schema[col.fk].columns.findIndex(c => c.pk) || 0;
+                        const targetY = schema[col.fk].y + 36 + (targetColIndex * 26) + 13;
+                        const targetX = schema[col.fk].x;
+
+                        // Bezier Curve Logic
+                        const midX = (sourceX + targetX) / 2;
+                        const connId = `conn-${name}-${col.name}`;
+
+                        connections.push({
+                            id: connId,
+                            from: name,
+                            to: col.fk,
+                            col: col.name,
+                            targetCol: schema[col.fk].columns[targetColIndex].name
+                        });
+
+                        // Default line is solid (no dash), markers hidden until highlighted
+                        svg += `<path id="${connId}" class="connection" 
+                            d="M${sourceX},${sourceY} C${midX},${sourceY} ${midX},${targetY} ${targetX},${targetY}" />`;
+                    }
+                }
+            }
+            connectionsEl.innerHTML = svg;
+        }
+
+        function highlightConnection(tableName, colName) {
+            // Clear previous highlights
+            document.querySelectorAll('.connection').forEach(c => {
+                c.classList.remove('highlighted', 'dimmed');
+                c.setAttribute('marker-end', ''); // No arrow by default
+            });
+            document.querySelectorAll('.table').forEach(t => t.classList.remove('dimmed'));
+            document.querySelectorAll('.column').forEach(c => c.classList.remove('highlight-source', 'highlight-target')); // Clear column highlights
+
+            const targetConn = connections.find(c => c.from === tableName && c.col === colName);
+            if (targetConn) {
+                // Dim all connections
+                document.querySelectorAll('.connection').forEach(c => {
+                    if (c.id === targetConn.id) {
+                        // Highlight THIS connection
+                        c.classList.add('highlighted');
+                        c.setAttribute('marker-end', 'url(#arrowhead-highlight)'); // Show arrow now
+
+                        // Highlight source and target columns
+                        const sourceCol = document.querySelector(`.column[data-table="${targetConn.from}"][data-col="${targetConn.col}"]`);
+                        const targetCol = document.querySelector(`.column[data-table="${targetConn.to}"][data-col="${targetConn.targetCol}"]`);
+
+                        if (sourceCol) sourceCol.classList.add('highlight-source');
+                        if (targetCol) targetCol.classList.add('highlight-target');
+
+                    } else {
+                        // Dim others
+                        c.classList.add('dimmed');
+                    }
+                });
+
+                // Dim tables not involved
+                document.querySelectorAll('.table').forEach(t => {
+                    const tName = t.id.replace('table-', '');
+                    if (tName !== targetConn.from && tName !== targetConn.to) {
+                        t.style.opacity = '0.3'; // Stronger dimming
+                    } else {
+                        t.style.opacity = '1';
+                    }
+                });
+            }
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.connection').forEach(c => {
+                c.classList.remove('highlighted', 'dimmed');
+                c.setAttribute('marker-end', '');
+            });
+            document.querySelectorAll('.table').forEach(t => t.style.opacity = '1');
+            document.querySelectorAll('.column').forEach(c => c.classList.remove('highlight-source', 'highlight-target'));
+        }
+
+        function updateTransform() {
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+            connectionsEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+            document.getElementById('zoomLevel').textContent = Math.round(zoom * 100) + '%';
+        }
+
+        container.addEventListener('click', (e) => {
+            // Clear highlights when clicking on empty canvas
+            if (e.target === container || e.target === canvas) {
+                clearHighlights();
+                closePanel();
+            }
+        });
+
+        container.addEventListener('mousedown', (e) => {
+            if (!draggingTable) { isPanning = true; startX = e.clientX - panX; startY = e.clientY - panY; container.style.cursor = 'grabbing'; }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isPanning) { panX = e.clientX - startX; panY = e.clientY - startY; updateTransform(); }
+            if (draggingTable) {
+                const x = (e.clientX - panX - dragOffsetX) / zoom;
+                const y = (e.clientY - 48 - panY - dragOffsetY) / zoom;
+                schema[draggingTable.name].x = x; schema[draggingTable.name].y = y;
+                draggingTable.el.style.left = x + 'px'; draggingTable.el.style.top = y + 'px';
+                drawConnections();
+            }
+        });
+
+        window.addEventListener('mouseup', () => { isPanning = false; container.style.cursor = 'grab'; if (draggingTable) { draggingTable.el.style.zIndex = 1; draggingTable = null; } });
+
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.min(Math.max(zoom * delta, 0.2), 3);
+            const rect = container.getBoundingClientRect();
+            const x = e.clientX - rect.left, y = e.clientY - rect.top;
+            panX = x - (x - panX) * (newZoom / zoom); panY = y - (y - panY) * (newZoom / zoom);
+            zoom = newZoom; updateTransform();
+        });
+
+        function zoomIn() { zoom = Math.min(zoom * 1.2, 3); updateTransform(); }
+        function zoomOut() { zoom = Math.max(zoom * 0.8, 0.2); updateTransform(); }
+        function resetView() { zoom = 1; panX = 80; panY = 30; updateTransform(); closePanel(); }
+        function autoArrange() {
+            const cats = ['core', 'detection', 'guardian', 'education'];
+            let pos = {}; cats.forEach((c, i) => { pos[c] = { x: 50 + i * 350, y: 50 }; });
+            for (const [n, t] of Object.entries(schema)) { t.x = pos[t.category].x; t.y = pos[t.category].y; pos[t.category].y += 250; }
+            renderTables();
+        }
+        function exportPNG() { alert('Use Win+Shift+S (Snipping Tool) for the best screenshot!'); }
+
+        renderTables(); updateTransform();
+    </script>
+</body>
+
+</html>

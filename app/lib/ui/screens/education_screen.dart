@@ -72,12 +72,12 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                       if (feed.articles.isNotEmpty)
                         _buildFeaturedAlert(feed.articles.first),
                       
-                      // Detooz Picks (curated)
-                      if (feed.curated.isNotEmpty) ...[
+                      // Detooz Exclusive
+                      if (feed.exclusive.isNotEmpty) ...[
                         const SizedBox(height: 32),
-                        _buildSectionTitle('⭐ Detooz Picks'),
+                        _buildSectionTitle('⭐ Detooz Exclusive'),
                         const SizedBox(height: 12),
-                        _buildHorizontalList(feed.curated),
+                        _buildHorizontalList(feed.exclusive.map((e) => e.toArticle()).toList()),
                       ],
                       
                       // Latest Articles
@@ -136,9 +136,9 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                 height: 48,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF18181B).withOpacity(0.75),
+                  color: AppColors.surfaceDark,
                   borderRadius: BorderRadius.circular(50),
-                  border: Border.all(color: Colors.white.withOpacity(0.12)),
+                  border: Border.all(color: AppColors.borderDark),
                 ),
                 child: Row(
                   children: [
@@ -189,10 +189,10 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : const Color(0xFF18181B).withOpacity(0.75),
+                  color: isSelected ? AppColors.primary : AppColors.surfaceDark,
                   borderRadius: BorderRadius.circular(50),
                   border: Border.all(
-                    color: isSelected ? Colors.transparent : Colors.white.withOpacity(0.1),
+                    color: isSelected ? Colors.transparent : AppColors.borderDark,
                   ),
                 ),
                 child: Text(
@@ -287,8 +287,8 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
-          color: const Color(0xFF18181B).withOpacity(0.75),
+          border: Border.all(color: AppColors.borderDark),
+          color: AppColors.surfaceDark,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -299,7 +299,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                 height: 160,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.2),
+                  color: AppColors.primary.withOpacity(0.3),
                   image: article.imageUrl != null
                       ? DecorationImage(
                           image: NetworkImage(article.imageUrl!),
@@ -422,9 +422,9 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
             width: 280,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF18181B).withOpacity(0.75),
+              color: AppColors.surfaceDark,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              border: Border.all(color: AppColors.borderDark),
             ),
             child: InkWell(
               onTap: () => _openArticle(article),
@@ -436,7 +436,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                   Container(
                     height: 80,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
+                      color: AppColors.primary.withOpacity(0.25),
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                       image: article.imageUrl != null
                           ? DecorationImage(
@@ -473,12 +473,12 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                             children: [
                               Text(
                                 article.source,
-                                style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11),
+                                style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11),
                               ),
                               const Spacer(),
                               Text(
                                 '${article.readTimeMins} min',
-                                style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11),
+                                style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11),
                               ),
                             ],
                           ),
@@ -529,12 +529,12 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
   }
 
   void _openArticle(Article article) {
-    if (article.url != null) {
+    if (article.url.isNotEmpty) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ArticleWebView(
-            url: article.url!,
+            url: article.url,
             title: article.title,
           ),
         ),

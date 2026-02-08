@@ -295,20 +295,42 @@ class CuratedArticle(Base):
 
 
 class UserBookmark(Base):
-    """User's saved/bookmarked articles"""
+    """User's saved/bookmarked articles - URL-only storage"""
     __tablename__ = "user_bookmarks"
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    # Either feed_article_id OR curated_article_id will be set
-    feed_article_id = Column(Integer, ForeignKey("feed_articles.id", ondelete="CASCADE"), nullable=True)
-    curated_article_id = Column(Integer, ForeignKey("curated_articles.id", ondelete="CASCADE"), nullable=True)
+    
+    # Direct URL storage (never expires)
+    url = Column(String(1000), nullable=False)
+    title = Column(String(500), nullable=False)
+    source = Column(String(100), nullable=True)  # "Krebs", "Detooz Exclusive", etc.
+    image_url = Column(String(1000), nullable=True)
+    is_exclusive = Column(Boolean, default=False)  # True if from Detooz Exclusive
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
     user = relationship("User", backref="bookmarks")
-    feed_article = relationship("FeedArticle", backref="bookmarks")
-    curated_article = relationship("CuratedArticle", backref="bookmarks")
     
     def __repr__(self):
-        return f"<UserBookmark user={self.user_id}>"
+        return f"<UserBookmark user={self.user_id} url={self.url[:30]}>"
+
+
+class DetoozExclusive(Base):
+    """AI-curated educational content with Detooz branding"""
+    __tablename__ = "detooz_exclusive"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(500), nullable=False)
+    content = Column(Text, nullable=False)  # AI-generated educational content
+    source_articles = Column(Text, nullable=True)  # JSON list of source RSS URLs
+    image_url = Column(String(1000), nullable=True)  # Original image with watermark
+    category = Column(SQLEnum(ArticleCategory), default=ArticleCategory.TIP)
+    read_time_mins = Column(Integer, default=3)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<DetoozExclusive {self.title[:30]}>"
+

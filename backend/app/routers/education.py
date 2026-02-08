@@ -1,20 +1,20 @@
 """
 Education Router
 API endpoints for Learn tab content
+Uses live RSS feeds with caching and URL-only bookmarks
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, desc
+from sqlalchemy import select, desc
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
+import os
 
 from app.db.database import get_db
-from app.models.models import (
-    FeedArticle, CuratedArticle, UserBookmark, 
-    ArticleCategory, User
-)
-from app.routers.auth import get_current_user
+from app.models.models import UserBookmark, DetoozExclusive, ArticleCategory, User
+from app.routers.auth import get_current_user, get_current_user_optional
+from app.services.feed_aggregator import get_cached_feeds, fetch_all_feeds
 
 router = APIRouter(prefix="/education", tags=["Education"])
 
@@ -24,35 +24,67 @@ router = APIRouter(prefix="/education", tags=["Education"])
 # ============================================
 
 class ArticleResponse(BaseModel):
-    id: int
+    """Response model for feed articles"""
+    url: str  # Unique identifier (primary key for bookmarks)
     title: str
     summary: Optional[str]
     image_url: Optional[str]
     source: str
     category: str
     read_time_mins: int
-    url: Optional[str]
     published_at: Optional[datetime]
-    is_curated: bool = False
+    is_exclusive: bool = False  # True if Detooz Exclusive
     is_bookmarked: bool = False
 
     class Config:
         from_attributes = True
 
 
+class ExclusiveResponse(BaseModel):
+    """Response model for Detooz Exclusive content"""
+    id: int
+    title: str
+    content: str
+    image_url: Optional[str]
+    category: str
+    read_time_mins: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class FeedResponse(BaseModel):
+    """Combined feed response with RSS and Exclusive content"""
     articles: List[ArticleResponse]
     total: int
-    curated: List[ArticleResponse]
+    exclusive: List[ExclusiveResponse]
 
 
 class BookmarkRequest(BaseModel):
-    article_id: int
-    is_curated: bool = False
+    """Request to add a bookmark (URL-based)"""
+    url: str
+    title: str
+    source: str
+    image_url: Optional[str] = None
+    is_exclusive: bool = False
+
+
+class BookmarkResponse(BaseModel):
+    """Response for bookmark list"""
+    url: str
+    title: str
+    source: str
+    image_url: Optional[str]
+    is_exclusive: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # ============================================
-# Endpoints
+# Feed Endpoints (Live RSS)
 # ============================================
 
 @router.get("/feed", response_model=FeedResponse)
@@ -61,104 +93,79 @@ async def get_feed(
     limit: int = Query(20, ge=1, le=50),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
-    Get educational feed articles.
-    Returns both RSS feed articles and curated Detooz content.
+    Get educational feed articles (LIVE from RSS with caching).
+    Returns both RSS feed articles and Detooz Exclusive content.
+    Works without auth, but bookmarked status requires login.
     """
-    # Get user's bookmarked article IDs
-    bookmark_result = await db.execute(
-        select(UserBookmark).where(UserBookmark.user_id == current_user.id)
-    )
-    bookmarks = bookmark_result.scalars().all()
-    bookmarked_feed_ids = {b.feed_article_id for b in bookmarks if b.feed_article_id}
-    bookmarked_curated_ids = {b.curated_article_id for b in bookmarks if b.curated_article_id}
+    # Get user's bookmarked URLs (if logged in)
+    bookmarked_urls = set()
+    if current_user:
+        bookmark_result = await db.execute(
+            select(UserBookmark.url).where(UserBookmark.user_id == current_user.id)
+        )
+        bookmarked_urls = {row[0] for row in bookmark_result.fetchall() if row[0]}
     
-    # Build category filter
-    category_filter = None
-    if category and category != "all":
-        category_map = {
-            "alert": ArticleCategory.ALERT,
-            "tip": ArticleCategory.TIP,
-            "news": ArticleCategory.NEWS
-        }
-        if category in category_map:
-            category_filter = category_map[category]
-    
-    # Get feed articles
-    feed_query = select(FeedArticle).where(FeedArticle.is_active == True)
-    if category_filter:
-        feed_query = feed_query.where(FeedArticle.category == category_filter)
-    feed_query = feed_query.order_by(desc(FeedArticle.published_at)).offset(offset).limit(limit)
-    
-    feed_result = await db.execute(feed_query)
-    feed_articles = feed_result.scalars().all()
-    
-    # Get total count
-    count_query = select(FeedArticle).where(FeedArticle.is_active == True)
-    if category_filter:
-        count_query = count_query.where(FeedArticle.category == category_filter)
-    count_result = await db.execute(count_query)
-    total = len(count_result.scalars().all())
-    
-    # Get curated articles
-    curated_query = select(CuratedArticle).where(CuratedArticle.is_active == True)
-    if category_filter:
-        curated_query = curated_query.where(CuratedArticle.category == category_filter)
-    curated_query = curated_query.order_by(desc(CuratedArticle.is_featured), desc(CuratedArticle.created_at)).limit(10)
-    
-    curated_result = await db.execute(curated_query)
-    curated_articles = curated_result.scalars().all()
+    # Get live RSS feeds (cached for 5 min)
+    articles, total = await get_cached_feeds(offset=offset, limit=limit, category=category)
     
     # Format response
     articles_response = [
         ArticleResponse(
-            id=a.id,
-            title=a.title,
-            summary=a.summary,
-            image_url=a.image_url,
-            source=a.source,
-            category=a.category.value,
-            read_time_mins=a.read_time_mins,
-            url=a.url,
-            published_at=a.published_at,
-            is_curated=False,
-            is_bookmarked=a.id in bookmarked_feed_ids
+            url=a.get('url', ''),
+            title=a.get('title', ''),
+            summary=a.get('summary', ''),
+            image_url=a.get('image_url'),
+            source=a.get('source', 'Unknown'),
+            category=a.get('category', 'news'),
+            read_time_mins=a.get('read_time_mins', 3),
+            published_at=a.get('published_at'),
+            is_exclusive=False,
+            is_bookmarked=a.get('url', '') in bookmarked_urls
         )
-        for a in feed_articles
+        for a in articles
     ]
     
-    curated_response = [
-        ArticleResponse(
-            id=a.id,
-            title=a.title,
-            summary=a.summary,
-            image_url=a.image_url,
-            source="Detooz",
-            category=a.category.value,
-            read_time_mins=a.read_time_mins,
-            url=None,
-            published_at=a.created_at,
-            is_curated=True,
-            is_bookmarked=a.id in bookmarked_curated_ids
+    # Get Detooz Exclusive content
+    exclusive_query = select(DetoozExclusive).where(
+        DetoozExclusive.is_active == True
+    ).order_by(desc(DetoozExclusive.created_at)).limit(5)
+    
+    exclusive_result = await db.execute(exclusive_query)
+    exclusive_articles = exclusive_result.scalars().all()
+    
+    exclusive_response = [
+        ExclusiveResponse(
+            id=e.id,
+            title=e.title,
+            content=e.content,
+            image_url=e.image_url,
+            category=e.category.value,
+            read_time_mins=e.read_time_mins,
+            created_at=e.created_at
         )
-        for a in curated_articles
+        for e in exclusive_articles
     ]
     
     return FeedResponse(
         articles=articles_response,
         total=total,
-        curated=curated_response
+        exclusive=exclusive_response
     )
 
+
+# ============================================
+# Bookmark Endpoints (URL-based)
+# ============================================
 
 @router.get("/bookmarks")
 async def get_bookmarks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get user's bookmarked articles"""
+    """Get user's bookmarked articles (URL-based, never expires)"""
     result = await db.execute(
         select(UserBookmark)
         .where(UserBookmark.user_id == current_user.id)
@@ -166,40 +173,20 @@ async def get_bookmarks(
     )
     bookmarks = result.scalars().all()
     
-    articles = []
-    for bookmark in bookmarks:
-        if bookmark.feed_article:
-            a = bookmark.feed_article
-            articles.append(ArticleResponse(
-                id=a.id,
-                title=a.title,
-                summary=a.summary,
-                image_url=a.image_url,
-                source=a.source,
-                category=a.category.value,
-                read_time_mins=a.read_time_mins,
-                url=a.url,
-                published_at=a.published_at,
-                is_curated=False,
-                is_bookmarked=True
-            ))
-        elif bookmark.curated_article:
-            a = bookmark.curated_article
-            articles.append(ArticleResponse(
-                id=a.id,
-                title=a.title,
-                summary=a.summary,
-                image_url=a.image_url,
-                source="Detooz",
-                category=a.category.value,
-                read_time_mins=a.read_time_mins,
-                url=None,
-                published_at=a.created_at,
-                is_curated=True,
-                is_bookmarked=True
-            ))
-    
-    return {"bookmarks": articles, "total": len(articles)}
+    return {
+        "bookmarks": [
+            BookmarkResponse(
+                url=b.url,
+                title=b.title,
+                source=b.source or "Unknown",
+                image_url=b.image_url,
+                is_exclusive=b.is_exclusive,
+                created_at=b.created_at
+            )
+            for b in bookmarks
+        ],
+        "total": len(bookmarks)
+    }
 
 
 @router.post("/bookmark")
@@ -208,31 +195,26 @@ async def add_bookmark(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Bookmark an article"""
+    """Bookmark an article (URL-based)"""
     # Check if already bookmarked
-    if request.is_curated:
-        existing = await db.execute(
-            select(UserBookmark).where(
-                UserBookmark.user_id == current_user.id,
-                UserBookmark.curated_article_id == request.article_id
-            )
+    existing = await db.execute(
+        select(UserBookmark).where(
+            UserBookmark.user_id == current_user.id,
+            UserBookmark.url == request.url
         )
-    else:
-        existing = await db.execute(
-            select(UserBookmark).where(
-                UserBookmark.user_id == current_user.id,
-                UserBookmark.feed_article_id == request.article_id
-            )
-        )
+    )
     
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Already bookmarked")
     
-    # Create bookmark
+    # Create bookmark with URL
     bookmark = UserBookmark(
         user_id=current_user.id,
-        feed_article_id=None if request.is_curated else request.article_id,
-        curated_article_id=request.article_id if request.is_curated else None
+        url=request.url,
+        title=request.title,
+        source=request.source,
+        image_url=request.image_url,
+        is_exclusive=request.is_exclusive
     )
     db.add(bookmark)
     await db.commit()
@@ -240,28 +222,19 @@ async def add_bookmark(
     return {"success": True, "message": "Article bookmarked"}
 
 
-@router.delete("/bookmark/{article_id}")
+@router.delete("/bookmark")
 async def remove_bookmark(
-    article_id: int,
-    is_curated: bool = Query(False),
+    url: str = Query(..., description="URL of the article to unbookmark"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Remove a bookmark"""
-    if is_curated:
-        result = await db.execute(
-            select(UserBookmark).where(
-                UserBookmark.user_id == current_user.id,
-                UserBookmark.curated_article_id == article_id
-            )
+    """Remove a bookmark by URL"""
+    result = await db.execute(
+        select(UserBookmark).where(
+            UserBookmark.user_id == current_user.id,
+            UserBookmark.url == url
         )
-    else:
-        result = await db.execute(
-            select(UserBookmark).where(
-                UserBookmark.user_id == current_user.id,
-                UserBookmark.feed_article_id == article_id
-            )
-        )
+    )
     
     bookmark = result.scalar_one_or_none()
     if not bookmark:
@@ -273,16 +246,82 @@ async def remove_bookmark(
     return {"success": True, "message": "Bookmark removed"}
 
 
-@router.post("/sync-feeds")
-async def sync_feeds(
-    db: AsyncSession = Depends(get_db)
+# ============================================
+# Detooz Exclusive Content
+# ============================================
+
+@router.post("/generate-exclusive")
+async def generate_exclusive_content(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Manually trigger feed sync (admin/debug).
-    In production, this runs on a scheduler.
+    Generate Detooz Exclusive educational content using Groq AI.
+    Admin/scheduled endpoint.
     """
-    from app.services.feed_aggregator import sync_feeds_to_db
+    from app.services.content_curator import generate_exclusive_content as generate_content
     
-    added = await sync_feeds_to_db(db)
-    return {"success": True, "articles_added": added}
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    if not groq_api_key:
+        raise HTTPException(status_code=500, detail="Groq API key not configured")
+    
+    exclusive = await generate_content(db, groq_api_key)
+    
+    if not exclusive:
+        raise HTTPException(status_code=500, detail="Failed to generate content")
+    
+    return {
+        "success": True,
+        "exclusive": {
+            "id": exclusive.id,
+            "title": exclusive.title,
+            "content": exclusive.content,
+            "created_at": exclusive.created_at.isoformat()
+        }
+    }
 
+
+@router.get("/exclusive")
+async def get_exclusive_content(
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get Detooz Exclusive content list"""
+    result = await db.execute(
+        select(DetoozExclusive)
+        .where(DetoozExclusive.is_active == True)
+        .order_by(desc(DetoozExclusive.created_at))
+        .limit(limit)
+    )
+    articles = result.scalars().all()
+    
+    return {
+        "exclusive": [
+            ExclusiveResponse(
+                id=e.id,
+                title=e.title,
+                content=e.content,
+                image_url=e.image_url,
+                category=e.category.value,
+                read_time_mins=e.read_time_mins,
+                created_at=e.created_at
+            )
+            for e in articles
+        ],
+        "total": len(articles)
+    }
+
+
+# ============================================
+# Legacy/Debug Endpoints
+# ============================================
+
+@router.post("/sync-feeds")
+async def sync_feeds():
+    """
+    Force refresh RSS feed cache (debug endpoint).
+    Not needed in live architecture - feeds are fetched on-demand.
+    """
+    articles = await fetch_all_feeds(force_refresh=True)
+    return {"success": True, "articles_cached": len(articles)}
