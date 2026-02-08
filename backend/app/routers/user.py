@@ -273,6 +273,10 @@ async def get_profile(
     middle_name = name_parts[1] if len(name_parts) > 2 else None
     last_name = name_parts[-1] if len(name_parts) > 1 else ''
     
+    # Google users always have verified email (Google handles verification)
+    is_google_user = bool(current_user.google_uid)
+    email_verified = True if is_google_user else (current_user.email_verified or False)
+    
     return UserProfileResponse(
         id=current_user.id,
         email=current_user.email,
@@ -281,7 +285,7 @@ async def get_profile(
         middle_name=middle_name,
         last_name=last_name,
         phone=current_user.phone,
-        email_verified=current_user.email_verified or False,
+        email_verified=email_verified,
         phone_verified=current_user.phone_verified or False,
         verification_grace_period_end=current_user.verification_grace_period_end.isoformat() if current_user.verification_grace_period_end else None
     )

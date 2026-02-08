@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: detooz-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist SQLite database
+      - ./data:/data
+      # Persist uploaded images
+      - ./uploads:/app/app/static/uploads
+    environment:
+      # Database uses mounted volume
+      - DATABASE_URL=sqlite+aiosqlite:////data/detooz.db
+      # API Keys (loaded from .env file)
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - FIREBASE_CREDENTIALS_BASE64=${FIREBASE_CREDENTIALS_BASE64}
+      # Production settings
+      - DEBUG=false
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Note: Create a .env file with your secrets (never commit to git!)
+# GROQ_API_KEY=your_key
+# OPENROUTER_API_KEY=your_key  
+# SECRET_KEY=your_random_secret_key
+# FIREBASE_CREDENTIALS_BASE64=your_base64_encoded_credentials

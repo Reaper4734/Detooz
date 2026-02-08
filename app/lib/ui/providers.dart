@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -242,12 +243,36 @@ class GuardiansNotifier extends StateNotifier<AsyncValue<List<GuardianViewModel>
   }
 }
 
-/// Auth state
+/// Auth state with auto-reconnect capability
 class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
   final Ref ref;
+  StreamSubscription<bool>? _healthSubscription;
+  bool _wasOffline = false;
 
   AuthNotifier(this.ref) : super(const AsyncValue.loading()) {
+    _initHealthMonitoring();
     checkAuth();
+  }
+  
+  void _initHealthMonitoring() {
+    // Start periodic health checks
+    connectivityService.startHealthMonitoring();
+    
+    // Listen for backend coming online
+    _healthSubscription = connectivityService.onBackendHealthChanged.listen((isOnline) {
+      if (isOnline && _wasOffline) {
+        debugPrint('🔄 Backend came online! Re-authenticating...');
+        checkAuth();
+      }
+      _wasOffline = !isOnline;
+    });
+  }
+  
+  @override
+  void dispose() {
+    _healthSubscription?.cancel();
+    connectivityService.stopHealthMonitoring();
+    super.dispose();
   }
   
   Future<void> checkAuth() async {
@@ -266,6 +291,16 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
     final hasInternet = await connectivityService.hasInternet();
     if (!hasInternet) {
        debugPrint('🔐 checkAuth: Offline mode, assuming Valid Token');
+       _wasOffline = true;
+       state = const AsyncValue.data(true);
+       return;
+    }
+    
+    // Also check if backend is actually reachable
+    final backendReachable = await connectivityService.pingBackend();
+    if (!backendReachable) {
+       debugPrint('🔐 checkAuth: Backend unreachable, entering Offline Mode');
+       _wasOffline = true;
        state = const AsyncValue.data(true);
        return;
     }
@@ -277,6 +312,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
       // Use shorter timeout for startup check (5s) to avoid "stuck on loading"
       await apiService.getUserProfile().timeout(const Duration(seconds: 5));
       
+      _wasOffline = false;
       state = const AsyncValue.data(true);
       debugPrint('🔐 checkAuth: Token valid, authenticated!');
     } catch (e) {
@@ -291,6 +327,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
       } else {
          // Network error / Timeout -> Assume Offline Mode (Allow Access)
          debugPrint('🔐 checkAuth: Network error ($e), entering Offline Mode');
+         _wasOffline = true;
          state = const AsyncValue.data(true);
       }
     }
@@ -409,8 +446,8 @@ class UserProfile {
       .where((s) => s != null && s.isNotEmpty)
       .join(' ');
   
-  /// Returns true if any verification is missing
-  bool get needsVerification => !emailVerified || !phoneVerified;
+  /// Returns true if email verification is missing (phone is optional)
+  bool get needsVerification => !emailVerified;
   
   /// Days remaining in grace period (null if no grace period set)
   int? get daysRemainingInGracePeriod {

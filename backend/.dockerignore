@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+.eggs/
+*.egg-info/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Testing
+.pytest_cache
+htmlcov/
+.coverage
+
+# Local data (will be mounted as volumes)
+data/
+uploads/
+*.db
+
+# Environment files (secrets)
+.env
+
+# Logs
+*.log
+
+# Documentation
+*.md
+!README.md
+
+# Docker (don't copy docker files into image)
+Dockerfile
+docker-compose*.yml
+.dockerignore
