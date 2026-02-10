@@ -59,7 +59,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final groupedScans = _groupScansByDate(filteredScans);
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.background(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -73,7 +73,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     style: TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppColors.textPrimary(context),
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -105,7 +105,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             Expanded(
               child: RefreshIndicator(
                 color: AppColors.primary,
-                backgroundColor: AppColors.surfaceDark,
+                backgroundColor: AppColors.surface(context),
                 onRefresh: () async {
                   await ref.read(scansProvider.notifier).loadScans();
                 },
@@ -133,10 +133,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       height: 44,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.surfaceDark.withOpacity(0.6),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: AppColors.surface(context).withOpacity(0.6),
+        border: Border.all(color: AppColors.border(context)),
       ),
-      child: Icon(icon, color: Colors.white.withOpacity(0.8), size: 24),
+      child: Icon(icon, color: AppColors.textPrimary(context).withOpacity(0.8), size: 24),
     );
   }
 
@@ -148,12 +148,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surfaceDark,
+          color: isSelected ? AppColors.primary : AppColors.surface(context),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isSelected
                 ? AppColors.primary
-                : AppColors.borderDark,
+                : AppColors.border(context),
           ),
           boxShadow: isSelected
               ? [
@@ -168,7 +168,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         child: Text(
           tr(label),
           style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textSecondaryDark,
+            color: isSelected ? Colors.white : AppColors.textSecondary(context),
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
@@ -189,7 +189,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: AppColors.textSecondaryDark.withOpacity(0.7),
+              color: AppColors.textSecondary(context).withOpacity(0.7),
               letterSpacing: 1.2,
             ),
           ),
@@ -212,7 +212,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark.withOpacity(0.6),
+          color: AppColors.surface(context).withOpacity(0.6),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
@@ -232,8 +232,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       Expanded(
                         child: Text(
                           scan.senderNumber,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppColors.textPrimary(context),
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -245,7 +245,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       Text(
                         DateFormat('h:mm a').format(scan.scannedAt.toLocal()),
                         style: TextStyle(
-                          color: AppColors.textSecondaryDark.withOpacity(0.7),
+                          color: AppColors.textSecondary(context).withOpacity(0.7),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -260,8 +260,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       Expanded(
                         child: Text(
                           scan.messagePreview.replaceAll('\n', ' '),
-                          style: const TextStyle(
-                            color: AppColors.textSecondaryDark,
+                          style: TextStyle(
+                            color: AppColors.textSecondary(context),
                             fontSize: 13,
                           ),
                           maxLines: 1,
@@ -305,11 +305,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: AppColors.surfaceDark,
+            color: AppColors.surface(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white.withOpacity(0.05)),
           ),
-          child: Icon(icon, color: Colors.white, size: 24),
+          child: Icon(icon, color: AppColors.textPrimary(context), size: 24),
         ),
         if (showIndicator)
           Positioned(
@@ -321,7 +321,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               decoration: BoxDecoration(
                 color: indicatorColor,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.backgroundDark, width: 2),
+                border: Border.all(color: AppColors.background(context), width: 2),
               ),
             ),
           ),
@@ -375,12 +375,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           Icon(
             Icons.history_outlined,
             size: 64,
-            color: AppColors.textSecondaryDark.withOpacity(0.5),
+            color: AppColors.textSecondary(context).withOpacity(0.5),
           ),
           SizedBox(height: 16),
           Tr('No scan history',
             style: TextStyle(
-              color: AppColors.textSecondaryDark,
+              color: AppColors.textSecondary(context),
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -388,7 +388,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           SizedBox(height: 8),
           Tr('Your scanned items will appear here',
             style: TextStyle(
-              color: AppColors.textSecondaryDark.withOpacity(0.7),
+              color: AppColors.textSecondary(context).withOpacity(0.7),
               fontSize: 14,
             ),
           ),

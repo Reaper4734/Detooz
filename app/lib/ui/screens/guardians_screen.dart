@@ -24,7 +24,7 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
     ref.watch(languageProvider);
     
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.background(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -40,7 +40,7 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: AppColors.textPrimary(context),
                       ),
                     ),
                   ),
@@ -54,7 +54,7 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceDark.withOpacity(0.5),
+                  color: AppColors.surface(context).withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white.withOpacity(0.05)),
                 ),
@@ -100,7 +100,7 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFFA1A1AA),
+            color: isSelected ? Colors.white : AppColors.textSecondary(context),
           ),
         ),
       ),
@@ -174,14 +174,14 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: AppColors.surface(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Tr('Share This Code', style: TextStyle(color: Colors.white)),
+        title: Tr('Share This Code', style: TextStyle(color: AppColors.textPrimary(context))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Tr('Share this code with the person you want to be your guardian.',
-              style: TextStyle(color: AppColors.textSecondaryDark),
+              style: TextStyle(color: AppColors.textSecondary(context)),
             ),
             SizedBox(height: 20),
             Container(
@@ -196,10 +196,10 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                 children: [
                   SelectableText(
                     _currentOtp!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                       color: AppColors.textPrimary(context),
                       letterSpacing: 8,
                     ),
                   ),
@@ -218,7 +218,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
             ),
             SizedBox(height: 12),
             Tr('Expires in 10 minutes',
-              style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
             ),
           ],
         ),
@@ -236,13 +236,14 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: AppColors.primary,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: AppColors.background(context),
       onRefresh: _loadGuardians,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Info Card
           _buildGlassCard(
+            context,
             child: Row(
               children: [
                 Container(
@@ -257,7 +258,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                 SizedBox(width: 12),
                 Expanded(
                   child: Tr('Guardians get alerts when you receive scam messages.',
-                    style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 14),
+                    style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14),
                   ),
                 ),
               ],
@@ -277,7 +278,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
 
           // Section Header
           Tr('My Guardians',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary(context)),
           ),
           SizedBox(height: 12),
 
@@ -290,11 +291,12 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Tr('No guardians linked yet.', style: TextStyle(color: AppColors.textSecondaryDark)),
+                child: Tr('No guardians linked yet.', style: TextStyle(color: AppColors.textSecondary(context))),
               ),
             )
           else
             ..._guardians.map((g) => _buildPersonCard(
+              context,
               name: g['guardian_name'] ?? 'Unknown',
               email: g['guardian_email'] ?? '',
               isVerified: true,
@@ -385,13 +387,14 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: AppColors.primary,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: AppColors.background(context),
       onRefresh: _loadProtectedUsers,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Protect Someone Card
           _buildGlassCard(
+            context,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -411,8 +414,8 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Tr('Protect Someone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                          Tr('Add a new user to your monitoring network', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark)),
+                          Tr('Protect Someone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary(context))),
+                          Tr('Add a new user to your monitoring network', style: TextStyle(fontSize: 12, color: AppColors.textSecondary(context))),
                         ],
                       ),
                     ),
@@ -421,9 +424,10 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
                 SizedBox(height: 20),
 
                 // Email Input
-                _buildInputLabel('User Email'),
+                _buildInputLabel(context, 'User Email'),
                 SizedBox(height: 6),
                 _buildGlassInput(
+                  context,
                   controller: _emailController,
                   icon: Icons.mail_outline,
                   hint: 'user@example.com',
@@ -432,9 +436,10 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
                 SizedBox(height: 16),
 
                 // OTP Input
-                _buildInputLabel('OTP Code'),
+                _buildInputLabel(context, 'OTP Code'),
                 SizedBox(height: 6),
                 _buildGlassInput(
+                  context,
                   controller: _otpController,
                   icon: Icons.lock_outline,
                   hint: 'Enter 6-digit code',
@@ -459,7 +464,7 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Tr('People I Protect', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              Tr('People I Protect', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary(context))),
               TextButton(
                 onPressed: () {},
                 child: Tr('View All', style: TextStyle(color: AppColors.primary, fontSize: 12)),
@@ -475,11 +480,12 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
-                child: Tr('You are not protecting anyone yet.', style: TextStyle(color: AppColors.textSecondaryDark)),
+                child: Tr('You are not protecting anyone yet.', style: TextStyle(color: AppColors.textSecondary(context))),
               ),
             )
           else
             ..._protectedUsers.map((u) => _buildPersonCard(
+              context,
               name: u['user_name'] ?? 'Unknown',
               email: u['user_email'] ?? '',
               isVerified: false,
@@ -493,13 +499,14 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
 
 // ================== SHARED WIDGETS ==================
 
-Widget _buildGlassCard({required Widget child}) {
+Widget _buildGlassCard(BuildContext context, {required Widget child}) {
   return Container(
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.03),
+      color: AppColors.surface(context),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withOpacity(0.08)),
+      border: Border.all(color: AppColors.border(context)),
+      boxShadow: AppColors.cardShadow(context),
     ),
     child: child,
   );
@@ -537,14 +544,14 @@ Widget _buildPrimaryButton({
   );
 }
 
-Widget _buildInputLabel(String label) {
+Widget _buildInputLabel(BuildContext context, String label) {
   return Text(
     label,
-    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFFD4D4D8)),
+    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary(context)),
   );
 }
 
-Widget _buildGlassInput({
+Widget _buildGlassInput(BuildContext context, {
   required TextEditingController controller,
   required IconData icon,
   required String hint,
@@ -552,14 +559,14 @@ Widget _buildGlassInput({
 }) {
   return Container(
     decoration: BoxDecoration(
-      color: Colors.black.withOpacity(0.4),
+      color: AppColors.isDark(context) ? Colors.black.withOpacity(0.4) : const Color(0xFFF4F4F5),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.white.withOpacity(0.1)),
+      border: Border.all(color: AppColors.border(context)),
     ),
     child: TextField(
       controller: controller,
       keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: const Color(0xFF52525B)),
@@ -571,7 +578,7 @@ Widget _buildGlassInput({
   );
 }
 
-Widget _buildPersonCard({
+Widget _buildPersonCard(BuildContext context, {
   required String name,
   required String email,
   required bool isVerified,
@@ -583,7 +590,7 @@ Widget _buildPersonCard({
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: AppColors.surfaceDark.withOpacity(0.4),
+      color: AppColors.surface(context).withOpacity(0.4),
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: Colors.white.withOpacity(0.05)),
     ),
@@ -594,14 +601,14 @@ Widget _buildPersonCard({
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: AppColors.surfaceDark,
+            color: AppColors.surface(context),
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.borderDark, width: 2),
+            border: Border.all(color: AppColors.border(context), width: 2),
           ),
           child: Center(
             child: Text(
               initial,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+              style: TextStyle(color: AppColors.textPrimary(context), fontSize: 16, fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -611,9 +618,9 @@ Widget _buildPersonCard({
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(name, style: TextStyle(color: AppColors.textPrimary(context), fontSize: 14, fontWeight: FontWeight.w600)),
               SizedBox(height: 2),
-              Text(email, style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12)),
+              Text(email, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
             ],
           ),
         ),

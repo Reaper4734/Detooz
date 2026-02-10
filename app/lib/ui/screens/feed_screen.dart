@@ -50,21 +50,21 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     final articles = feedState.articles;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: AppColors.background(context),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Tr(
           widget.category == 'all' ? 'Latest Feed' : '${widget.category[0].toUpperCase()}${widget.category.substring(1)} Feed',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: AppColors.textPrimary(context)),
             onPressed: () {
                ref.read(feedProvider(widget.category).notifier).refresh();
             },
@@ -99,8 +99,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget _buildInstagramCard(Article article) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8), // Reduced margin, spacing via header
-      decoration: const BoxDecoration(
-        color: AppColors.backgroundDark, // Pure black, no borders
+      decoration: BoxDecoration(
+        color: AppColors.background(context), // Pure black, no borders
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +126,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                       Text(
                         article.source,
                         style: GoogleFonts.inter(
-                          color: Colors.white,
+                          color: AppColors.textPrimary(context),
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                           letterSpacing: -0.2,
@@ -139,7 +139,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                           color: _getCategoryColor(article.category).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(
+                        child: Tr(
                           article.category.toUpperCase(),
                           style: TextStyle(
                             color: _getCategoryColor(article.category),
@@ -152,7 +152,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.more_vert, color: Colors.white70),
+                  icon: Icon(Icons.more_vert, color: AppColors.textSecondary(context)),
                   onPressed: () {}, // Action menu placeholder
                 ),
               ],
@@ -166,11 +166,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               height: 300,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.backgroundDark, // Pure black
+                color: AppColors.background(context), // Adaptive bg
                 gradient: article.imageUrl == null ? LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.backgroundDark, AppColors.primary.withOpacity(0.1)],
+                  colors: [AppColors.background(context), AppColors.primary.withOpacity(0.1)],
                 ) : null,
                 image: article.imageUrl != null
                     ? DecorationImage(
@@ -180,7 +180,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     : null,
               ),
               child: article.imageUrl == null
-                  ? Icon(Icons.image_not_supported, size: 64, color: AppColors.textSecondaryDark.withOpacity(0.5))
+                  ? Icon(Icons.image_not_supported, size: 64, color: AppColors.textSecondary(context).withOpacity(0.5))
                   : null,
             ),
           ),
@@ -193,13 +193,13 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 _buildBookmarkButton(article),
                 const SizedBox(width: 4),
                 IconButton(
-                  icon: const Icon(Icons.share_outlined, color: Colors.white),
+                  icon: Icon(Icons.share_outlined, color: AppColors.textPrimary(context)),
                   onPressed: () => _shareArticle(article),
                 ),
                 const Spacer(),
                 Text(
-                  '${article.readTimeMins} min read',
-                  style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12),
+                  '${article.readTimeMins} ${tr('min read')}',
+                  style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
                 ),
               ],
             ),
@@ -213,10 +213,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               children: [
                 GestureDetector(
                   onTap: () => _openArticle(article),
-                  child: Text(
+                  child: Tr(
                     article.title,
                     style: GoogleFonts.inter(
-                      color: Colors.white,
+                      color: AppColors.textPrimary(context),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       height: 1.3,
@@ -227,9 +227,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   const SizedBox(height: 8),
                   GestureDetector(
                     onTap: () => _openArticle(article),
-                    child: Text(
+                    child: Tr(
                       article.summary!,
-                      style: const TextStyle(color: Color(0xFFD4D4D8), fontSize: 14, height: 1.4),
+                      style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14, height: 1.4),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -238,9 +238,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () => _openArticle(article),
-                  child: const Text(
+                  child: Tr(
                     'Read more...',
-                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13),
                   ),
                 ),
               ],
@@ -267,7 +267,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     return IconButton(
         icon: Icon(
           article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-          color: article.isBookmarked ? AppColors.warning : Colors.white,
+          color: article.isBookmarked ? AppColors.warning : AppColors.textPrimary(context),
           size: 26,
         ),
         onPressed: () async {

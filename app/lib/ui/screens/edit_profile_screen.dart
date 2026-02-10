@@ -119,15 +119,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final profileAsync = ref.watch(userProfileProvider);
     
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: AppColors.background(context),
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
         ),
-        title: const Tr('My Profile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Tr('My Profile', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: profileAsync.when(
@@ -151,14 +151,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       value: profile.firstName,
                       isRequired: true,
                     ),
-                    const Divider(color: AppColors.borderDark, height: 1),
+                    Divider(color: AppColors.border(context), height: 1),
                     _buildEditableField(
                       fieldKey: 'middleName',
                       label: 'Middle Name',
                       controller: _middleNameController,
                       value: profile.middleName ?? '',
                     ),
-                    const Divider(color: AppColors.borderDark, height: 1),
+                    Divider(color: AppColors.border(context), height: 1),
                     _buildEditableField(
                       fieldKey: 'lastName',
                       label: 'Last Name',
@@ -184,7 +184,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       value: profile.email,
                       icon: Icons.email_outlined,
                     ),
-                    const Divider(color: AppColors.borderDark, height: 1),
+                    Divider(color: AppColors.border(context), height: 1),
                     _buildEditableField(
                       fieldKey: 'phone',
                       label: 'Phone',
@@ -228,14 +228,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       width: 100,
       height: 100,
       decoration: BoxDecoration(
-        color: const Color(0xFF27272A),
+        color: AppColors.surface(context),
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.borderDark, width: 4),
+        border: Border.all(color: AppColors.border(context), width: 4),
       ),
       child: Center(
         child: Text(
           initial,
-          style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.textPrimary(context), fontSize: 40, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -262,9 +262,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget _buildGlassCard({required Widget child}) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF18181B),
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderDark),
+        border: Border.all(color: AppColors.border(context)),
+        boxShadow: AppColors.cardShadow(context),
       ),
       child: child,
     );
@@ -319,7 +320,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           child: Text(
             value,
             style: TextStyle(
-              color: value == 'Not set' ? const Color(0xFF71717A) : Colors.white,
+              color: value == 'Not set' ? const Color(0xFF71717A) : AppColors.textPrimary(context),
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -351,7 +352,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.borderDark),
+              borderSide: BorderSide(color: AppColors.border(context)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

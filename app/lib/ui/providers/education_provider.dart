@@ -1,10 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../contracts/article.dart';
 import '../../services/education_service.dart';
+import '../../services/translation/translation_service.dart';
 
 /// Provider for main education dashboard (non-paginated, initial load)
 final educationFeedProvider = FutureProvider.family<FeedResponse, String>((ref, category) async {
-  return await educationService.getFeed(category: category);
+  final feed = await educationService.getFeed(category: category);
+
+  // Pre-translate article titles & summaries for instant Tr() rendering
+  if (TranslationService().currentLanguage != 'en') {
+    final texts = <String>[];
+    for (final article in feed.articles) {
+      texts.add(article.title);
+      if (article.summary != null) texts.add(article.summary!);
+    }
+    for (final exclusive in feed.exclusive) {
+      texts.add(exclusive.title);
+      texts.add(exclusive.content);
+    }
+    if (texts.isNotEmpty) {
+      await TranslationService().translateBatch(texts);
+    }
+  }
+
+  return feed;
 });
 
 /// State for infinite scroll feed
@@ -71,7 +90,19 @@ class FeedNotifier extends StateNotifier<FeedState> {
       // Actually, let's just use the articles list for the infinite feed.
       
       final newArticles = response.articles;
-      
+
+      // Pre-translate article titles & summaries for instant Tr() rendering
+      if (TranslationService().currentLanguage != 'en') {
+        final texts = <String>[];
+        for (final article in newArticles) {
+          texts.add(article.title);
+          if (article.summary != null) texts.add(article.summary!);
+        }
+        if (texts.isNotEmpty) {
+          await TranslationService().translateBatch(texts);
+        }
+      }
+
       state = state.copyWith(
         articles: [...state.articles, ...newArticles],
         isLoading: false,

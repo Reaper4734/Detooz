@@ -3,6 +3,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/app_colors.dart';
 import '../components/tr.dart';
 import 'main_screen.dart';
+import '../../services/translation/translation_service.dart';
 
 /// In-app browser for reading articles
 class ArticleWebView extends StatefulWidget {
@@ -26,6 +27,13 @@ class _ArticleWebViewState extends State<ArticleWebView> {
   bool _isLoading = true;
   double _progress = 0;
   bool _isDisposing = false;
+
+  /// Wraps the URL with Google Translate for non-English users
+  String _getTranslatedUrl(String url) {
+    final lang = TranslationService().currentLanguage;
+    if (lang == 'en' || url.startsWith('detooz://')) return url;
+    return 'https://translate.google.com/translate?sl=en&tl=$lang&u=${Uri.encodeComponent(url)}';
+  }
 
   @override
   void initState() {
@@ -52,7 +60,7 @@ class _ArticleWebViewState extends State<ArticleWebView> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(widget.url));
+      ..loadRequest(Uri.parse(_getTranslatedUrl(widget.url)));
   }
 
   @override
@@ -92,12 +100,12 @@ class _ArticleWebViewState extends State<ArticleWebView> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: AppColors.background(context),
         appBar: AppBar(
-          backgroundColor: AppColors.backgroundDark,
+          backgroundColor: AppColors.background(context),
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: Icon(Icons.close, color: AppColors.textPrimary(context)),
             onPressed: () {
                // Manual close button logic same as Back Button
                if (Navigator.canPop(context)) {
@@ -109,10 +117,10 @@ class _ArticleWebViewState extends State<ArticleWebView> {
                }
             },
           ),
-          title: Text(
+          title: Tr(
             widget.title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppColors.textPrimary(context),
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -121,11 +129,11 @@ class _ArticleWebViewState extends State<ArticleWebView> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
+              icon: Icon(Icons.refresh, color: AppColors.textPrimary(context)),
               onPressed: () => _controller.reload(),
             ),
             IconButton(
-              icon: const Icon(Icons.open_in_browser, color: Colors.white),
+              icon: Icon(Icons.open_in_browser, color: AppColors.textPrimary(context)),
               onPressed: () async {
                 // Open in external browser if user prefers
                 final uri = Uri.parse(widget.url);

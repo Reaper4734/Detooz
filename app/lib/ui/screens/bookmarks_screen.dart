@@ -16,15 +16,15 @@ class BookmarksScreen extends ConsumerWidget {
     final bookmarksAsync = ref.watch(bookmarksNotifierProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: AppColors.background(context),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Tr('My Bookmarks', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        title: Tr('My Bookmarks', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w600)),
       ),
       body: bookmarksAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -34,7 +34,7 @@ class BookmarksScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.error_outline, color: AppColors.danger, size: 48),
               const SizedBox(height: 12),
-              Tr('Error: $e', style: const TextStyle(color: Colors.white)),
+              Tr('Error: $e', style: TextStyle(color: AppColors.textPrimary(context))),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () => ref.read(bookmarksNotifierProvider.notifier).loadBookmarks(),
@@ -50,9 +50,9 @@ class BookmarksScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bookmark_border, size: 64, color: Colors.white.withOpacity(0.3)),
+                  Icon(Icons.bookmark_border, size: 64, color: AppColors.textSecondary(context)),
                   const SizedBox(height: 16),
-                  const Tr('No bookmarks yet', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500)),
+                  Tr('No bookmarks yet', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   const Tr('Save articles to read later', style: TextStyle(color: Color(0xFF9CA3AF))),
                 ],
@@ -84,9 +84,10 @@ class _BookmarkCard extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF18181B).withOpacity(0.75),
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        border: Border.all(color: AppColors.border(context)),
+        boxShadow: AppColors.cardShadow(context),
       ),
       child: InkWell(
         onTap: () => _openArticle(context, article),
@@ -120,7 +121,7 @@ class _BookmarkCard extends ConsumerWidget {
                   children: [
                     Text(
                       article.title,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                      style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w600, fontSize: 14),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),

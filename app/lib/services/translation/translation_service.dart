@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -93,6 +95,18 @@ class TranslationService {
     debugPrint('🌐 Language changed: $oldLang → $langCode');
   }
 
+  /// Generate a Hive-safe cache key (max 255 chars)
+  /// Hashes long strings to avoid HiveError
+  String _cacheKey(String text) {
+    final prefix = '${_currentLang}_';
+    if (prefix.length + text.length <= 250) {
+      return '$prefix$text';
+    }
+    // Hash long keys using MD5 for speed (not security-critical)
+    final hash = md5.convert(utf8.encode(text)).toString();
+    return '${prefix}hash_$hash';
+  }
+
   /// Translate a string to the current language
   /// Returns the original string if:
   /// - Current language is English
@@ -103,14 +117,14 @@ class TranslationService {
     if (_currentLang == 'en' || _translator == null) return text;
 
     // Check cache first (instant)
-    final cacheKey = '${_currentLang}_$text';
-    final cached = _cache?.get(cacheKey);
+    final key = _cacheKey(text);
+    final cached = _cache?.get(key);
     if (cached != null) return cached;
 
     // Translate and cache
     try {
       final translated = await _translator!.translateText(text);
-      await _cache?.put(cacheKey, translated);
+      await _cache?.put(key, translated);
       return translated;
     } catch (e) {
       debugPrint('⚠️ Translation error: $e');
@@ -127,8 +141,8 @@ class TranslationService {
   String translateSync(String text) {
     if (_currentLang == 'en') return text;
     
-    final cacheKey = '${_currentLang}_$text';
-    return _cache?.get(cacheKey) ?? text;
+    final key = _cacheKey(text);
+    return _cache?.get(key) ?? text;
   }
 
   /// Pre-load translations into cache for synchronous access

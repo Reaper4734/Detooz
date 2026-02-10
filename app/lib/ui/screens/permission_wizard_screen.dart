@@ -58,13 +58,13 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
         title: Tr('Setup Detooz Protection'),
         centerTitle: true,
         automaticallyImplyLeading: false, 
-        backgroundColor: AppColors.backgroundDark,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.background(context),
+        foregroundColor: AppColors.textPrimary(context),
       ),
       body: Padding(
         padding: EdgeInsets.all(AppSpacing.lg),
@@ -149,10 +149,10 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDone ? Colors.green.withOpacity(0.5) : Colors.white10,
+          color: isDone ? Colors.green.withOpacity(0.5) : AppColors.border(context),
         ),
       ),
       child: Row(
@@ -160,12 +160,12 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDone ? Colors.green.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+              color: isDone ? Colors.green.withOpacity(0.2) : AppColors.surface(context).withOpacity(0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
               isDone ? Icons.check : icon,
-              color: isDone ? Colors.green : Colors.white70,
+              color: isDone ? Colors.green : AppColors.textSecondary(context),
               size: 24,
             ),
           ),
@@ -174,9 +174,9 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(title, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 16)),
                 SizedBox(height: 4),
-                Text(description, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
+                Text(description, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
                 if (!isDone) ...[
                   SizedBox(height: 12),
                   SizedBox(

@@ -151,11 +151,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark, // True Black styling
+      backgroundColor: AppColors.background(context),
       body: SafeArea(
         child: RefreshIndicator(
           color: AppColors.primary,
-          backgroundColor: AppColors.surfaceDark,
+          backgroundColor: AppColors.surface(context),
           onRefresh: () async {
             await ref.read(scansProvider.notifier).loadScans();
             await ref.read(userStatsProvider.notifier).loadStats();
@@ -177,8 +177,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         Row(
                           children: [
                             Tr('$greeting, ',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: AppColors.textPrimary(context),
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -187,8 +187,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               Flexible(
                                 child: _MarqueeText(
                                   text: userProfile.value!.name.split(' ').first,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary(context),
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -199,7 +199,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         SizedBox(height: 4),
                         Tr('Stay safe today',
                           style: TextStyle(
-                            color: Colors.grey[400],
+                            color: AppColors.textSecondary(context),
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -263,8 +263,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(32),
-                  color: AppColors.surfaceDark.withOpacity(0.8), // Zinc Glass
-                  border: Border.all(color: AppColors.borderDark),
+                  color: AppColors.surface(context).withOpacity(0.8),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(32),
@@ -307,9 +307,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         width: 48,
                                         height: 48,
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF1E1E24), // Slightly lighter
+                                          color: AppColors.isDark(context) ? const Color(0xFF1E1E24) : AppColors.backgroundLight,
                                           borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: AppColors.borderDark),
+                                          border: Border.all(color: AppColors.border(context)),
                                         ),
                                         child: const Icon(Icons.security, color: AppColors.primary, size: 24),
                                       ),
@@ -319,7 +319,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         children: [
                                           Tr('Protection Active',
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: AppColors.textPrimary(context),
                                               fontSize: 18,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -352,7 +352,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       ),
                                     ],
                                   ),
-                                  Icon(Icons.more_horiz, color: Colors.grey[600]),
+                                  Icon(Icons.more_horiz, color: AppColors.textSecondary(context)),
                                 ],
                               ),
                           
@@ -365,16 +365,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.2), // Darker inset
+                                    color: AppColors.isDark(context) ? Colors.black.withOpacity(0.2) : AppColors.backgroundLight,
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: AppColors.borderDark),
+                                    border: Border.all(color: AppColors.border(context)),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Tr('Items Scanned',
                                         style: TextStyle(
-                                          color: Colors.grey[400],
+                                          color: AppColors.textSecondary(context),
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -382,8 +382,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       SizedBox(height: 4),
                                       Text(
                                         userStats.isLoading ? '-' : '${userStats.value?.totalScans ?? 0}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: AppColors.textPrimary(context),
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -397,16 +397,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.2),
+                                    color: AppColors.isDark(context) ? Colors.black.withOpacity(0.2) : AppColors.backgroundLight,
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: AppColors.borderDark),
+                                    border: Border.all(color: AppColors.border(context)),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Tr('High Risk Blocked',
                                         style: TextStyle(
-                                          color: Colors.grey[400],
+                                          color: AppColors.textSecondary(context),
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -418,8 +418,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         children: [
                                           Text(
                                             userStats.isLoading ? '-' : '${userStats.value?.highRiskBlocked ?? 0}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
+                                            style: TextStyle(
+                                              color: AppColors.textPrimary(context),
                                               fontSize: 24,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -457,7 +457,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 padding: EdgeInsets.only(left: 4, bottom: 12),
                 child: Tr('Manual Check',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary(context),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -466,9 +466,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF141416),
-                  borderRadius: BorderRadius.circular(100), // Pill shape
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  color: AppColors.isDark(context) ? const Color(0xFF141416) : Colors.white,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: AppColors.border(context)),
+                  boxShadow: AppColors.cardShadow(context),
                 ),
                 child: Row(
                   children: [
@@ -478,7 +479,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Expanded(
                       child: TextField(
                         controller: _manualCheckController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppColors.textPrimary(context)),
                         decoration: InputDecoration(
                           hintText: tr('Check text, URL, or number'),
                           hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
@@ -535,7 +536,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     padding: EdgeInsets.only(left: 4),
                     child: Tr('Recent Scans',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary(context),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -612,9 +613,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF18181B).withOpacity(0.8), // Zinc-900 Glass
+        color: AppColors.surface(context).withOpacity(0.8),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: AppColors.border(context).withOpacity(0.3)),
       ),
       child: InkWell(
         onTap: () {
@@ -637,13 +638,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFF27272A), // Zinc-800
+                color: AppColors.isDark(context) ? const Color(0xFF27272A) : AppColors.backgroundLight,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: AppColors.border(context).withOpacity(0.3)),
               ),
               child: Icon(
                 platformIcon,
-                color: Colors.white,
+                color: AppColors.textPrimary(context),
                 size: 20,
               ),
             ),
@@ -659,8 +660,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       Expanded(
                         child: Text(
                           scan.sender,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppColors.textPrimary(context),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'Inter',

@@ -39,17 +39,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     
     // Aesthetic Constants
-    const glassColor = Color(0xFF18181B); // Zinc-900
-    const glassBorder = Color(0xFF3F3F46); // Zinc-700/Border
+    final glassColor = AppColors.surface(context);
+    final glassBorder = AppColors.border(context);
     const primaryColor = Color(0xFF7C3AED); // Violet-600
-    const trueBlack = Color(0xFF000000); 
+    final bgColor = AppColors.background(context);
 
     return Scaffold(
-      backgroundColor: trueBlack,
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: Tr('Settings', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
         centerTitle: true,
-        backgroundColor: trueBlack.withOpacity(0.9),
+        backgroundColor: bgColor.withOpacity(0.9),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leadingWidth: 80,
@@ -71,7 +71,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1),
-            child: Container(color: glassBorder, height: 1),
+            child: Container(color: AppColors.border(context), height: 1),
         ),
       ),
       body: SingleChildScrollView(
@@ -100,7 +100,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       _buildIcon(Icons.person, const Color(0x1A7C3AED), primaryColor),
                       const SizedBox(width: 16),
-                      Expanded(child: Tr('My Profile', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+                      Expanded(child: Tr('My Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
                       const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
                     ],
                   ),
@@ -123,7 +123,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       _buildIcon(Icons.security, const Color(0x1A22C55E), const Color(0xFF22C55E)),
                       const SizedBox(width: 16),
-                      Expanded(child: Tr('Privacy & Security', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+                      Expanded(child: Tr('Privacy & Security', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
                       const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
                     ],
                   ),
@@ -146,7 +146,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       _buildIcon(Icons.bookmark, const Color(0x1AF59E0B), const Color(0xFFF59E0B)),
                       const SizedBox(width: 16),
-                      Expanded(child: Tr('My Bookmarks', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+                      Expanded(child: Tr('My Bookmarks', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
                       const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
                     ],
                   ),
@@ -188,7 +188,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       _buildIcon(Icons.language, const Color(0x1A6366F1), const Color(0xFF6366F1)),
                       const SizedBox(width: 16),
-                      Expanded(child: Tr('Language', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+                      Expanded(child: Tr('Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
                       Consumer(builder: (context, ref, _) {
                           final langCode = ref.watch(languageProvider);
                           final langName = langCode == 'en' ? 'English' : 
@@ -292,14 +292,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Container(
               width: 56, height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF27272A),
+                color: AppColors.surface(context),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF3F3F46)),
+                border: Border.all(color: AppColors.border(context)),
               ),
               child: Center(
                 child: Text(
                   user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.textPrimary(context), fontSize: 24, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -310,7 +310,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   Text(
                     user.name,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.1),
+                    style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold, height: 1.1),
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
@@ -353,20 +353,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Container(
               width: 56, height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF27272A),
+                color: AppColors.surface(context),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF3F3F46)),
+                border: Border.all(color: AppColors.border(context)),
               ),
-              child: const Center(
-                child: Text('?', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              child: Center(
+                child: Text('?', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 24, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('User', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('User', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
                   SizedBox(height: 2),
                   Text('Loading...', style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 14)),
                 ],
@@ -398,9 +398,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       width: double.infinity,
       padding: padding ?? const EdgeInsets.all(0),
       decoration: BoxDecoration(
-        color: const Color(0xFF18181B).withOpacity(0.8), // Zinc-900 Glass
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF3F3F46)), // Zinc-700
+        border: Border.all(color: AppColors.border(context)),
+        boxShadow: AppColors.cardShadow(context),
       ),
       child: child,
     );
@@ -431,7 +432,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildDivider() {
-    return const Divider(height: 1, thickness: 1, indent: 68, color: Color(0xFF27272A)); // Zinc-800
+    return Divider(height: 1, thickness: 1, indent: 68, color: AppColors.border(context));
   }
 
   Widget _buildSwitchRow({
@@ -448,14 +449,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           _buildIcon(icon, iconBg, iconColor),
           const SizedBox(width: 16),
-          Expanded(child: Tr(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+          Expanded(child: Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
           Switch(
             value: value,
             onChanged: onChanged,
             activeColor: const Color(0xFF7C3AED), // Primary Purple
             activeTrackColor: const Color(0xFF7C3AED).withOpacity(0.5),
-            inactiveThumbColor: const Color(0xFFA1A1AA),
-            inactiveTrackColor: const Color(0xFF27272A),
+            inactiveThumbColor: AppColors.isDark(context) ? const Color(0xFFA1A1AA) : const Color(0xFFD4D4D8),
+            inactiveTrackColor: AppColors.isDark(context) ? const Color(0xFF27272A) : const Color(0xFFE5E7EB),
           ),
         ],
       ),
@@ -475,7 +476,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           _buildIcon(icon, iconBg, iconColor),
           const SizedBox(width: 16),
-          Expanded(child: Tr(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+          Expanded(child: Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
           trailing,
         ],
       ),
@@ -494,7 +495,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Row(
           children: [
             const SizedBox(width: 4), 
-            Expanded(child: Tr(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white))),
+            Expanded(child: Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
             if (isSelected) 
               const Icon(Icons.check_circle, color: Color(0xFF7C3AED), size: 20)
             else

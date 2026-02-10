@@ -43,7 +43,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
     final feedAsync = ref.watch(educationFeedProvider(_selectedCategory));
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.background(context),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -120,7 +120,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
           Tr(
             'Learn to Protect Yourself',
             style: GoogleFonts.inter(
-              color: Colors.white,
+              color: AppColors.textPrimary(context),
               fontSize: 32,
               fontWeight: FontWeight.bold,
               height: 1.1,
@@ -136,9 +136,9 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                 height: 48,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceDark,
+                  color: AppColors.surface(context),
                   borderRadius: BorderRadius.circular(50),
-                  border: Border.all(color: AppColors.borderDark),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Row(
                   children: [
@@ -147,7 +147,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppColors.textPrimary(context)),
                         decoration: InputDecoration(
                           hintText: tr('Search scams, tips...'),
                           hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
@@ -169,10 +169,10 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
 
   Widget _buildCategoryChips() {
     final labels = {
-      'all': 'All',
-      'alert': '🚨 Alerts',
-      'tip': '💡 Tips',
-      'news': '📰 News',
+      'all': tr('All'),
+      'alert': '🚨 ${tr('Alerts')}',
+      'tip': '💡 ${tr('Tips')}',
+      'news': '📰 ${tr('News')}',
     };
 
     return SingleChildScrollView(
@@ -189,16 +189,16 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : AppColors.surfaceDark,
+                  color: isSelected ? AppColors.primary : AppColors.surface(context),
                   borderRadius: BorderRadius.circular(50),
                   border: Border.all(
-                    color: isSelected ? Colors.transparent : AppColors.borderDark,
+                    color: isSelected ? Colors.transparent : AppColors.border(context),
                   ),
                 ),
                 child: Text(
                   labels[category] ?? category,
                   style: GoogleFonts.inter(
-                    color: isSelected ? Colors.white : const Color(0xFFE5E7EB),
+                    color: isSelected ? Colors.white : AppColors.textPrimary(context),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -216,7 +216,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
       height: 200,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF18181B).withOpacity(0.75),
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: const Center(
@@ -230,19 +230,19 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF18181B).withOpacity(0.75),
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
           const Icon(Icons.error_outline, color: AppColors.danger, size: 48),
           const SizedBox(height: 12),
-          const Tr('Failed to load content', style: TextStyle(color: Colors.white)),
+          Tr('Failed to load content', style: TextStyle(color: AppColors.textPrimary(context))),
           const SizedBox(height: 8),
           ElevatedButton(
             onPressed: _refresh,
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Retry'),
+            child: const Tr('Retry'),
           ),
         ],
       ),
@@ -255,10 +255,10 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
+          Tr(
             title,
             style: GoogleFonts.inter(
-              color: Colors.white,
+              color: AppColors.textPrimary(context),
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -266,7 +266,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
           if (actionText != null && onAction != null)
             GestureDetector(
               onTap: onAction,
-              child: Text(
+              child: Tr(
                 actionText,
                 style: const TextStyle(
                   color: AppColors.primary,
@@ -287,8 +287,8 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderDark),
-          color: AppColors.surfaceDark,
+          border: Border.all(color: AppColors.border(context)),
+          color: AppColors.surface(context),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -328,7 +328,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                           color: AppColors.primary.withOpacity(0.9),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
+                        child: Tr(
                           article.category.toUpperCase(),
                           style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                         ),
@@ -352,10 +352,10 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
+                          child: Tr(
                             article.title,
                             style: GoogleFonts.inter(
-                              color: Colors.white,
+                              color: AppColors.textPrimary(context),
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               height: 1.2,
@@ -368,14 +368,14 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${article.source} • ${article.readTimeMins} min read',
-                      style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
+                      '${article.source} • ${article.readTimeMins} ${tr('min read')}',
+                      style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
                     ),
                     const SizedBox(height: 8),
                     if (article.summary != null)
-                      Text(
+                      Tr(
                         article.summary!,
-                        style: GoogleFonts.inter(color: const Color(0xFFD4D4D8), fontSize: 14, height: 1.5),
+                        style: GoogleFonts.inter(color: AppColors.textSecondary(context), fontSize: 14, height: 1.5),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -422,9 +422,9 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
             width: 280,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
+              color: AppColors.surface(context),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.borderDark),
+              border: Border.all(color: AppColors.border(context)),
             ),
             child: InkWell(
               onTap: () => _openArticle(article),
@@ -462,9 +462,9 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          Tr(
                             article.title,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                            style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w600, fontSize: 14),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -473,12 +473,12 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                             children: [
                               Text(
                                 article.source,
-                                style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11),
+                                style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11),
                               ),
                               const Spacer(),
                               Text(
                                 '${article.readTimeMins} min',
-                                style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11),
+                                style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11),
                               ),
                             ],
                           ),
@@ -521,7 +521,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
         ),
         child: Icon(
           article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-          color: article.isBookmarked ? AppColors.warning : Colors.white,
+          color: article.isBookmarked ? AppColors.warning : AppColors.textPrimary(context),
           size: small ? 16 : 20,
         ),
       ),
@@ -549,18 +549,19 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Tr('Golden Rules', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          Tr('Golden Rules', style: GoogleFonts.inter(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF18181B).withOpacity(0.75),
+              color: AppColors.surface(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              border: Border.all(color: AppColors.border(context)),
+              boxShadow: AppColors.cardShadow(context),
             ),
             child: Column(
               children: [
                 _buildRuleItem(Icons.shield, 'Never share OTPs', 'Banks will never ask for your One-Time Password.'),
-                Divider(height: 1, color: Colors.white.withOpacity(0.1)),
+                Divider(height: 1, color: AppColors.border(context)),
                 _buildRuleItem(Icons.link_off, 'Verify before clicking', 'Check sender\'s address for misspellings.'),
               ],
             ),
@@ -586,9 +587,9 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Tr(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14)),
+                Tr(title, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w500, fontSize: 14)),
                 const SizedBox(height: 4),
-                Tr(desc, style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12, height: 1.4)),
+                Tr(desc, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12, height: 1.4)),
               ],
             ),
           ),
@@ -603,14 +604,15 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Tr('Quick Check: Bank Calls', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          Tr('Quick Check: Bank Calls', style: GoogleFonts.inter(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF18181B).withOpacity(0.75),
+              color: AppColors.surface(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              border: Border.all(color: AppColors.border(context)),
+              boxShadow: AppColors.cardShadow(context),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -625,11 +627,11 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                         const Tr('DO', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14)),
                       ]),
                       const SizedBox(height: 8),
-                      const Tr('Hang up and call the number on the back of your card.', style: TextStyle(color: Color(0xFFD4D4D8), fontSize: 13)),
+                      Tr('Hang up and call the number on the back of your card.', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13)),
                     ],
                   ),
                 ),
-                Container(width: 1, height: 80, color: Colors.white.withOpacity(0.1), margin: const EdgeInsets.symmetric(horizontal: 16)),
+                Container(width: 1, height: 80, color: AppColors.border(context), margin: const EdgeInsets.symmetric(horizontal: 16)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -640,7 +642,7 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                         const Tr('DON\'T', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14)),
                       ]),
                       const SizedBox(height: 8),
-                      const Tr('Trust caller ID or press numbers to "speak to an agent".', style: TextStyle(color: Color(0xFFD4D4D8), fontSize: 13)),
+                      Tr('Trust caller ID or press numbers to "speak to an agent".', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13)),
                     ],
                   ),
                 ),

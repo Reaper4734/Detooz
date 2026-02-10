@@ -796,7 +796,7 @@ class LanguageNotifier extends StateNotifier<String> {
     if (currentLang != 'en') {
       await TranslationService().preloadTranslations([
         // Navigation
-        'Home', 'History', 'Guardians', 'Profile', 'Settings',
+        'Home', 'History', 'Guardians', 'Profile', 'Settings', 'Learn',
         'Back', 'Scan', 'English',
         // History filter chips
         'All', 'High Risk', 'Medium Risk', 'Safe',
@@ -807,6 +807,20 @@ class LanguageNotifier extends StateNotifier<String> {
         'Download', 'Cancel', 'OK', 'Restart Now', 'Later',
         // Dashboard
         'Protection Active', 'High Risk Blocked',
+        // Education screen
+        'Alerts', 'Tips', 'News', 'Search scams, tips...',
+        'View All', 'Retry', 'min read',
+        'Learn to Protect Yourself', 'Read Full Article',
+        'Golden Rules', 'Never share OTPs',
+        'Banks will never ask for your One-Time Password.',
+        'Verify before clicking',
+        'Check sender\'s address for misspellings.',
+        'Quick Check: Bank Calls', 'DO', 'DON\'T',
+        'Hang up and call the number on the back of your card.',
+        'Trust caller ID or press numbers to "speak to an agent".',
+        'Failed to load content',
+        // Feed screen
+        'Read more...', 'Latest Feed',
       ]);
     }
     
@@ -827,7 +841,7 @@ class LanguageNotifier extends StateNotifier<String> {
     if (code != 'en') {
       await TranslationService().preloadTranslations([
         // Navigation
-        'Home', 'History', 'Guardians', 'Profile', 'Settings',
+        'Home', 'History', 'Guardians', 'Profile', 'Settings', 'Learn',
         'Back', 'Scan', 'English',
         // History filter chips
         'All', 'High Risk', 'Medium Risk', 'Safe',
@@ -838,6 +852,20 @@ class LanguageNotifier extends StateNotifier<String> {
         'Download', 'Cancel', 'OK', 'Restart Now', 'Later',
         // Dashboard
         'Protection Active', 'High Risk Blocked',
+        // Education screen
+        'Alerts', 'Tips', 'News', 'Search scams, tips...',
+        'View All', 'Retry', 'min read',
+        'Learn to Protect Yourself', 'Read Full Article',
+        'Golden Rules', 'Never share OTPs',
+        'Banks will never ask for your One-Time Password.',
+        'Verify before clicking',
+        'Check sender\'s address for misspellings.',
+        'Quick Check: Bank Calls', 'DO', 'DON\'T',
+        'Hang up and call the number on the back of your card.',
+        'Trust caller ID or press numbers to "speak to an agent".',
+        'Failed to load content',
+        // Feed screen
+        'Read more...', 'Latest Feed',
       ]);
     }
   }

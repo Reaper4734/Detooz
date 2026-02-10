@@ -42,15 +42,15 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     ref.watch(languageProvider);
     
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: AppColors.background(context),
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
         ),
-        title: const Tr('Privacy & Security', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Tr('Privacy & Security', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -69,7 +69,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                     title: 'Change Password',
                     onTap: _showChangePasswordDialog,
                   ),
-                  const Divider(color: AppColors.borderDark, height: 1),
+                  Divider(color: AppColors.border(context), height: 1),
                   _buildSwitchRow(
                     icon: Icons.fingerprint,
                     iconColor: const Color(0xFF7C3AED),
@@ -97,7 +97,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                     value: _sharePatterns,
                     onChanged: _toggleSharePatterns,
                   ),
-                  const Divider(color: AppColors.borderDark, height: 1),
+                  Divider(color: AppColors.border(context), height: 1),
                   _buildNavigationRow(
                     icon: Icons.download,
                     iconColor: const Color(0xFF3B82F6),
@@ -146,7 +146,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF18181B),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Tr('Change Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: Tr('Change Password', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -403,7 +403,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                     ),
                     child: Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13)),
                   ),
-                const Text('Enter your password to confirm:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                Text('Enter your password to confirm:', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
                 _buildPasswordField('Password', passwordController),
               ],
@@ -477,9 +477,10 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   Widget _buildGlassCard({required Widget child, Color? borderColor}) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF18181B),
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor ?? AppColors.borderDark),
+        border: Border.all(color: borderColor ?? AppColors.border(context)),
+        boxShadow: AppColors.cardShadow(context),
       ),
       child: child,
     );
@@ -514,7 +515,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: titleColor ?? Colors.white)),
+                  Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: titleColor ?? AppColors.textPrimary(context))),
                   if (subtitle != null)
                     Tr(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF71717A))),
                 ],
@@ -555,7 +556,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Tr(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white)),
+                Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context))),
                 if (subtitle != null)
                   Tr(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF71717A))),
               ],
@@ -564,9 +565,10 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primary,
-            inactiveThumbColor: const Color(0xFF71717A),
-            inactiveTrackColor: const Color(0xFF3F3F46),
+            activeColor: const Color(0xFF7C3AED),
+            activeTrackColor: const Color(0xFF7C3AED).withOpacity(0.5),
+            inactiveThumbColor: AppColors.isDark(context) ? const Color(0xFFA1A1AA) : const Color(0xFFD4D4D8),
+            inactiveTrackColor: AppColors.isDark(context) ? const Color(0xFF27272A) : const Color(0xFFE5E7EB),
           ),
         ],
       ),

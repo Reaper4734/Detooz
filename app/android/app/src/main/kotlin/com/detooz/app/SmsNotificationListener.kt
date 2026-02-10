@@ -157,6 +157,45 @@ class SmsNotificationListener : NotificationListenerService() {
             return
         }
         
+        // GROUP CHAT DETECTION: Detect if this is a group message
+        // Groups still get scanned (scam links can be shared in groups)
+        // but we skip un-analyzable content and pass isGroup flag for higher threshold
+        var isGroup = false
+        if (platform == "WHATSAPP" || platform == "TELEGRAM") {
+            // Detect group via EXTRA_CONVERSATION_TITLE
+            val conversationTitle = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()
+            if (conversationTitle != null) {
+                isGroup = true
+            }
+            
+            // Detect group via isGroupConversation extra (set by WhatsApp/Telegram)
+            if (!isGroup) {
+                val isGroupExtra = extras.getBoolean("android.isGroupConversation", false)
+                if (isGroupExtra) {
+                    isGroup = true
+                }
+            }
+            
+            if (isGroup) {
+                // Skip summary notifications (no useful content to scan)
+                // e.g. "2 new messages", "3 photos", "5 unread messages"
+                val summaryPattern = Regex("^\\d+\\s+(new\\s+)?messages?$|^\\d+\\s+photos?$|^\\d+\\s+unread.*$", RegexOption.IGNORE_CASE)
+                if (message.trim().matches(summaryPattern)) {
+                    Log.d(TAG, "⏭️ Skipping group summary notification: '$message'")
+                    return
+                }
+                
+                // Skip media-only messages (GIF, sticker, photo, video, audio)
+                val mediaPattern = Regex("^.+:\\s*(📷|🎥|🎵|🎤|📎|🎨)?\\s*(GIF|photo|video|audio|sticker|image|document)s?$", RegexOption.IGNORE_CASE)
+                if (message.trim().matches(mediaPattern)) {
+                    Log.d(TAG, "⏭️ Skipping group media notification: '$message'")
+                    return
+                }
+                
+                Log.d(TAG, "📩 Group message detected, will scan with higher threshold")
+            }
+        }
+        
         // Create unique key to prevent duplicates
         val messageKey = "${platform}_${sender}_${message.hashCode()}"
         if (recentMessages.contains(messageKey)) {
@@ -173,8 +212,8 @@ class SmsNotificationListener : NotificationListenerService() {
         Log.d(TAG, "📩 $platform message from UNKNOWN sender: $sender")
         Log.d(TAG, "📝 Message preview: ${message.take(50)}...")
         
-        // Send to Flutter for scam analysis
-        sendToFlutter(sender, message, platform)
+        // Send to Flutter for scam analysis (with group flag)
+        sendToFlutter(sender, message, platform, isGroup)
     }
     
     /**
@@ -232,15 +271,16 @@ class SmsNotificationListener : NotificationListenerService() {
         return false
     }
     
-    private fun sendToFlutter(sender: String, message: String, platform: String) {
+    private fun sendToFlutter(sender: String, message: String, platform: String, isGroup: Boolean = false) {
         try {
             methodChannel?.invokeMethod("onMessageReceived", mapOf(
                 "sender" to sender,
                 "message" to message,
                 "platform" to platform,
+                "isGroup" to isGroup,
                 "timestamp" to System.currentTimeMillis()
             ))
-            Log.d(TAG, "✅ $platform message sent to Flutter for analysis")
+            Log.d(TAG, "✅ $platform message sent to Flutter for analysis (isGroup=$isGroup)")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to send to Flutter: ${e.message}")
         }

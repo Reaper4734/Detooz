@@ -90,7 +90,7 @@ class AppTheme {
       ),
       */
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Color(0xFF101922), // Darker bg for nav
+        backgroundColor: AppColors.backgroundDark, // Match OLED black bg
         selectedItemColor: AppColors.primary,
         unselectedItemColor: Color(0xFF64748B),
         type: BottomNavigationBarType.fixed,

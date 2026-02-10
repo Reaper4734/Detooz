@@ -100,11 +100,13 @@ class SmsReceiverService {
         final message = args['message'] as String;
         final sender = args['sender'] as String;
         final platform = args['platform'] as String;
+        final isGroup = args['isGroup'] as bool? ?? false;
         
         await _handleIncomingMessage(
           message: message, 
           sender: sender, 
-          platform: platform
+          platform: platform,
+          isGroup: isGroup,
         );
       }
       return null;
@@ -118,10 +120,11 @@ class SmsReceiverService {
     required String message,
     required String sender,
     required String platform,
+    bool isGroup = false,
   }) async {
     if (message.length < 3) return; // Skip very short messages
     
-    debugPrint('📩 Received $platform message from: $sender');
+    debugPrint('📩 Received $platform message from: $sender${isGroup ? " (GROUP)" : ""}');
     
     try {
       // 1. Hybrid Shield: Local AI Check (Zero Latency)
@@ -132,6 +135,29 @@ class SmsReceiverService {
       final String aiLabel = aiPrediction['label'];
       
       debugPrint('🧠 AI Prediction: $aiLabel (${(aiConf * 100).toStringAsFixed(1)}%)');
+
+      // GROUP THRESHOLD: Require higher confidence for group messages
+      // to avoid flagging normal group chat as scams
+      // Groups: only flag SCAM if confidence > 85% (vs 70% for DMs)
+      if (isGroup && aiLabel == 'SCAM' && aiConf < 0.85) {
+        debugPrint('🛡️ Group message below threshold (${(aiConf * 100).toStringAsFixed(0)}% < 85%), treating as safe');
+        // Still save to history as LOW risk for transparency
+        final scanEntry = {
+          'id': DateTime.now().millisecondsSinceEpoch,
+          'sender': sender,
+          'message': message,
+          'platform': platform.toUpperCase(),
+          'risk_level': 'LOW',
+          'risk_reason': 'Group message - below confidence threshold',
+          'scam_type': null,
+          'confidence': aiConf,
+          'created_at': DateTime.now().toIso8601String(),
+          'guardian_alerted': false,
+          'source': 'local',
+        };
+        await offlineCacheService.cacheScan(scanEntry);
+        return;
+      }
 
       // Check connectivity
       final hasInternet = await connectivityService.hasInternet();
