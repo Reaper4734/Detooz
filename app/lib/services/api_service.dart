@@ -53,6 +53,32 @@ class ApiService {
     };
   }
 
+  /// Auto-refresh token on 401
+  Future<bool> _tryRefreshToken() async {
+    try {
+      final t = await token;
+      if (t == null) return false;
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/refresh'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $t',
+        },
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await saveToken(data['access_token']);
+        debugPrint('🔄 Token refreshed successfully');
+        return true;
+      }
+    } catch (e) {
+      debugPrint('🔄 Token refresh failed: $e');
+    }
+    return false;
+  }
+
   Map<String, dynamic> _processResponse(http.Response response) {
     if (response.statusCode == 401) {
       throw Exception('Unauthorized');
@@ -61,6 +87,44 @@ class ApiService {
       throw Exception('API Error: ${response.statusCode} ${response.body}');
     }
     return jsonDecode(response.body);
+  }
+
+  /// Authenticated GET with auto-retry on 401
+  Future<http.Response> _authGet(String path) async {
+    var response = await http.get(
+      Uri.parse('$baseUrl$path'),
+      headers: await _getHeaders(),
+    ).timeout(const Duration(seconds: 45));
+    
+    if (response.statusCode == 401) {
+      if (await _tryRefreshToken()) {
+        response = await http.get(
+          Uri.parse('$baseUrl$path'),
+          headers: await _getHeaders(),
+        ).timeout(const Duration(seconds: 45));
+      }
+    }
+    return response;
+  }
+
+  /// Authenticated POST with auto-retry on 401
+  Future<http.Response> _authPost(String path, {Object? body}) async {
+    var response = await http.post(
+      Uri.parse('$baseUrl$path'),
+      headers: await _getHeaders(),
+      body: body is String ? body : (body != null ? jsonEncode(body) : null),
+    ).timeout(const Duration(seconds: 45));
+    
+    if (response.statusCode == 401) {
+      if (await _tryRefreshToken()) {
+        response = await http.post(
+          Uri.parse('$baseUrl$path'),
+          headers: await _getHeaders(),
+          body: body is String ? body : (body != null ? jsonEncode(body) : null),
+        ).timeout(const Duration(seconds: 45));
+      }
+    }
+    return response;
   }
 
   // ============ AUTH ============
