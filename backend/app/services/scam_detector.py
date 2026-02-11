@@ -12,8 +12,12 @@ except ImportError:
     TORCH_AVAILABLE = False
     torch = None
 
+import logging
+
 from app.config import settings
 from app.services.sms_patterns import check_patterns
+
+logger = logging.getLogger(__name__)
 
 # Try to import groq, but make it optional
 try:
@@ -30,10 +34,16 @@ except ImportError:
     OPENROUTER_AVAILABLE = False
 
 
-# Module-level cache for Groq API calls (avoids @lru_cache on instance method)
-# Key: (message, sender) -> dict result
-_groq_cache: dict[tuple[str, str], dict] = {}
-_GROQ_CACHE_MAX_SIZE = 1024
+# Module-level cache for Groq API calls
+# Uses hash of (message, sender) to avoid storing full message text in memory
+import hashlib as _hashlib
+
+_groq_cache: dict[str, dict] = {}  # hash -> result
+_GROQ_CACHE_MAX_SIZE = 512
+
+
+def _cache_key(message: str, sender: str) -> str:
+    return _hashlib.md5(f"{message}|{sender}".encode()).hexdigest()
 
 
 class ScamDetector:
@@ -107,9 +117,9 @@ class ScamDetector:
                     base_url="https://openrouter.ai/api/v1",
                     api_key=settings.OPENROUTER_API_KEY,
                 )
-                print("DEBUG: OpenRouter Initialized successfully")
+                logger.info("OpenRouter client initialized")
             except Exception as e:
-                print(f"DEBUG: OpenRouter Init Failed: {e}")
+                logger.warning("OpenRouter initialization failed")
 
         # Local Model Initialization (only if torch is available)
         self.local_model = None
@@ -117,8 +127,7 @@ class ScamDetector:
         self.device = "cpu"
         
         if not TORCH_AVAILABLE:
-            print("INFO: PyTorch not installed. Running in Cloud-Only Mode.")
-            print("INFO: Using Groq/OpenRouter for AI analysis, Pattern Matching for offline.")
+            logger.info("PyTorch not installed. Running in Cloud-Only mode.")
             return
             
         try:
@@ -145,7 +154,7 @@ class ScamDetector:
                         break
             
             if model_path:
-                print(f"DEBUG: Loading Local Model from {model_path}...")
+                logger.info("Loading local MobileBERT model...")
                 self.local_tokenizer = MobileBertTokenizerFast.from_pretrained(model_path)
                 self.local_model = MobileBertForSequenceClassification.from_pretrained(model_path)
                 self.local_model.eval()
@@ -153,13 +162,12 @@ class ScamDetector:
                 # Use GPU if available
                 self.device = "cuda" if torch.cuda.is_available() else "cpu"
                 self.local_model.to(self.device)
-                print(f"DEBUG: Local Model Loaded on {self.device}")
+                logger.info(f"Local model loaded on {self.device}")
             else:
-                 print(f"INFO: Local MobileBERT model not found. Running in Cloud-Optimized Mode.")
-                 print(f"INFO: Enhanced Pattern Matching active for offline protection.")
+                 logger.info("Local MobileBERT model not found. Using cloud + patterns.")
 
         except Exception as e:
-            print(f"INFO: Local AI Init skipped ({str(e)}). Using Cloud + Patterns.")
+            logger.info("Local AI init skipped. Using cloud + patterns.")
 
     
     async def analyze(self, message: str, sender: str) -> dict:
@@ -190,7 +198,7 @@ class ScamDetector:
             local_ai_result = await self._analyze_with_local_model(message)
             # If Local AI is confident, use its result and save Groq tokens
             if local_ai_result["confidence"] > 0.90:
-                 print(f"DEBUG: Local AI confident ({local_ai_result['risk_level']}), skipping Groq.")
+                 logger.debug("Local AI confident, skipping cloud API")
                  return local_ai_result
             
             # If undecided but leaning towards scam, carry over context or just fall through
@@ -199,7 +207,7 @@ class ScamDetector:
         # Step 2: Use AI for uncertain messages (MEDIUM or LOW from patterns)
         if self.client:
             try:
-                print(f"DEBUG: Calling Groq AI for: {message[:50]}...")
+                logger.debug("Calling Groq AI for analysis")
                 ai_result = await self._analyze_with_ai(message, sender)
                 
                 # If AI says HIGH and patterns say MEDIUM, trust AI
@@ -218,7 +226,7 @@ class ScamDetector:
                 return ai_result
                 
             except Exception as e:
-                print(f"AI analysis failed: {e}")
+                logger.warning("AI analysis failed, using pattern result")
                 # Fall back to local result
                 return {
                     "risk_level": local_result["risk_level"],
@@ -280,7 +288,7 @@ class ScamDetector:
                 }
                 
         except Exception as e:
-            print(f"WARN: Local Model Inference Failed: {e}")
+            logger.warning("Local model inference failed")
             return {"risk_level": "UNKNOWN", "confidence": 0.0}
     
     def _sync_groq_call(self, message: str, sender: str) -> dict:
@@ -288,9 +296,9 @@ class ScamDetector:
         global _groq_cache
         
         # Check cache first
-        cache_key = (message, sender)
+        cache_key = _cache_key(message, sender)
         if cache_key in _groq_cache:
-            print(f"DEBUG: Cache hit for message from {sender}")
+            logger.debug("Cache hit for scam analysis")
             return _groq_cache[cache_key]
         
         # Make API call
@@ -305,7 +313,7 @@ class ScamDetector:
         )
         
         result_text = response.choices[0].message.content.strip()
-        print(f"DEBUG: Groq Response: {result_text}")
+        logger.debug("Groq response received")
         # Clean up if AI responds with ```json ... ```
         if result_text.startswith("```"):
             result_text = result_text.replace("```json", "").replace("```", "").strip()
@@ -362,7 +370,7 @@ class ScamDetector:
         Analyze an image for scam content using OpenRouter (Gemma/Gemini).
         """
         if not self.router_client:
-            print("DEBUG: OpenRouter client not initialized")
+            logger.debug("OpenRouter client not initialized")
             return {
                 "risk_level": "UNKNOWN",
                 "reason": "Image analysis not configured (OpenRouter API missing)",
@@ -370,15 +378,15 @@ class ScamDetector:
             }
             
         try:
-            print("DEBUG: Calling OpenRouter (Gemma-3) Vision API...")
+            logger.debug("Calling OpenRouter vision API")
             # Run OpenRouter call in thread pool
             result = await asyncio.to_thread(self._sync_openrouter_call, image_data)
             return result
         except Exception as e:
-            print(f"DEBUG: OpenRouter analysis failed: {e}")
+            logger.warning("OpenRouter analysis failed")
             return {
                 "risk_level": "UNKNOWN",
-                "reason": f"Analysis failed: {str(e)}",
+                "reason": "Image analysis temporarily unavailable",
                 "confidence": 0.0
             }
             
@@ -407,7 +415,7 @@ class ScamDetector:
 
         for model in models_to_try:
             try:
-                print(f"DEBUG: Attempting image analysis with {model}...")
+                logger.debug(f"Attempting image analysis with {model}")
                 start_time = time.time()
                 
                 response = self.router_client.chat.completions.create(
@@ -431,8 +439,7 @@ class ScamDetector:
                 )
                 
                 text = response.choices[0].message.content.strip()
-                print(f"DEBUG: {model} responded in {time.time() - start_time:.1f}s")
-                print(f"DEBUG: Raw Response: {text}")
+                logger.debug(f"{model} responded in {time.time() - start_time:.1f}s")
                 
                 # Clean up JSON
                 if "{" in text:
@@ -443,12 +450,12 @@ class ScamDetector:
                 return json.loads(text)
                 
             except Exception as e:
-                print(f"DEBUG: Model {model} failed: {e}")
-                last_error = str(e)
+                logger.debug(f"Model {model} failed, trying next")
+                logger.warning(f"Vision model {model} failed: {e}")
                 continue # Try next model
         
         # If all models fail, return a safe error response
-        print(f"DEBUG: All vision models failed. Last error: {last_error}")
+        logger.warning("All vision models failed")
         return {
             "risk_level": "UNKNOWN",
             "reason": f"AI models currently unavailable (429/Timeout). Please retry in 5 mins.",

@@ -5,6 +5,9 @@ from datetime import datetime
 
 from app.models import User, Scan, GuardianLink, GuardianAlert, UserSettings
 from app.services.fcm_service import fcm_service
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GuardianAlertService:
@@ -107,14 +110,14 @@ class GuardianAlertService:
                 )
                 
                 if success:
-                    print(f"✅ FCM push sent to guardian {guardian.email}")
+                    logger.info(f"FCM push sent to guardian {guardian.email}")
                 else:
-                    print(f"⚠️ FCM push failed for guardian {guardian.email}")
+                    logger.warning(f"FCM push failed for guardian {guardian.email}")
             else:
-                print(f"⚠️ Guardian {guardian_id} has no FCM token registered")
+                logger.warning(f"Guardian {guardian_id} has no FCM token registered")
                 
         except Exception as e:
-            print(f"ERROR: FCM push failed: {e}")
+            logger.error(f"FCM push failed: {e}")
     
     def _should_alert(self, risk_level: str, threshold: str) -> bool:
         """
@@ -147,7 +150,7 @@ async def send_guardian_alerts(db: AsyncSession, user: User, scan: Scan, result:
     """
     try:
         alerts_created = await guardian_alert_service.create_alerts_for_scan(db, user, scan)
-        print(f"DEBUG: Created {alerts_created} guardian alerts for scan {scan.id}")
+        logger.info(f"Created {alerts_created} guardian alerts for scan {scan.id}")
     except Exception as e:
-        print(f"ERROR: Failed to create guardian alerts: {e}")
+        logger.error(f"Failed to create guardian alerts: {e}")
 

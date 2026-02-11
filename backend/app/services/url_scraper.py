@@ -4,8 +4,11 @@ Extract and analyze content from URLs for scam detection
 """
 import re
 import httpx
+import logging
 from urllib.parse import urlparse
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class UrlScraperService:
@@ -83,11 +86,12 @@ class UrlScraperService:
             return content_analysis
             
         except Exception as e:
+            logger.warning(f"URL analysis failed for {urlparse(url).netloc}: {e}")
             return {
                 "url": url,
                 "domain": urlparse(url).netloc if url else "unknown",
                 "risk_level": "MEDIUM",
-                "reason": f"Could not analyze URL: {str(e)}",
+                "reason": "Could not analyze URL",
                 "confidence": 0.5,
                 "is_reachable": False
             }
@@ -170,11 +174,12 @@ class UrlScraperService:
                 "is_reachable": False
             }
         except Exception as e:
+            logger.warning(f"URL fetch failed for {domain}: {e}")
             return {
                 "url": url,
                 "domain": domain,
                 "risk_level": "MEDIUM",
-                "reason": f"Could not fetch URL: {str(e)[:50]}",
+                "reason": "Could not fetch URL",
                 "confidence": 0.5,
                 "is_reachable": False
             }

@@ -54,5 +54,3 @@ def get_settings():
 
 
 settings = get_settings()
-print(f"DEBUG: Groq Key Loaded: {'YES' if settings.GROQ_API_KEY else 'NO'}")
-print(f"DEBUG: Groq Key Starts With: {settings.GROQ_API_KEY[:4] if settings.GROQ_API_KEY else 'N/A'}")

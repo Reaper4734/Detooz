@@ -136,7 +136,7 @@ async def add_watermark_to_image(image_url: str, watermark_text: str = "Detooz")
         # Use a simple font (or load a custom one)
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-        except:
+        except Exception:
             font = ImageFont.load_default()
         
         # Add semi-transparent watermark

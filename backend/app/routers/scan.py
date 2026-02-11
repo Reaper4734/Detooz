@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
+import logging
+import os
+import uuid
+
 from app.db import get_db
 from app.models import User, Scan, RiskLevel, PlatformType
 from app.routers.auth import get_current_user
@@ -13,6 +17,10 @@ from app.services.guardian_alert_service import guardian_alert_service
 
 router = APIRouter()
 detector = ScamDetector()
+logger = logging.getLogger(__name__)
+
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
 @router.post("/analyze", response_model=ScanResponse)
@@ -46,7 +54,7 @@ async def analyze_message(
     
     # Send alert to guardians if HIGH risk
     if result["risk_level"] == "HIGH":
-        await guardian_alert_service.create_alerts_for_scan(scan, db)
+        await guardian_alert_service.create_alerts_for_scan(db, current_user, scan)
     
     return scan
 
@@ -67,23 +75,28 @@ async def analyze_image(
     except ValueError:
         p_type = PlatformType.WHATSAPP
         
-    print(f"DEBUG: Endpoint /analyze-image called by user {current_user.email} for {p_type}")
+    logger.info(f"Image analysis requested by user {current_user.id} for {p_type}")
+    
+    # Validate file type
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(400, f"Unsupported file type. Allowed: JPEG, PNG, WebP, GIF")
+    
+    # Read with size limit
     contents = await file.read()
-    print(f"DEBUG: File size read: {len(contents)} bytes")
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(400, "File too large. Maximum size is 10 MB.")
     
     try:
         result = await detector.analyze_image(contents)
-        print(f"DEBUG: Detector Result: {result}")
     except Exception as e:
-        print(f"DEBUG: Detector Exception: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Detector failed: {str(e)}")
+        logger.error(f"Image analysis failed: {e}")
+        raise HTTPException(status_code=500, detail="Image analysis failed. Please try again.")
     
-    # Save image to disk
-    import os
-    import time
-    filename = f"scan_{int(time.time())}_{file.filename}"
+    # Save image with UUID filename (prevents path traversal)
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+        ext = ".jpg"
+    filename = f"{uuid.uuid4().hex}{ext}"
     file_path = os.path.join("app", "static", "uploads", filename)
     with open(file_path, "wb") as f:
         f.write(contents)
@@ -108,12 +121,10 @@ async def analyze_image(
         db.add(scan)
         await db.commit()
         await db.refresh(scan)
-        print(f"DEBUG: Scan record created with ID: {scan.id}")
+        logger.info(f"Image scan created: id={scan.id}")
     except Exception as e:
-        print(f"DEBUG: Database Save Failed: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Database failed: {str(e)}")
+        logger.error(f"Scan record save failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save scan record")
     
     # Send alert if HIGH risk (simplified logic here)
     if scan.risk_level == RiskLevel.HIGH:
@@ -137,6 +148,8 @@ async def get_history(
     if risk_level:
         query = query.where(Scan.risk_level == risk_level)
     
+    # Cap limit to prevent excessive queries
+    limit = min(limit, 200)
     query = query.order_by(Scan.created_at.desc()).limit(limit)
     
     result = await db.execute(query)

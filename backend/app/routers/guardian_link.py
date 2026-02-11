@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr
-import random
+import secrets
 import string
 import json
 from typing import Dict
@@ -55,7 +55,7 @@ class LinkedGuardianResponse(BaseModel):
 
 def generate_otp() -> str:
     """Generate 6-digit numeric OTP"""
-    return ''.join(random.choices(string.digits, k=6))
+    return ''.join(secrets.choice(string.digits) for _ in range(6))
 
 
 # ============ USER ENDPOINTS (Protected User Side) ============

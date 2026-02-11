@@ -2,6 +2,9 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Handle both SQLite and PostgreSQL
 if settings.DATABASE_URL.startswith("sqlite"):
@@ -41,25 +44,26 @@ async def get_db():
 
 async def init_db():
     """Initialize database tables with automatic migration"""
-    print("DEBUG: Initializing database...")
+    logger.info("Initializing database...")
     
     # Run migrations first (SQLite only)
     if DB_FILE_PATH and os.path.exists(DB_FILE_PATH):
-        print("DEBUG: Running database migrations...")
+        logger.info("Running database migrations...")
         try:
             from app.db.migrations import run_migrations
             run_migrations(DB_FILE_PATH)
-            print("DEBUG: Migrations complete")
+            logger.info("Migrations complete")
         except Exception as e:
-            print(f"DEBUG: Migration warning: {e}")
+            logger.warning(f"Migration warning: {e}")
     
     # Then create any new tables
     try:
         async with engine.begin() as conn:
-            print("DEBUG: Connection opened, running metadata create_all...")
+            logger.info("Running metadata create_all...")
             await conn.run_sync(Base.metadata.create_all)
-            print("DEBUG: Database initialization successful.")
+            logger.info("Database initialization successful.")
     except Exception as e:
-        print(f"DEBUG: Database initialization failed: {e}")
+        logger.error(f"Database initialization failed: {e}")
         raise
+
 

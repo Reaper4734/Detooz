@@ -2,7 +2,7 @@
 Privacy & Consent Management API
 Handles user consent, GDPR rights, and data protection controls
 """
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from datetime import datetime
@@ -34,6 +34,7 @@ class DataExportResponse(BaseModel):
 class DeletionRequest(BaseModel):
     """Request to delete account"""
     confirmation: str  # Must match "DELETE MY ACCOUNT"
+    password: Optional[str] = None  # Required for password-based users
     reason: Optional[str] = None
 
 # ============== Helper Functions ==============
@@ -75,6 +76,7 @@ async def get_consent_status(
 @router.post("/consent/training-data")
 async def set_training_data_consent(
     update_data: ConsentUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -85,13 +87,18 @@ async def set_training_data_consent(
     current_user.consent_version = update_data.version
     current_user.consent_given_at = datetime.utcnow()
     
+    # Extract real client IP
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+    
     # Audit log
     await log_consent_change(
         user_id=current_user.id,
         consent_type="training_data",
         consent_given=update_data.consent,
         version=update_data.version,
-        ip_address="127.0.0.1",  # In real app, extract from request
+        ip_address=client_ip,
         db=db
     )
     
@@ -199,6 +206,13 @@ async def delete_account(
             status_code=400, 
             detail="Confirmation string must be exactly 'DELETE MY ACCOUNT'"
         )
+    
+    # Require password verification for password-based accounts
+    from app.routers.auth import verify_password
+    if current_user.password_hash and current_user.password_hash not in ("", "google_auth_placeholder"):
+        if not request.password or not verify_password(request.password, current_user.password_hash):
+            raise HTTPException(status_code=400, detail="Incorrect password")
+    # OTP/Google users already proved identity via JWT token — no extra check needed
     
     # 1. Anonymize contributions before deleting user
     # (In a real app, you'd run a robust anonymization query here)

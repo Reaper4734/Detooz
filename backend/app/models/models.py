@@ -240,7 +240,7 @@ class ConsentLog(Base):
     user = relationship("User", backref="consent_history")
     
     def __repr__(self):
-        return f"<GuardianAlert id={self.id} status={self.status}>"
+        return f"<ConsentLog id={self.id} user={self.user_id} type={self.consent_type}>"
 
 
 # ============================================

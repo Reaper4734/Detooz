@@ -69,11 +69,36 @@ app.mount("/api/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 # CORS for mobile app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[
+        "https://detooz.com",
+        "https://admin.detooz.com",
+        "http://localhost:8000",      # Local dev only
+        "http://localhost:3000",      # Admin dashboard dev
+    ],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Request body size limit middleware (15 MB)
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
+MAX_BODY_SIZE = 15 * 1024 * 1024  # 15 MB
+
+class LimitRequestBodyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > MAX_BODY_SIZE:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": "Request body too large. Maximum size is 15 MB."}
+            )
+        return await call_next(request)
+
+app.add_middleware(LimitRequestBodyMiddleware)
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])

@@ -18,8 +18,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create data directories
-RUN mkdir -p /data /app/app/static/uploads
+# Create non-root user and data directories
+RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser \
+    && mkdir -p /data /app/app/static/uploads \
+    && chown -R appuser:appuser /data /app/app/static/uploads /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 8000

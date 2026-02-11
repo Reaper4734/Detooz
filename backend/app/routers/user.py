@@ -267,11 +267,10 @@ async def get_profile(
     current_user: User = Depends(get_current_user)
 ):
     """Get current user profile"""
-    # Parse name into parts
-    name_parts = (current_user.name or '').split(' ', 2)
-    first_name = name_parts[0] if len(name_parts) > 0 else ''
-    middle_name = name_parts[1] if len(name_parts) > 2 else None
-    last_name = name_parts[-1] if len(name_parts) > 1 else ''
+    # Use model attributes directly (User has first_name/last_name, not name)
+    first_name = current_user.first_name or ''
+    middle_name = current_user.middle_name
+    last_name = current_user.last_name or ''
     
     # Google users always have verified email (Google handles verification)
     is_google_user = bool(current_user.google_uid)
@@ -280,7 +279,7 @@ async def get_profile(
     return UserProfileResponse(
         id=current_user.id,
         email=current_user.email,
-        name=current_user.name,
+        name=f"{first_name} {last_name}".strip(),
         first_name=first_name,
         middle_name=middle_name,
         last_name=last_name,
@@ -299,17 +298,13 @@ async def update_profile(
 ):
     """Update user profile (name, phone)"""
     
-    # Build new name from parts
-    name_parts = []
+    # Update individual name fields
     if update.first_name is not None:
-        name_parts.append(update.first_name.strip())
-    if update.middle_name is not None and update.middle_name.strip():
-        name_parts.append(update.middle_name.strip())
+        current_user.first_name = update.first_name.strip()
+    if update.middle_name is not None:
+        current_user.middle_name = update.middle_name.strip() or None
     if update.last_name is not None:
-        name_parts.append(update.last_name.strip())
-    
-    if name_parts:
-        current_user.name = " ".join(name_parts)
+        current_user.last_name = update.last_name.strip()
     
     if update.phone is not None:
         current_user.phone = update.phone.strip() if update.phone else None
@@ -317,16 +312,14 @@ async def update_profile(
     await db.commit()
     await db.refresh(current_user)
     
-    # Parse name into parts for response
-    name_parts = (current_user.name or '').split(' ', 2)
-    first_name = name_parts[0] if len(name_parts) > 0 else ''
-    middle_name = name_parts[1] if len(name_parts) > 2 else None
-    last_name = name_parts[-1] if len(name_parts) > 1 else ''
+    first_name = current_user.first_name or ''
+    middle_name = current_user.middle_name
+    last_name = current_user.last_name or ''
     
     return UserProfileResponse(
         id=current_user.id,
         email=current_user.email,
-        name=current_user.name,
+        name=f"{first_name} {last_name}".strip(),
         first_name=first_name,
         middle_name=middle_name,
         last_name=last_name,
@@ -382,7 +375,7 @@ class ChangePasswordRequest(BaseModel):
 
 class DeleteAccountRequest(BaseModel):
     """Delete account request"""
-    password: str
+    password: str | None = None
 
 
 @router.post("/change-password")
@@ -397,13 +390,17 @@ async def change_password(
     """
     from app.routers.auth import verify_password, get_password_hash
     
+    # Block Google/OTP users who have no password
+    if not current_user.password_hash or current_user.password_hash in ("", "google_auth_placeholder"):
+        raise HTTPException(status_code=400, detail="Cannot change password for Google/OTP accounts")
+    
     # Verify current password
     if not verify_password(request.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     
-    # Validate new password
-    if len(request.new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    # Validate new password complexity
+    from app.routers.auth import validate_password
+    validate_password(request.new_password)
     
     if request.current_password == request.new_password:
         raise HTTPException(status_code=400, detail="New password must be different")
@@ -517,9 +514,11 @@ async def delete_account(
     """
     from app.routers.auth import verify_password
     
-    # Verify password
-    if not verify_password(request.password, current_user.password_hash):
-        raise HTTPException(status_code=400, detail="Incorrect password")
+    # Allow deletion for Google/OTP users without password verification
+    if current_user.password_hash and current_user.password_hash not in ("", "google_auth_placeholder"):
+        if not verify_password(request.password, current_user.password_hash):
+            raise HTTPException(status_code=400, detail="Incorrect password")
+    # OTP/Google users: JWT already proves identity
     
     # Delete user (cascades to related data)
     await db.delete(current_user)

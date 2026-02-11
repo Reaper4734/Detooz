@@ -142,12 +142,13 @@ async def analyze_sms(
     await db.commit()
     await db.refresh(scan)
     
-    # Send alert to guardians if HIGH risk (in background)
+    # Send alert to guardians if HIGH risk (in background with fresh DB session)
     if result["risk_level"] == "HIGH":
-        background_tasks.add_task(
-            send_guardian_alerts,
-            db, current_user, scan, result
-        )
+        from app.db.database import async_session
+        async def _background_alert():
+            async with async_session() as bg_db:
+                await send_guardian_alerts(bg_db, current_user, scan, result)
+        background_tasks.add_task(_background_alert)
         
         # Auto-blacklist HIGH confidence scams
         if result["confidence"] >= 0.70:

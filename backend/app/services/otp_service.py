@@ -2,7 +2,7 @@
 OTP Service for Email-based Authentication
 Uses Gmail SMTP for sending OTPs - FREE (500 emails/day)
 """
-import random
+import secrets
 import string
 import smtplib
 import hashlib
@@ -29,7 +29,7 @@ class OTPService:
     @staticmethod
     def generate_otp() -> str:
         """Generate a 6-digit numeric OTP"""
-        return ''.join(random.choices(string.digits, k=6))
+        return ''.join(secrets.choice(string.digits) for _ in range(6))
     
     @staticmethod
     def _hash_otp(otp: str) -> str:

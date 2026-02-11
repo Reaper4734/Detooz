@@ -5,6 +5,7 @@ from sqlalchemy import select
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+import re
 from app.config import settings
 from app.db import get_db
 from app.models import User
@@ -16,6 +17,16 @@ router = APIRouter()
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+
+def validate_password(password: str) -> None:
+    """Enforce minimum password complexity."""
+    if len(password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters")
+    if not re.search(r'[A-Z]', password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must contain at least one uppercase letter")
+    if not re.search(r'[0-9]', password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must contain at least one number")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -87,6 +98,9 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     
     # Normalize email
     normalized_email = user_data.email.lower().strip()
+
+    # Validate password complexity
+    validate_password(user_data.password)
 
     # Check if email exists
     result = await db.execute(select(User).where(User.email == normalized_email))
@@ -162,7 +176,21 @@ async def login(
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
     
-    if not user or not verify_password(form_data.password, user.password_hash):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Block login via password for OTP-only and Google-auth users
+    if user.password_hash in ("", "google_auth_placeholder"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please log in using OTP or Google Sign-In",
+        )
+    
+    if not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",

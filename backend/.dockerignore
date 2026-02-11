@@ -1,46 +1,27 @@
+# Secrets - NEVER copy into image
+.env
+.env.*
+*.pem
+
 # Git
 .git
 .gitignore
 
-# Python
-__pycache__
-*.py[cod]
-*$py.class
-*.so
-.Python
-.venv
-venv/
-ENV/
-.eggs/
-*.egg-info/
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-
-# Testing
-.pytest_cache
-htmlcov/
-.coverage
-
-# Local data (will be mounted as volumes)
+# Data & uploads (mounted as volumes)
 data/
-uploads/
-*.db
+app/static/uploads/
 
-# Environment files (secrets)
-.env
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
 
-# Logs
-*.log
+# ML training data (large, not needed at runtime)
+ml_pipeline/data/
 
-# Documentation
+# Dev files
+.vscode/
+.idea/
 *.md
-!README.md
-
-# Docker (don't copy docker files into image)
-Dockerfile
-docker-compose*.yml
-.dockerignore

@@ -4,19 +4,39 @@ from sqlalchemy import select, func, text, distinct
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Any
+import logging
 
 from app.db import get_db
 from app.models import User, GuardianAlert, Scan, GuardianLink
+from app.routers.auth import get_current_user
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# Simple Admin Secret (in a real app this would be a separate role)
-ADMIN_SECRET = "admin123"
+# ============ ADMIN AUTH ============
 
-def verify_admin(x_admin_secret: str = "admin123"):
-    if x_admin_secret != ADMIN_SECRET:
-        raise HTTPException(status_code=401, detail="Invalid admin secret")
-    return True
+# Admin emails allowlist — add your real admin email(s) here
+# In a future iteration, move this to a DB role or environment variable
+ADMIN_EMAILS = [
+    "detooz4734@gmail.com",
+]
+
+
+async def require_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    Verify the authenticated user is an admin.
+    Requires valid JWT token AND email in the admin allowlist.
+    """
+    if current_user.email not in ADMIN_EMAILS:
+        logger.warning(f"Non-admin access attempt by user {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user
+
 
 # ============ SCHEMAS ============
 
@@ -57,12 +77,12 @@ class AdminAlertView(BaseModel):
     created_at: datetime
     seen: bool
 
-# ============ ENDPOINTS ============
+# ============ ENDPOINTS (all require admin auth) ============
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_admin_stats(
     db: AsyncSession = Depends(get_db),
-    # authorized: bool = Depends(verify_admin)  # Disabled for simple demo
+    admin: User = Depends(require_admin),
 ):
     """Get overview statistics for the dashboard"""
     
@@ -99,12 +119,13 @@ async def get_admin_stats(
     )
 
 @router.get("/users", response_model=List[AdminUserView])
-async def get_all_users(db: AsyncSession = Depends(get_db)):
+async def get_all_users(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
     """List last 50 users"""
-    # Just show all users.
     result = await db.execute(select(User).order_by(User.created_at.desc()).limit(50))
     users = result.scalars().all()
-    # Map to schema (User doesn't have 'name' property directly in SQLModel, construct it)
     return [
         AdminUserView(
             id=u.id, 
@@ -117,9 +138,11 @@ async def get_all_users(db: AsyncSession = Depends(get_db)):
     ]
 
 @router.get("/guardians", response_model=List[AdminGuardianView])
-async def get_active_guardians(db: AsyncSession = Depends(get_db)):
+async def get_active_guardians(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
     """List last 50 active guardians"""
-    # Subquery to get unique guardian IDs
     subquery = select(distinct(GuardianLink.guardian_id)).where(GuardianLink.status == 'active')
     
     result = await db.execute(
@@ -139,14 +162,11 @@ async def get_active_guardians(db: AsyncSession = Depends(get_db)):
     ]
 
 @router.get("/alerts", response_model=List[AdminAlertView])
-async def get_all_alerts(db: AsyncSession = Depends(get_db)):
+async def get_all_alerts(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
     """List last 50 alerts"""
-    # Join with aliases to distinguish Guardian User and Protected User
-    # But since they are both User table, we need aliases.
-    
-    # For simplicity, let's just fetch alerts and manual join in python loop or use explicit aliases.
-    # explicit aliases is better but loop is easier to write safely without complex join syntax errors.
-    
     result = await db.execute(
         select(GuardianAlert).order_by(GuardianAlert.created_at.desc()).limit(50)
     )
@@ -161,8 +181,8 @@ async def get_all_alerts(db: AsyncSession = Depends(get_db)):
             id=alert.id,
             user_name=f"{u.first_name} {u.last_name}" if u else "Unknown",
             guardian_name=f"{g.first_name} {g.last_name}" if g else "Unknown",
-            risk_level="HIGH", # Alert is usually high risk
-            message_preview="View details", # Simplification
+            risk_level="HIGH",
+            message_preview="View details",
             created_at=alert.created_at,
             seen=alert.seen_at is not None
         ))
@@ -170,7 +190,11 @@ async def get_all_alerts(db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/users/{user_id}")
-async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
     """Delete a user and their data (Manual Cascade)"""
     try:
         user = await db.get(User, user_id)
@@ -178,39 +202,41 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
             raise HTTPException(404, "User not found")
             
         # Manually delete related records to avoid SQLite FK issues
-        # 1. Delete Guardian Alerts (References Scans, so delete first)
         await db.execute(text("DELETE FROM guardian_alerts WHERE user_id = :uid OR guardian_id = :uid"), {"uid": user_id})
-        
-        # 2. Delete Guardian Links
         await db.execute(text("DELETE FROM guardian_links WHERE user_id = :uid OR guardian_id = :uid"), {"uid": user_id})
-
-        # 3. Delete Feedback (References Scans)
         await db.execute(text("DELETE FROM feedback WHERE user_id = :uid"), {"uid": user_id})
-        
-        # 4. Delete Scans
         await db.execute(text("DELETE FROM scans WHERE user_id = :uid"), {"uid": user_id})
-        
-        # 5. Delete Trusted Senders
         await db.execute(text("DELETE FROM trusted_senders WHERE user_id = :uid"), {"uid": user_id})
-        
-        # 6. Delete User Settings
         await db.execute(text("DELETE FROM user_settings WHERE user_id = :uid"), {"uid": user_id})
 
-        # Finally delete User
         await db.delete(user)
         await db.commit()
+        logger.info(f"Admin {admin.email} deleted user {user_id}")
         return {"message": "User deleted"}
+    except HTTPException:
+        raise
     except Exception as e:
         await db.rollback()
-        print(f"Delete Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"User deletion failed for user_id={user_id}")
+        raise HTTPException(status_code=500, detail="User deletion failed")
 
 @router.put("/users/{user_id}")
-async def update_user(user_id: int, updates: dict, db: AsyncSession = Depends(get_db)):
-    """Update user details (Name, Phone)"""
+async def update_user(
+    user_id: int,
+    updates: dict,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Update user details (Name, Phone only — allowlisted fields)"""
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(404, "User not found")
+    
+    # Only allow specific fields to be updated (prevent password_hash injection)
+    ALLOWED_FIELDS = {"first_name", "last_name", "phone"}
+    for key in updates:
+        if key not in ALLOWED_FIELDS:
+            raise HTTPException(400, f"Field '{key}' cannot be updated via admin")
     
     if "first_name" in updates:
         user.first_name = updates["first_name"]
@@ -220,20 +246,29 @@ async def update_user(user_id: int, updates: dict, db: AsyncSession = Depends(ge
         user.phone = updates["phone"]
         
     await db.commit()
+    logger.info(f"Admin {admin.email} updated user {user_id}")
     return {"message": "User updated"}
 
 @router.delete("/guardians/{guardian_id}")
-async def delete_guardian(guardian_id: int, db: AsyncSession = Depends(get_db)):
-    """Delete a guardian account (Actually just a user now)"""
-    # This endpoint is now redundant or just redirects to delete_user
-    return await delete_user(guardian_id, db)
+async def delete_guardian(
+    guardian_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Delete a guardian account"""
+    return await delete_user(guardian_id, db, admin)
 
 @router.delete("/alerts/{alert_id}")
-async def delete_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_alert(
+    alert_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
     """Delete an alert"""
     alert = await db.get(GuardianAlert, alert_id)
     if not alert:
         raise HTTPException(404, "Alert not found")
     await db.delete(alert)
     await db.commit()
+    logger.info(f"Admin {admin.email} deleted alert {alert_id}")
     return {"message": "Alert deleted"}

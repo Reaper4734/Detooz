@@ -206,12 +206,13 @@ async def manual_scan(
             await blacklist_manager.auto_blacklist(
                 value=content,
                 content_type=content_type,
+                source="manual_scan",
+                db=db,
                 full_message=content,
                 ai_reasoning=result["reason"],
                 scam_type=result.get("scam_type"),
                 confidence=calibrated["confidence"],
                 user_consented=current_user.consent_training_data,
-                db=db
             )
         elif content_type == "text":
             await blacklist_manager.auto_blacklist_from_message(

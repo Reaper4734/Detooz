@@ -174,7 +174,7 @@ async def fetch_feed(source: dict) -> List[dict]:
                 content = await response.text()
         
         # Parse content in executor (CPU bound)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         feed = await loop.run_in_executor(None, feedparser.parse, content)
         
         if feed.bozo:
@@ -194,7 +194,7 @@ async def fetch_feed(source: dict) -> List[dict]:
             if hasattr(entry, 'published_parsed') and entry.published_parsed:
                 try:
                     published_at = datetime(*entry.published_parsed[:6])
-                except:
+                except Exception:
                     pass
             
             article = {

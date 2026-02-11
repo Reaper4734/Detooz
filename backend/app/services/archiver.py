@@ -99,7 +99,7 @@ class ArchiverService:
             logger.info(f"Archived {len(scans)} records to {path}")
         except Exception as e:
             logger.error(f"Archive Write Failed: {e}")
-            return {"error": str(e)}
+            return {"error": "Archive write failed"}
 
         # 3. Delete from DB (Only if write successful)
         try:

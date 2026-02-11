@@ -55,9 +55,7 @@ async def google_signin(
     - If google_uid exists, login existing user
     - Otherwise, create new user
     """
-    # Debug: Log token info
-    token_preview = request.id_token[:50] + "..." if len(request.id_token) > 50 else request.id_token
-    logger.info(f"Google Sign-In attempt: token_len={len(request.id_token)}, preview={token_preview}")
+    logger.info(f"Google Sign-In attempt: token_len={len(request.id_token)}")
     
     # Verify Firebase token (works for Google Sign-In too)
     # Run in threadpool because verify_id_token is blocking I/O
