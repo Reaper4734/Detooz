@@ -26,7 +26,24 @@ class FCMService:
     def _load_credentials(self):
         """Load Firebase service account credentials (Hybrid: Env Var or Local File)"""
         
-        # 1. Try Environment Variable (Cloud Mode)
+        # 1. Try Base64 Environment Variable (Production - matches firebase_service.py)
+        env_creds_b64 = os.getenv("FIREBASE_CREDENTIALS_BASE64")
+        if env_creds_b64:
+            try:
+                import base64
+                decoded = base64.b64decode(env_creds_b64).decode('utf-8')
+                service_account_info = json.loads(decoded)
+                self.project_id = service_account_info.get('project_id')
+                self.credentials = service_account.Credentials.from_service_account_info(
+                    service_account_info,
+                    scopes=['https://www.googleapis.com/auth/firebase.messaging']
+                )
+                logger.info(f"FCM Service initialized from FIREBASE_CREDENTIALS_BASE64 with project: {self.project_id}")
+                return
+            except Exception as e:
+                logger.error(f"Failed to parse FIREBASE_CREDENTIALS_BASE64: {e}")
+
+        # 2. Try Raw JSON Environment Variable
         env_creds = os.getenv("FIREBASE_CREDENTIALS_JSON")
         if env_creds:
             try:
@@ -36,7 +53,7 @@ class FCMService:
                     service_account_info,
                     scopes=['https://www.googleapis.com/auth/firebase.messaging']
                 )
-                logger.info(f"FCM Service initialized from ENV VAR with project: {self.project_id}")
+                logger.info(f"FCM Service initialized from FIREBASE_CREDENTIALS_JSON with project: {self.project_id}")
                 return
             except Exception as e:
                 logger.error(f"Failed to parse FIREBASE_CREDENTIALS_JSON: {e}")
