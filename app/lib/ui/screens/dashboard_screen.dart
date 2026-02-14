@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui';
 import 'dart:async'; // Added
 import 'package:flutter/material.dart';
@@ -169,33 +170,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               // Header
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Tr('$greeting, ',
+                        userProfile.when(
+                          data: (profile) {
+                            final firstName = profile.name.split(' ').first;
+                            final capitalized = firstName.isNotEmpty
+                                ? '${firstName[0].toUpperCase()}${firstName.substring(1)}'
+                                : '';
+                            return Text(
+                              '$greeting, $capitalized',
                               style: TextStyle(
                                 color: AppColors.textPrimary(context),
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                          loading: () => Text(
+                            '$greeting',
+                            style: TextStyle(
+                              color: AppColors.textPrimary(context),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                             ),
-                            if (userProfile.hasValue)
-                              Flexible(
-                                child: _MarqueeText(
-                                  text: userProfile.value!.name.split(' ').first,
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary(context),
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                          ],
+                          ),
+                          error: (_, __) => Text(
+                            '$greeting',
+                            style: TextStyle(
+                              color: AppColors.textPrimary(context),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                         SizedBox(height: 4),
                         Tr('Stay safe today',
@@ -208,17 +221,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ],
                     ),
                   ),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primary, width: 2),
-                      image: const DecorationImage(
-                        image: NetworkImage('https://lh3.googleusercontent.com/aida-public/AB6AXuAFyYFn2y2xT2u1p2ca8CuBuFmN6pCxEh5GKQz-Z7lNJrFr9NjWypYQzNRUQJuSmO_tcKaMlFuFsTdJ_rATPtwzwbWdJLNsedzejOy9KnNkQ_PagQALkBqKew-GcL5Ua7pWGtoG_lxcJtLmCd9zNgjAYfEpGkQmCTGveko90Y5c5uB3OTd_0zPNsaJGuH0iuqVyJYOTz1eJ-zydGV4dMNgsljHiVVe3HjDJrwTWFsFFhVtWgku-U-zYU5UYCD1n4euAK7NeKJjoIXbw'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                  SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+                    },
+                    child: _buildDashboardAvatar(userProfile),
                   ),
                 ],
               ),
@@ -571,6 +579,52 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         ), // Close RefreshIndicator
       ),
+    );
+  }
+
+  Widget _buildDashboardAvatar(AsyncValue<UserProfile> userProfile) {
+    Widget avatarChild;
+    DecorationImage? avatarImage;
+
+    if (userProfile.hasValue && userProfile.value!.profilePicture != null && userProfile.value!.profilePicture!.isNotEmpty) {
+      try {
+        final bytes = base64Decode(userProfile.value!.profilePicture!);
+        avatarImage = DecorationImage(
+          image: MemoryImage(bytes),
+          fit: BoxFit.cover,
+        );
+      } catch (_) {
+        // Fallback to initials on decode error
+      }
+    }
+
+    if (avatarImage == null) {
+      final name = userProfile.hasValue ? userProfile.value!.name : '';
+      final initial = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+      avatarChild = Center(
+        child: Text(
+          initial,
+          style: TextStyle(
+            color: AppColors.primary,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    } else {
+      avatarChild = const SizedBox.shrink();
+    }
+
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primary, width: 2),
+        color: avatarImage == null ? AppColors.primary.withOpacity(0.1) : null,
+        image: avatarImage,
+      ),
+      child: avatarImage == null ? avatarChild : null,
     );
   }
 
