@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/translation/translation_service.dart';
 import '../../services/translation/language_config.dart';
-import '../../services/connectivity_service.dart';
 import '../theme/app_colors.dart';
 import '../providers.dart';
 import '../components/tr.dart';
+import 'model_download_screen.dart';
 
 /// Navigate to the language selector full screen
 Future<void> showLanguageSelector(BuildContext context, WidgetRef ref) async {
@@ -316,87 +316,22 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
     }
 
     if (!isDownloaded) {
-      final isOnline = await connectivityService.hasInternet();
-
-      if (!isOnline) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Tr('No internet. Connect to download language.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-
-      // Show quick confirmation
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.surface(context),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: AppColors.border(context)),
-          ),
-          title: Tr('Download ${lang.englishName}?',
-              style: TextStyle(color: AppColors.textPrimary(context))),
-          content: Tr('~30MB download. Best on Wi-Fi.',
-              style: TextStyle(color: AppColors.textSecondary(context))),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Tr('Cancel',
-                  style: const TextStyle(color: Color(0xFFA1A1AA))),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1)),
-              child: Tr('Download',
-                  style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
+      // Navigate to download screen
+      final success = await showModelDownload(
+        context,
+        widget.ref,
+        langCode: lang.code,
+        langName: lang.englishName,
       );
 
-      if (confirmed == true) {
-        await _downloadAndSetLanguage(lang);
+      if (success && mounted) {
+        setState(() {
+          _downloadedModels[lang.code] = true;
+        });
+        await _setLanguage(lang.code);
       }
     } else {
       await _setLanguage(lang.code);
-    }
-  }
-
-  Future<void> _downloadAndSetLanguage(SupportedLanguage lang) async {
-    debugPrint('🌐 UI: _downloadAndSetLanguage called for ${lang.code}');
-    setState(() => _downloadingLang = lang.code);
-
-    try {
-      debugPrint(
-          '🌐 UI: Calling TranslationService().downloadModel(${lang.code})');
-      await TranslationService().downloadModel(lang.code);
-      debugPrint('🌐 UI: Download completed, updating state');
-
-      if (mounted) {
-        setState(() {
-          _downloadedModels[lang.code] = true;
-          _downloadingLang = null;
-        });
-      }
-
-      await _setLanguage(lang.code);
-    } catch (e, stack) {
-      debugPrint('🌐 UI: Download error: $e');
-      debugPrint('🌐 UI: Stack: $stack');
-      if (mounted) {
-        setState(() => _downloadingLang = null);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Tr('Download failed: $e'),
-              backgroundColor: Colors.red),
-        );
-      }
     }
   }
 

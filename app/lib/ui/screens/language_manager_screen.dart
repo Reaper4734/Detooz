@@ -9,6 +9,7 @@ import '../components/tr.dart';
 import '../providers.dart';
 import '../../services/ml/sms_translator.dart';
 import '../../services/ml/state_language_map.dart';
+import 'model_download_screen.dart';
 
 class LanguageManagerScreen extends ConsumerStatefulWidget {
   const LanguageManagerScreen({super.key});
@@ -223,29 +224,15 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
   }
 
   Future<void> _downloadModel(String code) async {
-    setState(() => _statuses[code] = _ModelStatus.downloading);
+    final success = await showModelDownload(
+      context,
+      ref,
+      langCode: code,
+      langName: languageDisplayName(code),
+    );
 
-    try {
-      await _translator.downloadModel(code);
-      if (mounted) {
-        setState(() => _statuses[code] = _ModelStatus.downloaded);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${languageDisplayName(code)} pack installed ✅'),
-            backgroundColor: const Color(0xFF22C55E),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _statuses[code] = _ModelStatus.notDownloaded);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Download failed: $e'),
-            backgroundColor: const Color(0xFFEF4444),
-          ),
-        );
-      }
+    if (success && mounted) {
+      setState(() => _statuses[code] = _ModelStatus.downloaded);
     }
   }
 
