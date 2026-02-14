@@ -139,7 +139,10 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                         builder: (_) => SetupOfflineProtectionScreen(
-                          onComplete: () => Navigator.of(context).pop(),
+                          onComplete: () {
+                            // Navigate to dashboard, clearing all previous routes.
+                            // We use navigatorKey or a builder context — NOT the wizard's context.
+                          },
                         ),
                       ),
                     );

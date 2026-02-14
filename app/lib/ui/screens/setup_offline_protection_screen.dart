@@ -12,10 +12,10 @@ import '../../services/ml/sms_translator.dart';
 import '../../services/ml/state_language_map.dart';
 
 class SetupOfflineProtectionScreen extends ConsumerStatefulWidget {
-  /// Callback when setup is complete (navigate to Dashboard).
-  final VoidCallback onComplete;
+  /// Optional callback when setup is complete.
+  final VoidCallback? onComplete;
 
-  const SetupOfflineProtectionScreen({super.key, required this.onComplete});
+  const SetupOfflineProtectionScreen({super.key, this.onComplete});
 
   @override
   ConsumerState<SetupOfflineProtectionScreen> createState() =>
@@ -261,8 +261,9 @@ class _SetupOfflineProtectionScreenState
       // Save the user's language preference
       await _translator.setUserLanguage(_selectedLangCode);
 
-      // Navigate to Dashboard FIRST (zero friction)
-      widget.onComplete();
+      // Navigate back (zero friction)
+      if (mounted) Navigator.of(context).pop();
+      widget.onComplete?.call();
 
       // Fire-and-forget: download model in background AFTER navigation
       _translator.downloadModel(_selectedLangCode).then((_) {
@@ -272,7 +273,8 @@ class _SetupOfflineProtectionScreenState
       });
     } else {
       // No language selected or English-only — just navigate
-      widget.onComplete();
+      if (mounted) Navigator.of(context).pop();
+      widget.onComplete?.call();
     }
   }
 }
