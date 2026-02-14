@@ -189,7 +189,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       _buildIcon(Icons.language, const Color(0x1A6366F1), const Color(0xFF6366F1)),
                       const SizedBox(width: 16),
-                      Expanded(child: Tr('Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
+                      Expanded(child: Tr('App Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
                       Consumer(builder: (context, ref, _) {
                           final langCode = ref.watch(languageProvider);
                           final langName = langCode == 'en' ? 'English' : 
@@ -229,7 +229,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Tr('Offline Languages', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context))),
+                            Tr('SMS Detection Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context))),
                             const SizedBox(height: 2),
                             Tr('Manage scam detection language packs', style: TextStyle(fontSize: 12, color: AppColors.textSecondary(context))),
                           ],
