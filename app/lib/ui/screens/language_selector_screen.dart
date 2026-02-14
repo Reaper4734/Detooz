@@ -2,35 +2,33 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/translation/translation_service.dart';
 import '../../services/translation/language_config.dart';
 import '../../services/connectivity_service.dart';
+import '../theme/app_colors.dart';
 import '../providers.dart';
 import '../components/tr.dart';
 
-/// Shows a bottom sheet with language options
-/// Returns the selected language code or null if dismissed
+/// Navigate to the language selector full screen
 Future<void> showLanguageSelector(BuildContext context, WidgetRef ref) async {
-  await showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (ctx) => _LanguageBottomSheet(ref: ref),
+  await Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => LanguageSelectorScreen(ref: ref),
+    ),
   );
 }
 
-class _LanguageBottomSheet extends StatefulWidget {
+class LanguageSelectorScreen extends StatefulWidget {
   final WidgetRef ref;
-  
-  const _LanguageBottomSheet({required this.ref});
+
+  const LanguageSelectorScreen({super.key, required this.ref});
 
   @override
-  State<_LanguageBottomSheet> createState() => _LanguageBottomSheetState();
+  State<LanguageSelectorScreen> createState() => _LanguageSelectorScreenState();
 }
 
-class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
+class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
   Map<String, bool> _downloadedModels = {};
   String? _downloadingLang;
   bool _isLoading = true;
@@ -58,79 +56,258 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
   Widget build(BuildContext context) {
     final currentLang = widget.ref.watch(languageProvider);
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.7,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF18181B), // Zinc-900
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: const Color(0xFF3F3F46), width: 1), // Zinc-700
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle bar
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[600],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          
-          // Title
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'Select Language',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          
-          const Divider(color: Colors.white12, height: 1),
-          
-          // Language list
-          _isLoading
-              ? const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: CircularProgressIndicator(),
-                )
-              : Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: supportedLanguages.length,
-                    itemBuilder: (context, index) {
-                      final lang = supportedLanguages[index];
-                      final isDownloaded = _downloadedModels[lang.code] ?? false;
-                      final isDownloading = _downloadingLang == lang.code;
-                      final isSelected = currentLang == lang.code;
+    return Scaffold(
+      backgroundColor: AppColors.background(context),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            children: [
+              // Scrollable content
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+                    : SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Back button row
+                            GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.arrow_back_ios,
+                                      color: AppColors.textSecondary(context), size: 18),
+                                  const SizedBox(width: 4),
+                                  Text('Back',
+                                      style: TextStyle(
+                                          color: AppColors.textSecondary(context),
+                                          fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
 
-                      return _LanguageTile(
-                        language: lang,
-                        isSelected: isSelected,
-                        isDownloaded: isDownloaded,
-                        isDownloading: isDownloading,
-                        onTap: () => _onLanguageTap(lang, isDownloaded),
-                      );
-                    },
-                  ),
-                ),
-          
-          // Bottom padding for safety
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-        ],
+                            // Header icon
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(Icons.language,
+                                  color: Colors.white, size: 32),
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Title
+                            Tr('App Language',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary(context),
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                )),
+                            const SizedBox(height: 8),
+                            Tr(
+                              'Choose the language for Detooz\'s interface. Non-English languages require a one-time ~30 MB download.',
+                              style: TextStyle(
+                                  color: AppColors.textSecondary(context),
+                                  fontSize: 15,
+                                  height: 1.5),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Info card
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1)
+                                    .withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: const Color(0xFF6366F1)
+                                        .withValues(alpha: 0.25)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.info_outline,
+                                      color: Color(0xFF6366F1), size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Tr(
+                                      'Changing language requires an app restart to apply everywhere.',
+                                      style: TextStyle(
+                                          color: AppColors.textSecondary(context),
+                                          fontSize: 13,
+                                          height: 1.4),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 28),
+
+                            // Language list
+                            ...supportedLanguages.map((lang) {
+                              final isDownloaded =
+                                  _downloadedModels[lang.code] ?? false;
+                              final isDownloading =
+                                  _downloadingLang == lang.code;
+                              final isSelected = currentLang == lang.code;
+
+                              return _buildLanguageTile(
+                                lang: lang,
+                                isSelected: isSelected,
+                                isDownloaded: isDownloaded,
+                                isDownloading: isDownloading,
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Future<void> _onLanguageTap(SupportedLanguage lang, bool isDownloaded) async {
+  Widget _buildLanguageTile({
+    required SupportedLanguage lang,
+    required bool isSelected,
+    required bool isDownloaded,
+    required bool isDownloading,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: isDownloading ? null : () => _onLanguageTap(lang, isDownloaded),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF6366F1).withValues(alpha: 0.12)
+                : AppColors.surface(context),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.5)
+                  : AppColors.border(context),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Language icon
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF6366F1).withValues(alpha: 0.2)
+                      : AppColors.background(context),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    lang.nativeName.substring(0, 1),
+                    style: TextStyle(
+                      color: isSelected
+                          ? const Color(0xFF6366F1)
+                          : AppColors.textPrimary(context),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+
+              // Names
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(lang.englishName,
+                        style: TextStyle(
+                          color: AppColors.textPrimary(context),
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                          fontSize: 15,
+                        )),
+                    const SizedBox(height: 2),
+                    Text(lang.nativeName,
+                        style: TextStyle(
+                          color: AppColors.textSecondary(context),
+                          fontSize: 13,
+                        )),
+                  ],
+                ),
+              ),
+
+              // Status
+              _buildTrailing(lang, isSelected, isDownloaded, isDownloading),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrailing(SupportedLanguage lang, bool isSelected,
+      bool isDownloaded, bool isDownloading) {
+    if (isDownloading) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(
+            strokeWidth: 2, color: Color(0xFF6366F1)),
+      );
+    }
+
+    if (isSelected) {
+      return Container(
+        width: 28,
+        height: 28,
+        decoration: const BoxDecoration(
+          color: Color(0xFF22C55E),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.check, color: Colors.white, size: 16),
+      );
+    }
+
+    if (lang.isEnglish) {
+      return const SizedBox(width: 28);
+    }
+
+    if (isDownloaded) {
+      return Icon(Icons.check_circle_outline,
+          color: AppColors.textSecondary(context), size: 22);
+    }
+
+    // Not downloaded
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('30MB',
+            style: TextStyle(
+                color: AppColors.textSecondary(context), fontSize: 11)),
+        const SizedBox(width: 6),
+        const Icon(Icons.cloud_download_outlined,
+            color: Color(0xFF6366F1), size: 22),
+      ],
+    );
+  }
+
+  Future<void> _onLanguageTap(
+      SupportedLanguage lang, bool isDownloaded) async {
     if (_downloadingLang != null) return;
 
     if (lang.isEnglish) {
@@ -140,14 +317,16 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
 
     if (!isDownloaded) {
       final isOnline = await connectivityService.hasInternet();
-      
+
       if (!isOnline) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Tr('No internet. Connect to download language.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Tr('No internet. Connect to download language.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         return;
       }
 
@@ -155,28 +334,27 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF18181B),
+          backgroundColor: AppColors.surface(context),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: const BorderSide(color: Color(0xFF3F3F46)),
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: AppColors.border(context)),
           ),
-          title: Text(
-            'Download ${lang.englishName}?',
-            style: GoogleFonts.poppins(color: Colors.white),
-          ),
-          content: Text(
-            '~30MB download. Best on Wi-Fi.',
-            style: GoogleFonts.poppins(color: Colors.white70),
-          ),
+          title: Tr('Download ${lang.englishName}?',
+              style: TextStyle(color: AppColors.textPrimary(context))),
+          content: Tr('~30MB download. Best on Wi-Fi.',
+              style: TextStyle(color: AppColors.textSecondary(context))),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Tr('Cancel'),
+              child: Tr('Cancel',
+                  style: const TextStyle(color: Color(0xFFA1A1AA))),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-              child: Tr('Download'),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1)),
+              child: Tr('Download',
+                  style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -195,218 +373,102 @@ class _LanguageBottomSheetState extends State<_LanguageBottomSheet> {
     setState(() => _downloadingLang = lang.code);
 
     try {
-      debugPrint('🌐 UI: Calling TranslationService().downloadModel(${lang.code})');
+      debugPrint(
+          '🌐 UI: Calling TranslationService().downloadModel(${lang.code})');
       await TranslationService().downloadModel(lang.code);
       debugPrint('🌐 UI: Download completed, updating state');
-      
-      // Mark as downloaded and clear loading BEFORE setting language
+
       if (mounted) {
         setState(() {
           _downloadedModels[lang.code] = true;
-          _downloadingLang = null; // Clear loading indicator
+          _downloadingLang = null;
         });
       }
-      
-      // Now set language and close
+
       await _setLanguage(lang.code);
     } catch (e, stack) {
       debugPrint('🌐 UI: Download error: $e');
       debugPrint('🌐 UI: Stack: $stack');
       if (mounted) {
-        setState(() => _downloadingLang = null); // Clear loading on error
+        setState(() => _downloadingLang = null);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Tr('Download failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Tr('Download failed: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
-    // Removed finally block - loading state is now cleared explicitly above
   }
 
   Future<void> _setLanguage(String code) async {
     debugPrint('🌐 UI: _setLanguage called with: $code');
-    
-    // First set language in TranslationService (saves to SharedPreferences)
+
     await TranslationService().setLanguage(code);
     debugPrint('🌐 UI: TranslationService.setLanguage completed');
-    
-    // Update the provider state (this triggers UI rebuilds)
+
     await widget.ref.read(languageProvider.notifier).setLanguage(code);
     debugPrint('🌐 UI: languageProvider.setLanguage completed');
-    
-    // Close the bottom sheet first
+
+    // Pop back to settings first
     if (mounted) {
       Navigator.pop(context);
       debugPrint('🌐 UI: Navigator.pop called');
     }
-    
-    // Show restart required dialog (after a brief delay for navigation to complete)
+
+    // Show restart dialog after a brief delay
     await Future.delayed(const Duration(milliseconds: 200));
-    
-    final langName = supportedLanguages.firstWhere((l) => l.code == code).englishName;
-    
+
+    final langName =
+        supportedLanguages.firstWhere((l) => l.code == code).englishName;
+
     if (mounted) {
       _showRestartDialog(langName);
     }
   }
-  
+
   void _showRestartDialog(String langName) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF18181B),
+        backgroundColor: AppColors.surface(ctx),
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24), 
-            side: const BorderSide(color: Color(0xFF3F3F46)),
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppColors.border(ctx)),
         ),
-        icon: const Icon(Icons.refresh, color: Colors.orange, size: 48),
-        title: Text(
-          'Restart Required',
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Text(
+        icon: const Icon(Icons.refresh, color: Color(0xFFF59E0B), size: 48),
+        title: Tr('Restart Required',
+            style: TextStyle(
+              color: AppColors.textPrimary(ctx),
+              fontWeight: FontWeight.w600,
+            )),
+        content: Tr(
           'Language changed to $langName.\n\nPlease restart the app for all translations to take effect.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(color: Colors.white70),
+          style: TextStyle(color: AppColors.textSecondary(ctx)),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Later', style: GoogleFonts.poppins(color: Colors.grey)),
+            child:
+                Tr('Later', style: TextStyle(color: AppColors.textSecondary(ctx))),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              // Close the app - user will need to reopen
               SystemNavigator.pop();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              backgroundColor: const Color(0xFFF59E0B),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('Restart Now', style: GoogleFonts.poppins(color: Colors.white)),
+            child: Tr('Restart Now',
+                style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _LanguageTile extends StatelessWidget {
-  final SupportedLanguage language;
-  final bool isSelected;
-  final bool isDownloaded;
-  final bool isDownloading;
-  final VoidCallback onTap;
-
-  const _LanguageTile({
-    required this.language,
-    required this.isSelected,
-    required this.isDownloaded,
-    required this.isDownloading,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: isDownloading ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withOpacity(0.15) : null,
-          border: Border(
-            bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-          ),
-        ),
-        child: Row(
-          children: [
-            // Native name (first letter as icon)
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  language.nativeName.substring(0, 1),
-                  style: GoogleFonts.notoSans(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            
-            // Names
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    language.englishName,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                  Text(
-                    language.nativeName,
-                    style: GoogleFonts.notoSans(
-                      color: Colors.white54,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Status indicator
-            _buildTrailing(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrailing() {
-    if (language.isEnglish) {
-      return isSelected
-          ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
-          : const SizedBox(width: 24);
-    }
-
-    if (isDownloading) {
-      return const SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
-      );
-    }
-
-    if (isSelected) {
-      return const Icon(Icons.check_circle, color: Colors.green, size: 24);
-    }
-
-    if (isDownloaded) {
-      return const Icon(Icons.download_done, color: Colors.grey, size: 22);
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('30MB', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11)),
-        const SizedBox(width: 6),
-        const Icon(Icons.download_outlined, color: Colors.blue, size: 22),
-      ],
     );
   }
 }
