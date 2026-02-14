@@ -166,22 +166,44 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               height: 300,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.background(context), // Adaptive bg
-                gradient: article.imageUrl == null ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.background(context), AppColors.primary.withOpacity(0.1)],
-                ) : null,
-                image: article.imageUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(article.imageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
+                color: AppColors.background(context),
               ),
-              child: article.imageUrl == null
-                  ? Icon(Icons.image_not_supported, size: 64, color: AppColors.textSecondary(context).withOpacity(0.5))
-                  : null,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                   if (article.imageUrl != null)
+                    Image.network(
+                      article.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Icon(Icons.broken_image, color: Colors.grey),
+                        );
+                      },
+                    ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: article.imageUrl == null ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.background(context), AppColors.primary.withOpacity(0.1)],
+                      ) : LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.3),
+                        ],
+                        stops: const [0.6, 1.0],
+                      ),
+                    ),
+                  ),
+                  if (article.imageUrl == null)
+                    Center(
+                      child: Icon(Icons.image_not_supported, size: 64, color: AppColors.textSecondary(context).withOpacity(0.5)),
+                    ),
+                ],
+              ),
             ),
           ),
 

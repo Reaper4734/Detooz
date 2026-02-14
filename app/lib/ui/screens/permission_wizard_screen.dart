@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/sms_receiver_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -6,6 +7,7 @@ import '../theme/app_spacing.dart';
 
 import 'package:permission_handler/permission_handler.dart';
 import '../components/tr.dart';
+import 'setup_offline_protection_screen.dart';
 
 class PermissionWizardScreen extends StatefulWidget {
   const PermissionWizardScreen({super.key});
@@ -18,12 +20,20 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
   bool _notificationGranted = false;
   bool _autostartDone = false;
   final bool _batteryDone = false;
+  bool _offlineSetupDone = true; // Default to true (skip setup), set to false if first launch
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
+    _checkFirstLaunch();
+  }
+
+  Future<void> _checkFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final done = prefs.getBool('offline_setup_done') ?? false;
+    if (mounted) setState(() => _offlineSetupDone = done);
   }
 
   @override
@@ -120,8 +130,23 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _notificationGranted ? () {
-                  Navigator.of(context).pop(); // Setup done
+                onPressed: _notificationGranted ? () async {
+                  if (!_offlineSetupDone) {
+                    // First launch: chain to offline language setup
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('offline_setup_done', true);
+                    if (!mounted) return;
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => SetupOfflineProtectionScreen(
+                          onComplete: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                    );
+                  } else {
+                    // Subsequent launches: just return
+                    Navigator.of(context).pop();
+                  }
                 } : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

@@ -101,16 +101,23 @@ class _BookmarkCard extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.15),
                 borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-                image: article.imageUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(article.imageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
               ),
-              child: article.imageUrl == null
-                  ? Icon(Icons.article, color: AppColors.primary.withOpacity(0.5), size: 32)
-                  : null,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                   if (article.imageUrl != null)
+                    ClipRRect(
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                      child: Image.network(
+                        article.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+                      ),
+                    ),
+                  if (article.imageUrl == null)
+                    Center(child: Icon(Icons.article, color: AppColors.primary.withOpacity(0.5), size: 32)),
+                ],
+              ),
             ),
             // Content
             Expanded(

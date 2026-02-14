@@ -9,6 +9,7 @@ import 'language_selector_screen.dart';
 import 'edit_profile_screen.dart';
 import 'privacy_security_screen.dart';
 import 'bookmarks_screen.dart';
+import 'language_manager_screen.dart';
 import '../components/tr.dart';
 import 'main_screen.dart';
 
@@ -199,6 +200,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           );
                       }),
                       const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFFA1A1AA)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Offline Languages (Detection)
+            _buildGlassCard(
+              padding: EdgeInsets.zero,
+              child: InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const LanguageManagerScreen()),
+                ),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      _buildIcon(Icons.translate, const Color(0x1A22C55E), const Color(0xFF22C55E)),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Tr('Offline Languages', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context))),
+                            const SizedBox(height: 2),
+                            Tr('Manage scam detection language packs', style: TextStyle(fontSize: 12, color: AppColors.textSecondary(context))),
+                          ],
+                        ),
+                      ),
                       const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFFA1A1AA)),
                     ],
                   ),

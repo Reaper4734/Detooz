@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'language_config.dart';
+import '../ml/sms_translator.dart';
 
 /// Singleton service for handling all translations
 /// Implements Single-Model Policy: Only one language model stored at a time
@@ -231,9 +232,20 @@ class TranslationService {
     );
   }
 
-  /// Deletes a language model and clears its cached translations
+  /// Deletes a language model and clears its cached translations.
+  /// Guards against deleting models still needed by SmsTranslator (detection).
   Future<void> _deleteModelAndCache(String langCode) async {
     try {
+      // Guard: don't delete if SMS detection still needs this model
+      final smsLang = SmsTranslator().userLanguageHint;
+      if (smsLang == langCode) {
+        debugPrint(
+            '⚠️ Skipping $langCode model deletion — SMS detection needs it');
+        // Still clear UI translation cache (no longer needed for UI)
+        _clearCacheForLanguage(langCode);
+        return;
+      }
+
       // Delete the ML model
       final lang = getLanguageByCode(langCode);
       if (lang?.mlKitLang != null) {
@@ -242,17 +254,22 @@ class TranslationService {
       }
 
       // Clear cached translations for this language
-      if (_cache != null) {
-        final keysToDelete = _cache!.keys
-            .where((k) => k.toString().startsWith('${langCode}_'))
-            .toList();
-        for (final key in keysToDelete) {
-          await _cache!.delete(key);
-        }
-        debugPrint('🗑️ Cleared ${keysToDelete.length} cached translations for $langCode');
-      }
+      _clearCacheForLanguage(langCode);
     } catch (e) {
       debugPrint('⚠️ Failed to cleanup $langCode: $e');
+    }
+  }
+
+  /// Clears cached translations for a specific language.
+  void _clearCacheForLanguage(String langCode) {
+    if (_cache != null) {
+      final keysToDelete = _cache!.keys
+          .where((k) => k.toString().startsWith('${langCode}_'))
+          .toList();
+      for (final key in keysToDelete) {
+        _cache!.delete(key);
+      }
+      debugPrint('🗑️ Cleared ${keysToDelete.length} cached translations for $langCode');
     }
   }
 

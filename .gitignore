@@ -49,3 +49,7 @@ build/
 app/build/
 .dart_tool/
 app/.dart_tool/
+
+# Private keys
+*.pem
+detooz-key.pem

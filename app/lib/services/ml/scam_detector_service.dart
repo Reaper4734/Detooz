@@ -23,10 +23,12 @@ library;
 
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 import 'vocab_loader.dart';
 import 'token_encoder.dart';
+import 'sms_translator.dart';
 import '../../ui/components/tr.dart';
 
 /// Result of scam detection inference
@@ -43,11 +45,27 @@ class DetectionResult {
   /// Probabilities for each class after softmax
   final List<double> probabilities;
 
+  /// The detected language of the original message
+  final String detectedLanguage;
+
+  /// Whether the message was translated before detection
+  final bool wasTranslated;
+
+  /// The original untranslated text
+  final String? originalText;
+
+  /// The translated text (null if not translated)
+  final String? translatedText;
+
   DetectionResult({
     required this.label,
     required this.confidence,
     required this.logits,
     required this.probabilities,
+    this.detectedLanguage = 'en',
+    this.wasTranslated = false,
+    this.originalText,
+    this.translatedText,
   });
 
   /// Returns true if the message is classified as SCAM
@@ -80,6 +98,9 @@ class ScamDetectorService {
   // Token encoder for text preprocessing
   final TokenEncoder _encoder = TokenEncoder();
 
+  // SMS translator for Regional → English (on-device)
+  final SmsTranslator _smsTranslator = SmsTranslator();
+
   // Initialization state
   bool _isInitialized = false;
 
@@ -100,6 +121,9 @@ class ScamDetectorService {
 
       // Step 2: Load TFLite model
       _interpreter = await Interpreter.fromAsset(_modelPath);
+
+      // Step 3: Initialize SMS translator (for multilingual detection)
+      await _smsTranslator.initialize();
 
       _isInitialized = true;
     } catch (e) {
@@ -124,8 +148,22 @@ class ScamDetectorService {
     }
 
     try {
+      // Step 0: Translate regional SMS → English (if model available)
+      String textForModel = text;
+      TranslationResult? translationResult;
+      try {
+        translationResult = await _smsTranslator.translateForDetection(text);
+        textForModel = translationResult.textForModel;
+        if (translationResult.wasTranslated) {
+          debugPrint('🌐 Detection using translated text: "$textForModel"');
+        }
+      } catch (_) {
+        // Catch-all: if translation fails for any reason, use original text
+        debugPrint('⚠️ Translation step failed, using original text');
+      }
+
       // Step 1: Encode text to token IDs and attention mask
-      final encoded = _encoder.encode(text);
+      final encoded = _encoder.encode(textForModel);
       final inputIds = encoded['input_ids']!;
       final attentionMask = encoded['attention_mask']!;
 
@@ -165,6 +203,12 @@ class ScamDetectorService {
         confidence: maxProb,
         logits: logits,
         probabilities: probabilities,
+        detectedLanguage: translationResult?.detectedLanguage ?? 'en',
+        wasTranslated: translationResult?.wasTranslated ?? false,
+        originalText: text,
+        translatedText: translationResult?.wasTranslated == true
+            ? translationResult!.textForModel
+            : null,
       );
     } catch (e) {
       throw Exception('Inference failed: $e');
@@ -191,6 +235,7 @@ class ScamDetectorService {
   void dispose() {
     _interpreter?.close();
     _interpreter = null;
+    _smsTranslator.dispose();
     _isInitialized = false;
   }
 }

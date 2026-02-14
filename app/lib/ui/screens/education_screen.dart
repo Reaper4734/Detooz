@@ -300,15 +300,16 @@ class _EducationScreenState extends ConsumerState<EducationScreen> {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.3),
-                  image: article.imageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(article.imageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
                 ),
                 child: Stack(
+                  fit: StackFit.expand,
                   children: [
+                    if (article.imageUrl != null)
+                      Image.network(
+                        article.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                      ),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
