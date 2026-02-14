@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../components/tr.dart';
@@ -6,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../providers.dart';
 import '../../services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'otp_verification_screen.dart';
 
 
@@ -323,9 +325,32 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     
     if (picked == null) return;
     
+    // Crop Image
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Edit Photo',
+          toolbarColor: AppColors.primary,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+          hideBottomControls: false,
+        ),
+        IOSUiSettings(
+          title: 'Edit Photo',
+          aspectRatioLockEnabled: true,
+          resetAspectRatioEnabled: false,
+        ),
+      ],
+    );
+
+    if (croppedFile == null) return;
+    
     setState(() => _isSaving = true);
     try {
-      final bytes = await picked.readAsBytes();
+      final bytes = await File(croppedFile.path).readAsBytes();
       final base64Image = base64Encode(bytes);
       await apiService.uploadProfilePicture(base64Image);
       await ref.read(userProfileProvider.notifier).loadProfile();
