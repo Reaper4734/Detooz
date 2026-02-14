@@ -53,7 +53,7 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
           icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Tr('Offline Languages',
+        title: Tr('Language Packs',
             style: TextStyle(
                 color: AppColors.textPrimary(context),
                 fontWeight: FontWeight.bold)),

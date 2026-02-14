@@ -104,7 +104,7 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
                             const SizedBox(height: 24),
 
                             // Title
-                            Tr('App Language',
+                            Tr('Display Language',
                                 style: TextStyle(
                                   color: AppColors.textPrimary(context),
                                   fontSize: 28,
@@ -112,7 +112,7 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
                                 )),
                             const SizedBox(height: 8),
                             Tr(
-                              'Choose the language for Detooz\'s interface. Non-English languages require a one-time ~30 MB download.',
+                              'Change the language Detooz uses for menus, buttons, and notifications. ~30 MB download required for non-English.',
                               style: TextStyle(
                                   color: AppColors.textSecondary(context),
                                   fontSize: 15,
