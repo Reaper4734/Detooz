@@ -44,6 +44,7 @@ class UserResponse(BaseModel):
     country_code: str | None
     email_verified: bool = False
     phone_verified: bool = False
+    profile_picture: str | None = None
     is_active: bool
     created_at: datetime
     

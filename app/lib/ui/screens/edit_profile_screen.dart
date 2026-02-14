@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../components/tr.dart';
 import '../theme/app_colors.dart';
 import '../providers.dart';
 import '../../services/api_service.dart';
+import 'package:image_picker/image_picker.dart';
 import 'otp_verification_screen.dart';
 
 
@@ -136,7 +138,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           child: Column(
             children: [
               // Avatar
-              _buildAvatar(profile.name),
+              _buildAvatar(profile.name, profilePicture: profile.profilePicture),
               const SizedBox(height: 32),
               
               // Personal Info
@@ -222,23 +224,125 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _buildAvatar(String name) {
+  Widget _buildAvatar(String name, {String? profilePicture}) {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'U';
-    return Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.border(context), width: 4),
+    
+    Widget avatarContent;
+    if (profilePicture != null && profilePicture.isNotEmpty) {
+      try {
+        final bytes = base64Decode(profilePicture);
+        avatarContent = ClipOval(
+          child: Image.memory(
+            bytes,
+            width: 100,
+            height: 100,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildInitialAvatar(initial),
+          ),
+        );
+      } catch (_) {
+        avatarContent = _buildInitialAvatar(initial);
+      }
+    } else {
+      avatarContent = _buildInitialAvatar(initial);
+    }
+    
+    return Stack(
+      children: [
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            color: AppColors.surface(context),
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border(context), width: 4),
+          ),
+          child: avatarContent,
+        ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: GestureDetector(
+            onTap: _pickAndUploadImage,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.surface(context), width: 2),
+              ),
+              child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildInitialAvatar(String initial) {
+    return Center(
+      child: Text(
+        initial,
+        style: TextStyle(color: AppColors.textPrimary(context), fontSize: 40, fontWeight: FontWeight.bold),
       ),
-      child: Center(
-        child: Text(
-          initial,
-          style: TextStyle(color: AppColors.textPrimary(context), fontSize: 40, fontWeight: FontWeight.bold),
+    );
+  }
+  
+  Future<void> _pickAndUploadImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: Tr('Take Photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: Tr('Choose from Gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
         ),
       ),
     );
+    
+    if (source == null) return;
+    
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 400,
+      maxHeight: 400,
+      imageQuality: 70,
+    );
+    
+    if (picked == null) return;
+    
+    setState(() => _isSaving = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      await apiService.uploadProfilePicture(base64Image);
+      await ref.read(userProfileProvider.notifier).loadProfile();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Tr('Profile picture updated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   Widget _buildSectionHeader(String title) {

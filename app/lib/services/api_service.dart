@@ -164,6 +164,44 @@ class ApiService {
     return _processResponse(response);
   }
 
+  /// Upload profile picture (base64-encoded)
+  Future<Map<String, dynamic>> uploadProfilePicture(String base64Image) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/user/profile-picture'),
+      headers: await _getHeaders(),
+      body: json.encode({'image_data': base64Image}),
+    ).timeout(const Duration(seconds: 30));
+    return _processResponse(response);
+  }
+
+  /// Request forgot password OTP
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/forgot-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'email': email}),
+    ).timeout(const Duration(seconds: 30));
+    return _processResponse(response);
+  }
+
+  /// Reset password with OTP
+  Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/reset-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'email': email,
+        'otp': otp,
+        'new_password': newPassword,
+      }),
+    ).timeout(const Duration(seconds: 30));
+    return _processResponse(response);
+  }
+
   /// Register new user
   Future<Map<String, dynamic>> register({
     required String email,

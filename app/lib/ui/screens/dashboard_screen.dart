@@ -13,6 +13,7 @@ import '../../contracts/risk_level.dart';
 
 import 'package:image_picker/image_picker.dart';
 import '../components/tr.dart';
+import 'main_screen.dart';
 import '../components/verification_info_card.dart';
 import 'edit_profile_screen.dart';
 
@@ -543,7 +544,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {}, // View All
+                    onPressed: () {
+                      // Navigate to History tab (index 1)
+                      context.findAncestorStateOfType<MainScreenState>()?.navigateToTab(1);
+                    },
                     child: Tr('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                   ),
                 ],

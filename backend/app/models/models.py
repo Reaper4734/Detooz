@@ -30,6 +30,7 @@ class User(Base):
     country_code = Column(String(5), default="+91", nullable=True)
     is_active = Column(Boolean, default=True)
     fcm_token = Column(String(255), nullable=True)  # Firebase Cloud Messaging token
+    profile_picture = Column(Text, nullable=True)  # Base64-encoded profile picture
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

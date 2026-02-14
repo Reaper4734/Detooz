@@ -58,8 +58,9 @@ class GoogleAuthService {
         displayName: googleUser.displayName,
         photoUrl: googleUser.photoUrl,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('GoogleAuth: Error - $e');
+      debugPrint('GoogleAuth: Stack - $stackTrace');
       return GoogleSignInResult(
         success: false,
         error: _getErrorMessage(e),
@@ -86,13 +87,26 @@ class GoogleAuthService {
   }
   
   String _getErrorMessage(dynamic error) {
-    if (error.toString().contains('network')) {
+    final errorStr = error.toString();
+    
+    // Check for specific Google API error codes
+    if (errorStr.contains('ApiException: 10') || errorStr.contains('DEVELOPER_ERROR')) {
+      return 'Google Sign-In config error (code 10). SHA-1 fingerprint may not be registered in Firebase Console.';
+    }
+    if (errorStr.contains('ApiException: 12500')) {
+      return 'Google Sign-In temporarily unavailable. Please update Google Play Services.';
+    }
+    if (errorStr.contains('ApiException: 7')) {
+      return 'Network error. Please check your internet connection.';
+    }
+    if (errorStr.contains('network') || errorStr.contains('SocketException')) {
       return 'Network error. Please check your connection.';
     }
-    if (error.toString().contains('canceled')) {
+    if (errorStr.contains('canceled') || errorStr.contains('cancelled')) {
       return 'Sign-in cancelled';
     }
-    return 'Sign-in failed. Please try again.';
+    // Show actual error for debugging
+    return 'Sign-in failed: $errorStr';
   }
 }
 

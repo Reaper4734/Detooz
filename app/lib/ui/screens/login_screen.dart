@@ -12,6 +12,7 @@ import 'otp_verification_screen.dart';
 import '../components/tr.dart';
 import '../../services/google_auth_service.dart';
 import '../../services/api_service.dart';
+import 'forgot_password_screen.dart';
 
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -571,7 +572,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
-                                    onPressed: () {}, // Logic says no changes, but usually forgot password invokes something. Original code had no action for it? Check. Original had Text only maybe? No, it was just not implemented fully.
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                                      );
+                                    },
                                     style: TextButton.styleFrom(
                                       padding: EdgeInsets.zero,
                                       minimumSize: Size.zero,

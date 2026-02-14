@@ -427,6 +427,7 @@ class UserProfile {
   final String? phone;
   final bool emailVerified;
   final bool phoneVerified;
+  final String? profilePicture;
   final DateTime? gracePeriodEnd;
   
   UserProfile({
@@ -438,6 +439,7 @@ class UserProfile {
     this.phone,
     this.emailVerified = false,
     this.phoneVerified = false,
+    this.profilePicture,
     this.gracePeriodEnd,
   });
   
@@ -466,6 +468,7 @@ class UserProfile {
       phone: json['phone'],
       emailVerified: json['email_verified'] ?? false,
       phoneVerified: json['phone_verified'] ?? false,
+      profilePicture: json['profile_picture'],
       gracePeriodEnd: json['verification_grace_period_end'] != null 
           ? DateTime.tryParse(json['verification_grace_period_end'])
           : null,

@@ -59,6 +59,7 @@ def migrate_user_table(db_path: str):
         ("firebase_uid", "VARCHAR(128)", "NULL"),
         ("google_uid", "VARCHAR(128)", "NULL"),
         ("verification_grace_period_end", "DATETIME", "NULL"),
+        ("profile_picture", "TEXT", "NULL"),
     ]
     
     for column_name, column_type, default in migrations:

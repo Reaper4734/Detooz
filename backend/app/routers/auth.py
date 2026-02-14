@@ -219,3 +219,85 @@ async def refresh_token(current_user: User = Depends(get_current_user)):
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+# ============== Forgot Password ==============
+
+from pydantic import BaseModel, EmailStr
+from app.services.otp_service import OTPService, EmailService
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Send OTP to user's email for password reset.
+    Always returns success to prevent email enumeration attacks.
+    """
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        # Don't reveal that user doesn't exist
+        return {"success": True, "message": "If an account exists with that email, a reset OTP has been sent."}
+    
+    # Block reset for OTP-only / Google-only users
+    if user.password_hash in ("", "google_auth_placeholder", None):
+        return {"success": True, "message": "If an account exists with that email, a reset OTP has been sent."}
+    
+    # Rate limiting
+    can_resend, wait_seconds = OTPService.can_resend(f"reset:{request.email}")
+    if not can_resend:
+        return {"success": False, "message": f"Please wait {wait_seconds} seconds before requesting again."}
+    
+    # Generate and send OTP
+    otp = OTPService.generate_otp()
+    OTPService.store_otp(f"reset:{request.email}", otp)
+    
+    success = EmailService.send_otp_email(request.email, otp)
+    if not success:
+        return {"success": False, "message": "Failed to send OTP email. Please try again."}
+    
+    return {"success": True, "message": "If an account exists with that email, a reset OTP has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Verify OTP and reset password.
+    """
+    # Verify OTP first
+    verified, message = OTPService.verify_otp(f"reset:{request.email}", request.otp)
+    if not verified:
+        raise HTTPException(status_code=400, detail=message)
+    
+    # Find user
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate new password complexity
+    validate_password(request.new_password)
+    
+    # Update password
+    user.password_hash = get_password_hash(request.new_password)
+    await db.commit()
+    
+    return {"success": True, "message": "Password reset successfully. You can now log in."}

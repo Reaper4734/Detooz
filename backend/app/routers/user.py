@@ -68,6 +68,7 @@ class UserProfileResponse(BaseModel):
     phone: str | None
     email_verified: bool = False
     phone_verified: bool = False
+    profile_picture: str | None = None
     verification_grace_period_end: str | None = None
     
     class Config:
@@ -286,6 +287,7 @@ async def get_profile(
         phone=current_user.phone,
         email_verified=email_verified,
         phone_verified=current_user.phone_verified or False,
+        profile_picture=current_user.profile_picture,
         verification_grace_period_end=current_user.verification_grace_period_end.isoformat() if current_user.verification_grace_period_end else None
     )
 
@@ -326,8 +328,37 @@ async def update_profile(
         phone=current_user.phone,
         email_verified=current_user.email_verified or False,
         phone_verified=current_user.phone_verified or False,
+        profile_picture=current_user.profile_picture,
         verification_grace_period_end=current_user.verification_grace_period_end.isoformat() if current_user.verification_grace_period_end else None
     )
+
+
+class ProfilePictureRequest(BaseModel):
+    """Profile picture upload request"""
+    image_data: str  # Base64-encoded image
+
+
+@router.post("/profile-picture")
+async def upload_profile_picture(
+    request: ProfilePictureRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload profile picture as base64-encoded image.
+    Max size: ~500KB after base64 encoding.
+    """
+    # Validate size (base64 inflates ~33%, so 500KB base64 ≈ 375KB image)
+    if len(request.image_data) > 500_000:
+        raise HTTPException(
+            status_code=400,
+            detail="Image too large. Please use a smaller image (max ~375KB)."
+        )
+    
+    current_user.profile_picture = request.image_data
+    await db.commit()
+    
+    return {"success": True, "message": "Profile picture updated"}
 
 
 # ============== FCM Token ==============
