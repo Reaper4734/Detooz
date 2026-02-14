@@ -253,7 +253,7 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.cardBackground(context),
+        backgroundColor: AppColors.surface(context),
         title: Tr('Delete Language Pack?',
             style: TextStyle(color: AppColors.textPrimary(context))),
         content: Tr(
