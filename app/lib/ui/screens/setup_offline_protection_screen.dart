@@ -261,20 +261,15 @@ class _SetupOfflineProtectionScreenState
       // Save the user's language preference
       await _translator.setUserLanguage(_selectedLangCode);
 
-      // Navigate back (zero friction)
-      if (mounted) Navigator.of(context).pop();
-      widget.onComplete?.call();
-
-      // Fire-and-forget: download model in background AFTER navigation
+      // Fire-and-forget: download model in background
       _translator.downloadModel(_selectedLangCode).then((_) {
         debugPrint('✅ ${languageDisplayName(_selectedLangCode)} model downloaded in background');
       }).catchError((e) {
         debugPrint('⚠️ Background download failed: $e');
       });
-    } else {
-      // No language selected or English-only — just navigate
-      if (mounted) Navigator.of(context).pop();
-      widget.onComplete?.call();
     }
+
+    // Navigate back to dashboard
+    if (mounted) Navigator.of(context).pop();
   }
 }
