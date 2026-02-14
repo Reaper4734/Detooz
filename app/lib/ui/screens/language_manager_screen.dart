@@ -53,7 +53,7 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
           icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Tr('Language Packs',
+        title: Tr('SMS Detection Language',
             style: TextStyle(
                 color: AppColors.textPrimary(context),
                 fontWeight: FontWeight.bold)),

@@ -104,7 +104,7 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
                             const SizedBox(height: 24),
 
                             // Title
-                            Tr('Display Language',
+                            Tr('App Language',
                                 style: TextStyle(
                                   color: AppColors.textPrimary(context),
                                   fontSize: 28,
