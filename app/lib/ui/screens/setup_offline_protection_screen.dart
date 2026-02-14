@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../components/tr.dart';
+import '../providers.dart';
 import '../../services/ml/sms_translator.dart';
 import '../../services/ml/state_language_map.dart';
 
@@ -129,9 +130,9 @@ class _SetupOfflineProtectionScreenState
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.cardBackground(context),
+                  color: AppColors.surface(context),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.cardBorder(context)),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -139,7 +140,7 @@ class _SetupOfflineProtectionScreenState
                     hint: Tr('Select your State',
                         style: TextStyle(color: AppColors.textSecondary(context))),
                     isExpanded: true,
-                    dropdownColor: AppColors.cardBackground(context),
+                    dropdownColor: AppColors.surface(context),
                     icon: Icon(Icons.keyboard_arrow_down,
                         color: AppColors.textSecondary(context)),
                     items: sortedStateNames.map((state) {

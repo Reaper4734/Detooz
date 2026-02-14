@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../components/tr.dart';
+import '../providers.dart';
 import '../../services/ml/sms_translator.dart';
 import '../../services/ml/state_language_map.dart';
 
@@ -140,9 +141,9 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardBackground(context),
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder(context)),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Column(
         children: [
@@ -153,7 +154,7 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
                   height: 1,
                   indent: 16,
                   endIndent: 16,
-                  color: AppColors.cardBorder(context)),
+                  color: AppColors.border(context)),
           ],
         ],
       ),
