@@ -189,8 +189,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             );
                           },
                           loading: () => Text(
