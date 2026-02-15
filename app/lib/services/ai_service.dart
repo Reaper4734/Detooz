@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
+import 'ml/sms_translator.dart';
+
 class AIService {
   static final AIService _instance = AIService._internal();
   factory AIService() => _instance;
@@ -11,6 +13,9 @@ class AIService {
   Interpreter? _interpreter;
   List<String> _vocab = [];
   bool _isLoaded = false;
+
+  // SMS translator for Regional → English (on-device)
+  final SmsTranslator _smsTranslator = SmsTranslator();
 
   // Configuration
   static const int MAX_LEN = 128;
@@ -34,6 +39,14 @@ class AIService {
       _vocab = _vocab.where((t) => t.isNotEmpty).toList();
       
       debugPrint('✅ AI Vocab Loaded (${_vocab.length} tokens)');
+
+      // Initialize SMS translator for multilingual detection
+      try {
+        await _smsTranslator.initialize();
+        debugPrint('✅ SmsTranslator initialized for detection pipeline');
+      } catch (e) {
+        debugPrint('⚠️ SmsTranslator init failed (detection will use raw text): $e');
+      }
       
       _isLoaded = true;
     } catch (e) {
@@ -48,11 +61,27 @@ class AIService {
     if (!_isLoaded) await loadModel();
     if (_interpreter == null) return {'label': 'ERROR', 'confidence': 0.0};
 
-    // 1. Tokenize 
-    List<int> inputIds = _tokenize(smsText);
+    // 0. Translate regional SMS → English (if model available)
+    String textForModel = smsText;
+    String detectedLang = 'en';
+    bool wasTranslated = false;
+    try {
+      final tr = await _smsTranslator.translateForDetection(smsText);
+      textForModel = tr.textForModel;
+      detectedLang = tr.detectedLanguage;
+      wasTranslated = tr.wasTranslated;
+      if (wasTranslated) {
+        debugPrint('🌐 Detection using translated text: "$textForModel"');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Translation step failed, using original text: $e');
+    }
+
+    // 1. Tokenize (translated text)
+    List<int> inputIds = _tokenize(textForModel);
     
     // DEBUG: Log tokenization
-    debugPrint('🔤 Tokenizing: "$smsText"');
+    debugPrint('🔤 Tokenizing: "$textForModel"');
     final nonZeroTokens = inputIds.where((t) => t != 0).toList();
     debugPrint('🔤 Token IDs (non-zero): $nonZeroTokens');
 
@@ -88,6 +117,8 @@ class AIService {
     return {
         'label': label,
         'confidence': maxConf,
+        'detectedLanguage': detectedLang,
+        'wasTranslated': wasTranslated,
         'scores': {
             'ham': probs[0],
             'otp': probs[1],
