@@ -371,36 +371,70 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppColors.border(ctx)),
         ),
-        icon: const Icon(Icons.refresh, color: Color(0xFFF59E0B), size: 48),
+        icon: const Icon(Icons.refresh, color: Color(0xFF6366F1), size: 48),
         title: Tr('Restart Required',
             style: TextStyle(
               color: AppColors.textPrimary(ctx),
               fontWeight: FontWeight.w600,
             )),
-        content: Tr(
-          'Language changed to $langName.\n\nPlease restart the app for all translations to take effect.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textSecondary(ctx)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Tr(
+              'Language changed to $langName.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppColors.textPrimary(ctx),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
+            Tr(
+              'Please restart the app for all translations to take effect.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary(ctx), height: 1.4),
+            ),
+          ],
         ),
         actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child:
-                Tr('Later', style: TextStyle(color: AppColors.textSecondary(ctx))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              SystemNavigator.pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF59E0B),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Tr('Restart Now',
-                style: const TextStyle(color: Colors.white)),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: AppColors.border(ctx)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Tr('Later',
+                      style: TextStyle(color: AppColors.textSecondary(ctx))),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    SystemNavigator.pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Tr('Restart Now',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
