@@ -153,11 +153,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
           _progress = 1.0;
           _state = _DownloadState.success;
         });
-
-          _state = _DownloadState.success;
-        });
         // Auto-close removed to allow user to see success message and click Done
-      }
       }
     } catch (e) {
       _progressTimer?.cancel();
@@ -547,6 +543,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
                     fontWeight: FontWeight.w600)),
           ),
         ),
+      );
     }
 
     if (_state == _DownloadState.success) {
