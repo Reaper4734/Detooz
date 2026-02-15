@@ -190,13 +190,22 @@ class TranslationService {
     
     // Attempt download (support cellular if allowCellular is true)
     // Note: google_mlkit_translation uses isWifiRequired named param
-    await _modelManager.downloadModel(bcpCode, isWifiRequired: !allowCellular);
+    // Apply 90-second timeout to prevent indefinite hangs
+    try {
+      await _modelManager
+          .downloadModel(bcpCode, isWifiRequired: !allowCellular)
+          .timeout(const Duration(seconds: 90));
+    } catch (e) {
+      debugPrint('⚠️ Download attempt error or timeout: $e');
+      // Continue to verification step - if it failed, isModelDownloaded will likely be false
+      // and we will throw the specific error below.
+    }
     
     // Verify download actually succeeded
     final isDownloaded = await _modelManager.isModelDownloaded(bcpCode);
     if (!isDownloaded) {
        debugPrint('❌ Model download failed or incomplete for: $langCode');
-       throw Exception('Download failed. Check connection.');
+       throw Exception('Download failed or timed out. Check connection.');
     }
 
     debugPrint('✅ Model download verified for: $langCode');
