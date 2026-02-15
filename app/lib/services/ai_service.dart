@@ -1,44 +1,40 @@
 
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 import 'ml/sms_translator.dart';
+import 'ml/token_encoder.dart';
+import 'ml/vocab_loader.dart';
 
 class AIService {
   static final AIService _instance = AIService._internal();
   factory AIService() => _instance;
   AIService._internal();
   Interpreter? _interpreter;
-  List<String> _vocab = [];
   bool _isLoaded = false;
+
+  // Proper WordPiece tokenizer (matches model training)
+  final TokenEncoder _encoder = TokenEncoder();
 
   // SMS translator for Regional → English (on-device)
   final SmsTranslator _smsTranslator = SmsTranslator();
 
   // Configuration
-  static const int MAX_LEN = 128;
   static const String MODEL_PATH = 'assets/scam_detector.tflite';
-  static const String VOCAB_PATH = 'assets/vocab.txt';
 
   Future<void> loadModel() async {
     if (_isLoaded) return;
     try {
       debugPrint('🤖 Initializing AI Model...');
-      // Load Model
+      // Load vocabulary for WordPiece tokenizer
+      await VocabLoader.load();
+      debugPrint('✅ AI Vocab Loaded (${VocabLoader.vocabSize} tokens)');
+
+      // Load TFLite model
       _interpreter = await Interpreter.fromAsset(MODEL_PATH);
       debugPrint('✅ AI Model Interpreter Loaded successfully');
-
-      // Load Vocab
-      final vocabStr = await rootBundle.loadString(VOCAB_PATH);
-      // Support both LF (\n) and CRLF (\r\n) line endings
-      _vocab = vocabStr.split(RegExp(r'\r?\n'));
-      
-      // Filter out empty tokens that might result from trailing newlines
-      _vocab = _vocab.where((t) => t.isNotEmpty).toList();
-      
-      debugPrint('✅ AI Vocab Loaded (${_vocab.length} tokens)');
 
       // Initialize SMS translator for multilingual detection
       try {
@@ -77,26 +73,31 @@ class AIService {
       debugPrint('⚠️ Translation step failed, using original text: $e');
     }
 
-    // 1. Tokenize (translated text)
-    List<int> inputIds = _tokenize(textForModel);
+    // 1. Tokenize with proper WordPiece (matches BERT training)
+    final encoded = _encoder.encode(textForModel);
+    final inputIds = encoded['input_ids']!;
+    final attentionMask = encoded['attention_mask']!;
     
     // DEBUG: Log tokenization
     debugPrint('🔤 Tokenizing: "$textForModel"');
     final nonZeroTokens = inputIds.where((t) => t != 0).toList();
     debugPrint('🔤 Token IDs (non-zero): $nonZeroTokens');
 
-    // 2. Prepare Inputs/Outputs
-    // Input: [1, 128] int32
-    var input = [inputIds]; 
-    
-    // Output: [1, 3] float32
-    var output = List.filled(1 * 3, 0.0).reshape([1, 3]);
+    // 2. Prepare input tensors as Int32 [1, 128]
+    final inputIdsTensor = Int32List.fromList(inputIds);
+    final attentionMaskTensor = Int32List.fromList(attentionMask);
 
-    // 3. Run Inference
-    _interpreter!.run(input, output);
+    // 3. Prepare output buffer [1, 3]
+    final outputBuffer = List.generate(1, (_) => List.filled(3, 0.0));
 
-    // 4. Process Output (Softmax)
-    List<double> logits = List<double>.from(output[0]);
+    // 4. Run inference with BOTH inputs (input_ids + attention_mask)
+    _interpreter!.runForMultipleInputs(
+      [inputIdsTensor.reshape([1, 128]), attentionMaskTensor.reshape([1, 128])],
+      {0: outputBuffer},
+    );
+
+    // 5. Process output (Softmax)
+    List<double> logits = outputBuffer[0].map((e) => e.toDouble()).toList();
     List<double> probs = _softmax(logits);
     
     // DEBUG: Log all scores
@@ -104,19 +105,18 @@ class AIService {
     debugPrint('📊 Probs: HAM=${(probs[0]*100).toStringAsFixed(1)}%, OTP=${(probs[1]*100).toStringAsFixed(1)}%, SCAM=${(probs[2]*100).toStringAsFixed(1)}%');
     
     int maxIdx = 0;
-    double maxConf = 0.0;
-    
-    for (int i = 0; i < probs.length; i++) {
-        if (probs[i] > maxConf) {
-            maxConf = probs[i];
-            maxIdx = i;
-        }
+    double maxProb = probs[0];
+    for (int i = 1; i < probs.length; i++) {
+      if (probs[i] > maxProb) {
+        maxProb = probs[i];
+        maxIdx = i;
+      }
     }
 
     String label = ['HAM', 'OTP', 'SCAM'][maxIdx];
     return {
         'label': label,
-        'confidence': maxConf,
+        'confidence': maxProb,
         'detectedLanguage': detectedLang,
         'wasTranslated': wasTranslated,
         'scores': {
@@ -129,41 +129,17 @@ class AIService {
 
   // --- Helpers ---
 
-  List<int> _tokenize(String text) {
-    List<int> ids = List.filled(MAX_LEN, 0);
-    ids[0] = 101; // [CLS]
-    
-    // Simple whitespace + punctuation split
-    // Ideally use a proper WordPiece tokenizer package
-    var words = text.toLowerCase()
-        .replaceAll(RegExp(r'[^\w\s]'), ' ') // Replace punct with space
-        .split(RegExp(r'\s+'));
-        
-    int idx = 1;
-    
-    for (var word in words) {
-        if (idx >= MAX_LEN - 1) break;
-        if (word.isEmpty) continue;
-        
-        // Try direct match
-        int tokenId = _vocab.indexOf(word);
-        if (tokenId == -1) {
-             tokenId = 100; // [UNK]
-        }
-        
-        ids[idx] = tokenId;
-        idx++;
-    }
-    
-    ids[idx] = 102; // [SEP]
-    return ids;
-  }
-
+  /// Safe softmax with numerical stability
   List<double> _softmax(List<double> logits) {
     if (logits.isEmpty) return [];
-    double maxLogit = logits.reduce(max);
-    List<double> expValues = logits.map((x) => exp(x - maxLogit)).toList();
-    double sumExp = expValues.reduce((a, b) => a + b);
+    final maxLogit = logits.reduce((a, b) => a > b ? a : b);
+    final expValues = logits.map((x) {
+      final v = x - maxLogit;
+      if (v > 700) return double.maxFinite;
+      if (v < -700) return 0.0;
+      return exp(v);
+    }).toList();
+    final sumExp = expValues.reduce((a, b) => a + b);
     return expValues.map((e) => e / sumExp).toList();
   }
 }

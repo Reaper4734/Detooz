@@ -125,7 +125,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
          
          result = {
            'risk_level': riskLevel,
-           'reason': reason,
+           'risk_reason': reason,
            'scam_type': scamType,
            'confidence': aiConf,
            'created_at': DateTime.now().toIso8601String(),
@@ -147,7 +147,7 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
         'message': content,
         'platform': 'MANUAL',
         'risk_level': result['risk_level'],
-        'risk_reason': result['reason'],
+        'risk_reason': result['risk_reason'],
         'scam_type': result['scam_type'],
         'confidence': result['confidence'],
         'created_at': DateTime.now().toIso8601String(),
