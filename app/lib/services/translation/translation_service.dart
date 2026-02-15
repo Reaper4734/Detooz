@@ -190,38 +190,45 @@ class TranslationService {
     
     // Attempt download with timeout and extensive logging
     debugPrint('⏳ [TranslationService] Calling _modelManager.downloadModel now...');
+    final stopwatch = Stopwatch()..start();
     
     try {
       await _modelManager
           .downloadModel(bcpCode, isWifiRequired: !allowCellular)
           .timeout(const Duration(seconds: 45));
       
-      debugPrint('✅ [TranslationService] _modelManager.downloadModel returned (or completed)');
+      debugPrint('✅ [TranslationService] _modelManager.downloadModel returned in ${stopwatch.elapsedMilliseconds}ms');
     } catch (e) {
-      debugPrint('⚠️ [TranslationService] Download call timed out or threw: $e');
+      debugPrint('⚠️ [TranslationService] Download call timed out or threw after ${stopwatch.elapsedMilliseconds}ms: $e');
       // Continue to verify - maybe it started in background?
     }
     
     // Validate download success using a polling loop (up to 60s)
-    // This handles both blocking and non-blocking download behaviors
+    // Optimize: Check frequently at first (every 500ms), then slower (2s)
     debugPrint('🔍 [TranslationService] Verifying model presence...');
     
     bool isDownloaded = false;
-    for (int i = 0; i < 30; i++) { // 30 checks * 2s = 60s max wait
+    for (int i = 0; i < 40; i++) { 
        isDownloaded = await _modelManager.isModelDownloaded(bcpCode);
        if (isDownloaded) {
-         debugPrint('✅ [TranslationService] Model verified as present!');
+         debugPrint('✅ [TranslationService] Model verified as present after ${stopwatch.elapsedMilliseconds}ms!');
          break;
        }
        
        if (i == 0) debugPrint('⏳ [TranslationService] Model not ready yet, waiting...');
-       if (i % 5 == 0) debugPrint('⏳ [TranslationService] Still verifying... (${i * 2}s)');
        
-       await Future.delayed(const Duration(seconds: 2));
+       // Backoff strategy: fast checks first, then slower
+       final waitMs = i < 10 ? 500 : 2000; 
+       if (i > 0 && i % 5 == 0) debugPrint('⏳ [TranslationService] Still verifying... (${stopwatch.elapsed.inSeconds}s elapsed)');
+       
+       await Future.delayed(Duration(milliseconds: waitMs));
+       
+       // Timeout total 60s roughly
+       if (stopwatch.elapsed.inSeconds > 60) break;
     }
 
     if (!isDownloaded) {
-       debugPrint('❌ [TranslationService] Model download failed verification after wait');
+       debugPrint('❌ [TranslationService] Failure: Model not found after ${stopwatch.elapsed.inSeconds}s');
        throw Exception('Download verification failed. Check internet/ML Kit services.');
     }
 
