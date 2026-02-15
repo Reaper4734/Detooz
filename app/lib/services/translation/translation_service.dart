@@ -169,9 +169,12 @@ class TranslationService {
 
   /// Download a language model
   /// onProgress callback provides 0.0 to 1.0 progress (simulated)
-  Future<void> downloadModel(String langCode, {Function(double)? onProgress}) async {
-    debugPrint('📥 downloadModel called for: $langCode');
-    
+  /// Download a language model
+  /// onProgress callback provides 0.0 to 1.0 progress (simulated)
+  Future<void> downloadModel(String langCode,
+      {bool allowCellular = false, Function(double)? onProgress}) async {
+    debugPrint('📥 downloadModel called for: $langCode (Cellular: $allowCellular)');
+
     final lang = getLanguageByCode(langCode);
     if (lang?.mlKitLang == null) {
       debugPrint('❌ Language "$langCode" not supported');
@@ -182,11 +185,25 @@ class TranslationService {
     debugPrint('📥 ML Kit BCP code: $bcpCode');
 
     onProgress?.call(0.0);
-    
+
     debugPrint('📥 Starting model download for BCP code: $bcpCode');
-    await _modelManager.downloadModel(bcpCode);
-    debugPrint('✅ Model download completed for: $langCode');
     
+    // Create download conditions
+    final conditions = DownloadConditions(
+      isWifiRequired: !allowCellular,
+    );
+
+    // Attempt download
+    await _modelManager.downloadModel(bcpCode, conditions: conditions);
+    
+    // Verify download actually succeeded
+    final isDownloaded = await _modelManager.isModelDownloaded(bcpCode);
+    if (!isDownloaded) {
+       debugPrint('❌ Model download failed or incomplete for: $langCode');
+       throw Exception('Download failed. Check connection.');
+    }
+
+    debugPrint('✅ Model download verified for: $langCode');
     onProgress?.call(1.0);
   }
 
@@ -241,15 +258,21 @@ class TranslationService {
       // (in case SmsTranslator hasn't been initialized yet).
       final smsLang = SmsTranslator().userLanguageHint;
       String? detectionLang = smsLang;
+      
       if (detectionLang == null) {
         // Fallback: read directly from SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         detectionLang = prefs.getString('detection_language');
+        debugPrint('🔍 Checked prefs for detection_language: "$detectionLang"');
+      } else {
+        debugPrint('🔍 SmsTranslator instance has detection_language: "$detectionLang"');
       }
+
+      debugPrint('🤔 Checking deletion guard: Trying to delete "$langCode", needed for detection? "${detectionLang == langCode}"');
 
       if (detectionLang == langCode) {
         debugPrint(
-            '⚠️ Skipping $langCode model deletion — SMS detection needs it');
+            '⚠️ GUARD: Skipping $langCode model deletion — SMS detection needs it');
         // Still clear UI translation cache (no longer needed for UI)
         _clearCacheForLanguage(langCode);
         return;

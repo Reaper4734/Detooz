@@ -134,13 +134,17 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
     });
 
     try {
-      await TranslationService().downloadModel(widget.langCode,
-          onProgress: (p) {
-        if (p >= 1.0 && mounted) {
-          _progressTimer?.cancel();
-          setState(() => _progress = 1.0);
-        }
-      });
+      // Pass allowCellular: !_isWifi to enable download over mobile data if needed
+      await TranslationService().downloadModel(
+        widget.langCode,
+        allowCellular: !_isWifi,
+        onProgress: (p) {
+          if (p >= 1.0 && mounted) {
+            _progressTimer?.cancel();
+            setState(() => _progress = 1.0);
+          }
+        },
+      );
 
       _progressTimer?.cancel();
 
