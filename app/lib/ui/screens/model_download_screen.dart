@@ -154,11 +154,10 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
           _state = _DownloadState.success;
         });
 
-        // Auto-close after a moment
-        await Future.delayed(const Duration(seconds: 1));
-        if (mounted) {
-          Navigator.pop(context, true);
-        }
+          _state = _DownloadState.success;
+        });
+        // Auto-close removed to allow user to see success message and click Done
+      }
       }
     } catch (e) {
       _progressTimer?.cancel();
@@ -459,36 +458,33 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
   }
 
   Widget _buildSuccess() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.6,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: const BoxDecoration(
-              color: Color(0x2622C55E),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.check, color: Color(0xFF22C55E), size: 44),
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        Container(
+          width: 80,
+          height: 80,
+          decoration: const BoxDecoration(
+            color: Color(0x2622C55E),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(height: 24),
-          Tr('Download complete!',
+          child: const Icon(Icons.check, color: Color(0xFF22C55E), size: 44),
+        ),
+        const SizedBox(height: 24),
+        Tr('Download complete!',
+            style: TextStyle(
+                color: AppColors.textPrimary(context),
+                fontSize: 20,
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Tr('${widget.langName} is ready for offline detection.',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                  color: AppColors.textPrimary(context),
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Tr('${widget.langName} is ready for offline detection.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: AppColors.textSecondary(context), fontSize: 14)),
-          ),
-        ],
-      ),
+                  color: AppColors.textSecondary(context), fontSize: 14)),
+        ),
+      ],
     );
   }
 
@@ -551,10 +547,32 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
                     fontWeight: FontWeight.w600)),
           ),
         ),
+    }
+
+    if (_state == _DownloadState.success) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF22C55E), // Green for success
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+            ),
+            child: Tr('Done',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ),
       );
     }
 
-    // Success state
+    // Should not happen
     return const SizedBox.shrink();
   }
 }
