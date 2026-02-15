@@ -169,8 +169,6 @@ class TranslationService {
 
   /// Download a language model
   /// onProgress callback provides 0.0 to 1.0 progress (simulated)
-  /// Download a language model
-  /// onProgress callback provides 0.0 to 1.0 progress (simulated)
   Future<void> downloadModel(String langCode,
       {bool allowCellular = false, Function(double)? onProgress}) async {
     debugPrint('📥 downloadModel called for: $langCode (Cellular: $allowCellular)');
@@ -187,57 +185,13 @@ class TranslationService {
     onProgress?.call(0.0);
 
     debugPrint('📥 Starting model download for BCP code: $bcpCode');
-    
-    // Attempt download with timeout and extensive logging
-    debugPrint('⏳ [TranslationService] Calling _modelManager.downloadModel now...');
-    final stopwatch = Stopwatch()..start();
-    
-    try {
-      await _modelManager
-          .downloadModel(bcpCode, isWifiRequired: !allowCellular)
-          .timeout(const Duration(seconds: 45));
-      
-      debugPrint('✅ [TranslationService] _modelManager.downloadModel returned in ${stopwatch.elapsedMilliseconds}ms');
-    } catch (e) {
-      debugPrint('⚠️ [TranslationService] Download call timed out or threw after ${stopwatch.elapsedMilliseconds}ms: $e');
-      // Continue to verify - maybe it started in background?
-    }
-    
-    // Validate download success using a polling loop (up to 60s)
-    // Optimize: Check frequently at first (every 500ms), then slower (2s)
-    debugPrint('🔍 [TranslationService] Verifying model presence...');
-    
-    bool isDownloaded = false;
-    for (int i = 0; i < 40; i++) { 
-       isDownloaded = await _modelManager.isModelDownloaded(bcpCode);
-       if (isDownloaded) {
-         debugPrint('✅ [TranslationService] Model verified as present after ${stopwatch.elapsedMilliseconds}ms!');
-         break;
-       }
-       
-       if (i == 0) debugPrint('⏳ [TranslationService] Model not ready yet, waiting...');
-       
-       // Backoff strategy: fast checks first, then slower
-       final waitMs = i < 10 ? 500 : 2000; 
-       if (i > 0 && i % 5 == 0) debugPrint('⏳ [TranslationService] Still verifying... (${stopwatch.elapsed.inSeconds}s elapsed)');
-       
-       await Future.delayed(Duration(milliseconds: waitMs));
-       
-       // Timeout total 60s roughly
-       if (stopwatch.elapsed.inSeconds > 60) break;
-    }
 
-    if (!isDownloaded) {
-       debugPrint('❌ [TranslationService] Failure: Model not found after ${stopwatch.elapsed.inSeconds}s');
-       // CRITICAL: Delete the model to clear any stuck/pending downloads in Android DownloadManager
-       try {
-         await _modelManager.deleteModel(bcpCode);
-         debugPrint('🧹 [TranslationService] Cleared stuck download artifact for $bcpCode');
-       } catch (e) {
-         debugPrint('⚠️ [TranslationService] Failed to cleanup after error: $e');
-       }
-       throw Exception('Download verification failed. Check internet/ML Kit services.');
-    }
+    // Use the simple, reliable ML Kit download — no timeout, no polling.
+    // ML Kit manages its own download lifecycle internally.
+    // Passing isWifiRequired: false always to avoid Android connectivity
+    // detection issues. The UI already handles WiFi/mobile data confirmation.
+    await _modelManager.downloadModel(bcpCode, isWifiRequired: false);
+    debugPrint('✅ Model download completed for: $langCode');
 
     onProgress?.call(1.0);
   }
