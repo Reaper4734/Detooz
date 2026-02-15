@@ -188,13 +188,9 @@ class TranslationService {
 
     debugPrint('📥 Starting model download for BCP code: $bcpCode');
     
-    // Create download conditions
-    final conditions = DownloadConditions(
-      isWifiRequired: !allowCellular,
-    );
-
-    // Attempt download
-    await _modelManager.downloadModel(bcpCode, conditions: conditions);
+    // Attempt download (support cellular if allowCellular is true)
+    // Note: google_mlkit_translation uses isWifiRequired named param
+    await _modelManager.downloadModel(bcpCode, isWifiRequired: !allowCellular);
     
     // Verify download actually succeeded
     final isDownloaded = await _modelManager.isModelDownloaded(bcpCode);
