@@ -188,27 +188,43 @@ class TranslationService {
 
     debugPrint('📥 Starting model download for BCP code: $bcpCode');
     
-    // Attempt download (support cellular if allowCellular is true)
-    // Note: google_mlkit_translation uses isWifiRequired named param
-    // Apply 90-second timeout to prevent indefinite hangs
+    // Attempt download with timeout and extensive logging
+    debugPrint('⏳ [TranslationService] Calling _modelManager.downloadModel now...');
+    
     try {
       await _modelManager
           .downloadModel(bcpCode, isWifiRequired: !allowCellular)
-          .timeout(const Duration(seconds: 90));
+          .timeout(const Duration(seconds: 45));
+      
+      debugPrint('✅ [TranslationService] _modelManager.downloadModel returned (or completed)');
     } catch (e) {
-      debugPrint('⚠️ Download attempt error or timeout: $e');
-      // Continue to verification step - if it failed, isModelDownloaded will likely be false
-      // and we will throw the specific error below.
+      debugPrint('⚠️ [TranslationService] Download call timed out or threw: $e');
+      // Continue to verify - maybe it started in background?
     }
     
-    // Verify download actually succeeded
-    final isDownloaded = await _modelManager.isModelDownloaded(bcpCode);
-    if (!isDownloaded) {
-       debugPrint('❌ Model download failed or incomplete for: $langCode');
-       throw Exception('Download failed or timed out. Check connection.');
+    // Validate download success using a polling loop (up to 60s)
+    // This handles both blocking and non-blocking download behaviors
+    debugPrint('🔍 [TranslationService] Verifying model presence...');
+    
+    bool isDownloaded = false;
+    for (int i = 0; i < 30; i++) { // 30 checks * 2s = 60s max wait
+       isDownloaded = await _modelManager.isModelDownloaded(bcpCode);
+       if (isDownloaded) {
+         debugPrint('✅ [TranslationService] Model verified as present!');
+         break;
+       }
+       
+       if (i == 0) debugPrint('⏳ [TranslationService] Model not ready yet, waiting...');
+       if (i % 5 == 0) debugPrint('⏳ [TranslationService] Still verifying... (${i * 2}s)');
+       
+       await Future.delayed(const Duration(seconds: 2));
     }
 
-    debugPrint('✅ Model download verified for: $langCode');
+    if (!isDownloaded) {
+       debugPrint('❌ [TranslationService] Model download failed verification after wait');
+       throw Exception('Download verification failed. Check internet/ML Kit services.');
+    }
+
     onProgress?.call(1.0);
   }
 
