@@ -323,8 +323,10 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: Tr('Wait for WiFi',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: AppColors.textSecondary(context))),
+                          color: AppColors.textSecondary(context),
+                          fontWeight: FontWeight.w600)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -338,7 +340,9 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: Tr('Use Mobile Data',
-                      style: const TextStyle(color: Colors.white)),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
               ),
             ],

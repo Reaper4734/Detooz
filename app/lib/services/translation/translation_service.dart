@@ -236,9 +236,18 @@ class TranslationService {
   /// Guards against deleting models still needed by SmsTranslator (detection).
   Future<void> _deleteModelAndCache(String langCode) async {
     try {
-      // Guard: don't delete if SMS detection still needs this model
+      // Guard: don't delete if SMS detection still needs this model.
+      // Check both the SmsTranslator instance AND SharedPreferences directly
+      // (in case SmsTranslator hasn't been initialized yet).
       final smsLang = SmsTranslator().userLanguageHint;
-      if (smsLang == langCode) {
+      String? detectionLang = smsLang;
+      if (detectionLang == null) {
+        // Fallback: read directly from SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        detectionLang = prefs.getString('detection_language');
+      }
+
+      if (detectionLang == langCode) {
         debugPrint(
             '⚠️ Skipping $langCode model deletion — SMS detection needs it');
         // Still clear UI translation cache (no longer needed for UI)
