@@ -264,15 +264,18 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
   }
 
   Widget _buildCheckingConnection() {
-    return Column(
-      children: [
-        const SizedBox(height: 40),
-        const CircularProgressIndicator(color: Color(0xFF6366F1)),
-        const SizedBox(height: 24),
-        Tr('Checking connection...',
-            style: TextStyle(
-                color: AppColors.textSecondary(context), fontSize: 15)),
-      ],
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          const CircularProgressIndicator(color: Color(0xFF6366F1)),
+          const SizedBox(height: 24),
+          Tr('Checking connection...',
+              style: TextStyle(
+                  color: AppColors.textSecondary(context), fontSize: 15)),
+        ],
+      ),
     );
   }
 
@@ -353,163 +356,172 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen>
 
   Widget _buildDownloadProgress() {
     final percent = (_progress * 100).toInt();
-    return Column(
-      children: [
-        const SizedBox(height: 20),
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
 
-        // Progress circle
-        SizedBox(
-          width: 140,
-          height: 140,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Background circle
-              SizedBox(
-                width: 140,
-                height: 140,
-                child: CircularProgressIndicator(
-                  value: 1.0,
-                  strokeWidth: 8,
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+          // Progress circle
+          SizedBox(
+            width: 140,
+            height: 140,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Background circle
+                SizedBox(
+                  width: 140,
+                  height: 140,
+                  child: CircularProgressIndicator(
+                    value: 1.0,
+                    strokeWidth: 8,
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                  ),
                 ),
-              ),
-              // Progress circle
-              SizedBox(
-                width: 140,
-                height: 140,
-                child: CircularProgressIndicator(
-                  value: _progress,
-                  strokeWidth: 8,
-                  color: const Color(0xFF6366F1),
-                  strokeCap: StrokeCap.round,
+                // Progress circle
+                SizedBox(
+                  width: 140,
+                  height: 140,
+                  child: CircularProgressIndicator(
+                    value: _progress,
+                    strokeWidth: 8,
+                    color: const Color(0xFF6366F1),
+                    strokeCap: StrokeCap.round,
+                  ),
                 ),
-              ),
-              // Percentage text
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$percent%',
-                    style: TextStyle(
-                      color: AppColors.textPrimary(context),
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                // Percentage text
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$percent%',
+                      style: TextStyle(
+                        color: AppColors.textPrimary(context),
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  Text(
-                    '~30 MB',
-                    style: TextStyle(
-                        color: AppColors.textSecondary(context),
-                        fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 28),
-
-        // Status text
-        AnimatedBuilder(
-          animation: _pulseController,
-          builder: (_, __) => Opacity(
-            opacity: 0.5 + (_pulseController.value * 0.5),
-            child: Tr('Downloading language pack...',
-                style: TextStyle(
-                    color: AppColors.textSecondary(context), fontSize: 15)),
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Info card
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF6366F1).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.shield_outlined,
-                  color: Color(0xFF6366F1), size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Tr(
-                  'All processing stays on your device. Nothing is sent to any server.',
-                  style: TextStyle(
-                      color: const Color(0xFF22C55E),
-                      fontSize: 12,
-                      height: 1.4),
+                    Text(
+                      '~30 MB',
+                      style: TextStyle(
+                          color: AppColors.textSecondary(context),
+                          fontSize: 12),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 28),
+
+          // Status text
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (_, __) => Opacity(
+              opacity: 0.5 + (_pulseController.value * 0.5),
+              child: Tr('Downloading language pack...',
+                  style: TextStyle(
+                      color: AppColors.textSecondary(context), fontSize: 15)),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Info card
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.shield_outlined,
+                    color: Color(0xFF6366F1), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Tr(
+                    'All processing stays on your device. Nothing is sent to any server.',
+                    style: TextStyle(
+                        color: const Color(0xFF22C55E),
+                        fontSize: 12,
+                        height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildSuccess() {
-    return Column(
-      children: [
-        const SizedBox(height: 40),
-        Container(
-          width: 80,
-          height: 80,
-          decoration: const BoxDecoration(
-            color: Color(0x2622C55E),
-            shape: BoxShape.circle,
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: const BoxDecoration(
+              color: Color(0x2622C55E),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check, color: Color(0xFF22C55E), size: 44),
           ),
-          child: const Icon(Icons.check, color: Color(0xFF22C55E), size: 44),
-        ),
-        const SizedBox(height: 24),
-        Tr('Download complete!',
-            style: TextStyle(
-                color: AppColors.textPrimary(context),
-                fontSize: 20,
-                fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Tr('${widget.langName} is ready for offline detection.',
-              textAlign: TextAlign.center,
+          const SizedBox(height: 24),
+          Tr('Download complete!',
               style: TextStyle(
-                  color: AppColors.textSecondary(context), fontSize: 14)),
-        ),
-      ],
+                  color: AppColors.textPrimary(context),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Tr('${widget.langName} is ready for offline detection.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: AppColors.textSecondary(context), fontSize: 14)),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildError() {
-    return Column(
-      children: [
-        const SizedBox(height: 40),
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-            shape: BoxShape.circle,
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.error_outline,
+                color: Color(0xFFEF4444), size: 44),
           ),
-          child: const Icon(Icons.error_outline,
-              color: Color(0xFFEF4444), size: 44),
-        ),
-        const SizedBox(height: 24),
-        Tr('Download Failed',
-            style: TextStyle(
-                color: AppColors.textPrimary(context),
-                fontSize: 20,
-                fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Text(_errorMessage,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                color: AppColors.textSecondary(context), fontSize: 14)),
-      ],
+          const SizedBox(height: 24),
+          Tr('Download Failed',
+              style: TextStyle(
+                  color: AppColors.textPrimary(context),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text(_errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppColors.textSecondary(context), fontSize: 14)),
+        ],
+      ),
     );
   }
 

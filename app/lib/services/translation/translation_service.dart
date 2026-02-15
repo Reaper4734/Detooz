@@ -229,6 +229,13 @@ class TranslationService {
 
     if (!isDownloaded) {
        debugPrint('❌ [TranslationService] Failure: Model not found after ${stopwatch.elapsed.inSeconds}s');
+       // CRITICAL: Delete the model to clear any stuck/pending downloads in Android DownloadManager
+       try {
+         await _modelManager.deleteModel(bcpCode);
+         debugPrint('🧹 [TranslationService] Cleared stuck download artifact for $bcpCode');
+       } catch (e) {
+         debugPrint('⚠️ [TranslationService] Failed to cleanup after error: $e');
+       }
        throw Exception('Download verification failed. Check internet/ML Kit services.');
     }
 
