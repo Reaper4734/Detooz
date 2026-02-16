@@ -36,6 +36,16 @@ class AIService {
       _interpreter = await Interpreter.fromAsset(MODEL_PATH);
       debugPrint('✅ AI Model Interpreter Loaded successfully');
 
+      // Log actual tensor shapes for debugging
+      final inputTensors = _interpreter!.getInputTensors();
+      final outputTensors = _interpreter!.getOutputTensors();
+      for (int i = 0; i < inputTensors.length; i++) {
+        debugPrint('📐 Input[$i]: shape=${inputTensors[i].shape}, type=${inputTensors[i].type}');
+      }
+      for (int i = 0; i < outputTensors.length; i++) {
+        debugPrint('📐 Output[$i]: shape=${outputTensors[i].shape}, type=${outputTensors[i].type}');
+      }
+
       // Initialize SMS translator for multilingual detection
       try {
         await _smsTranslator.initialize();
@@ -83,26 +93,73 @@ class AIService {
     final nonZeroTokens = inputIds.where((t) => t != 0).toList();
     debugPrint('🔤 Token IDs (non-zero): $nonZeroTokens');
 
-    // 2. Prepare input tensors as Int32 [1, 128]
+    // 2. Prepare input tensors as Int32 [1, SEQ_LEN]
     final inputIdsTensor = Int32List.fromList(inputIds);
     final attentionMaskTensor = Int32List.fromList(attentionMask);
+    final seqLen = inputIds.length;
 
-    // 3. Prepare output buffer [1, 3]
-    final outputBuffer = List.generate(1, (_) => List.filled(3, 0.0));
+    // 3. Determine actual output shape from model
+    final outputTensors = _interpreter!.getOutputTensors();
+    final outputShape = outputTensors[0].shape; // e.g. [1, 3] or [1, 1]
+    final numClasses = outputShape.last;
+    debugPrint('📐 Model output shape: $outputShape (numClasses=$numClasses)');
 
-    // 4. Run inference with BOTH inputs (input_ids + attention_mask)
-    _interpreter!.runForMultipleInputs(
-      [inputIdsTensor.reshape([1, 128]), attentionMaskTensor.reshape([1, 128])],
-      {0: outputBuffer},
+    // 4. Prepare output buffer matching actual model shape
+    final outputBuffer = List.generate(
+      outputShape[0], 
+      (_) => List.filled(numClasses, 0.0),
     );
 
-    // 5. Process output (Softmax)
+    // 5. Run inference — adapt to model's actual input count
+    final numInputs = _interpreter!.getInputTensors().length;
+    debugPrint('📐 Model expects $numInputs input(s), seqLen=$seqLen');
+
+    if (numInputs >= 2) {
+      // Model expects both input_ids and attention_mask
+      _interpreter!.runForMultipleInputs(
+        [inputIdsTensor.reshape([1, seqLen]), attentionMaskTensor.reshape([1, seqLen])],
+        {0: outputBuffer},
+      );
+    } else {
+      // Model expects only input_ids (single input)
+      _interpreter!.run(
+        inputIdsTensor.reshape([1, seqLen]),
+        outputBuffer,
+      );
+    }
+
+    // 6. Process output (Softmax)
     List<double> logits = outputBuffer[0].map((e) => e.toDouble()).toList();
     List<double> probs = _softmax(logits);
     
     // DEBUG: Log all scores
     debugPrint('📊 Logits: ${logits.map((l) => l.toStringAsFixed(2)).toList()}');
-    debugPrint('📊 Probs: HAM=${(probs[0]*100).toStringAsFixed(1)}%, OTP=${(probs[1]*100).toStringAsFixed(1)}%, SCAM=${(probs[2]*100).toStringAsFixed(1)}%');
+
+    // Map labels based on actual number of output classes
+    final List<String> classLabels;
+    if (numClasses == 3) {
+      classLabels = ['HAM', 'OTP', 'SCAM'];
+      debugPrint('📊 Probs: HAM=${(probs[0]*100).toStringAsFixed(1)}%, OTP=${(probs[1]*100).toStringAsFixed(1)}%, SCAM=${(probs[2]*100).toStringAsFixed(1)}%');
+    } else if (numClasses == 2) {
+      classLabels = ['HAM', 'SCAM'];
+      debugPrint('📊 Probs: HAM=${(probs[0]*100).toStringAsFixed(1)}%, SCAM=${(probs[1]*100).toStringAsFixed(1)}%');
+    } else if (numClasses == 1) {
+      // Binary sigmoid output: single value = scam probability
+      final scamProb = probs[0].clamp(0.0, 1.0);
+      debugPrint('📊 Sigmoid output: SCAM=${(scamProb*100).toStringAsFixed(1)}%');
+      final label = scamProb > 0.5 ? 'SCAM' : 'HAM';
+      final confidence = scamProb > 0.5 ? scamProb : (1.0 - scamProb);
+      return {
+        'label': label,
+        'confidence': confidence,
+        'detectedLanguage': detectedLang,
+        'wasTranslated': wasTranslated,
+        'scores': {'ham': 1.0 - scamProb, 'scam': scamProb},
+      };
+    } else {
+      debugPrint('⚠️ Unexpected numClasses=$numClasses, defaulting to HAM');
+      return {'label': 'HAM', 'confidence': 0.0};
+    }
     
     int maxIdx = 0;
     double maxProb = probs[0];
@@ -113,17 +170,20 @@ class AIService {
       }
     }
 
-    String label = ['HAM', 'OTP', 'SCAM'][maxIdx];
+    String label = classLabels[maxIdx];
+    
+    // Build scores map dynamically
+    final Map<String, double> scores = {};
+    for (int i = 0; i < classLabels.length; i++) {
+      scores[classLabels[i].toLowerCase()] = probs[i];
+    }
+    
     return {
         'label': label,
         'confidence': maxProb,
         'detectedLanguage': detectedLang,
         'wasTranslated': wasTranslated,
-        'scores': {
-            'ham': probs[0],
-            'otp': probs[1],
-            'scam': probs[2]
-        }
+        'scores': scores,
     };
   }
 
