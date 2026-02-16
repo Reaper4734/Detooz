@@ -69,19 +69,21 @@ if (-not $SkipPush) {
             exit 1
         }
         Write-Info "Committed: $Message"
-    } else {
+    }
+    else {
         Write-Info "No local changes to commit"
     }
 
-    git push origin main 2>&1
+    git push origin main 2>$null
     if ($LASTEXITCODE -ne 0) {
-        Write-Fail "Git push failed"
+        Write-Fail "Git push failed - run 'git push origin main' manually to see details"
         Pop-Location
         exit 1
     }
     Write-Ok "Pushed to GitHub"
     Pop-Location
-} else {
+}
+else {
     Write-Step "STEP 1/5: Skipping git push (SkipPush flag set)"
 }
 
@@ -113,7 +115,8 @@ if ($Quick) {
     Write-Step "STEP 4/5: Quick restart (no rebuild)"
     $deployResult = Invoke-EC2 "cd $BACKEND_DIR && sudo docker compose restart 2>&1"
     Write-Info ($deployResult -join "`n")
-} else {
+}
+else {
     Write-Step "STEP 4/5: Rebuilding Docker image and restarting"
     $deployResult = Invoke-EC2 "cd $BACKEND_DIR && sudo docker compose down 2>&1 && sudo docker compose build --no-cache 2>&1 && sudo docker compose up -d 2>&1"
     Write-Info ($deployResult -join "`n")
@@ -132,7 +135,8 @@ if ($healthResult -match "healthy") {
 
     $containerStatus = Invoke-EC2 "sudo docker ps 2>&1"
     Write-Info ($containerStatus -join "`n")
-} else {
+}
+else {
     Write-Fail "Health check FAILED"
     Write-Info "Response: $healthResult"
     Write-Info "Checking logs..."
