@@ -12,7 +12,7 @@ import os
 
 # Configuration
 EC2_IP = "3.108.220.220"
-SSH_KEY = os.path.expanduser("~/Downloads/detooz-key.pem")
+SSH_KEY = os.path.expanduser("C:/CP/plans/Detooz/detooz-key.pem")
 EC2_USER = "ubuntu"
 
 HTML_DASHBOARD = """

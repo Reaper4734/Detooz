@@ -167,23 +167,21 @@ class ScamDetectorService {
       final inputIds = encoded['input_ids']!;
       final attentionMask = encoded['attention_mask']!;
 
-      // Step 2: Prepare input tensors as Int32 (model expects int32)
+      // Step 2: Prepare input tensor as Int32 (model expects int32)
+      // Note: Model has only 1 input (input_ids). Attention mask NOT used.
       // Shape: [1, 128] for batch size 1, sequence length 128
       final inputIdsTensor = Int32List.fromList(inputIds);
-      final attentionMaskTensor = Int32List.fromList(attentionMask);
+      var input = [inputIdsTensor];
 
       // Step 3: Prepare output buffer
       // Shape: [1, 3] for batch size 1, 3 classes
-      final outputBuffer = List.generate(1, (_) => List.filled(3, 0.0));
+      var output = List.filled(1 * 3, 0.0).reshape([1, 3]);
 
-      // Step 4: Run inference with reshaped inputs [1, 128]
-      _interpreter!.runForMultipleInputs(
-        [inputIdsTensor.reshape([1, 128]), attentionMaskTensor.reshape([1, 128])],
-        {0: outputBuffer},
-      );
+      // Step 4: Run inference (single input: input_ids only)
+      _interpreter!.run(input, output);
 
       // Step 5: Extract logits
-      final logits = outputBuffer[0].map((e) => e.toDouble()).toList();
+      final logits = List<double>.from(output[0]);
 
       // Step 6: Apply softmax to get probabilities
       final probabilities = _softmax(logits);

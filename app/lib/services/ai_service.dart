@@ -83,21 +83,19 @@ class AIService {
     final nonZeroTokens = inputIds.where((t) => t != 0).toList();
     debugPrint('🔤 Token IDs (non-zero): $nonZeroTokens');
 
-    // 2. Prepare input tensors as Int32 [1, 128]
+    // 2. Prepare input tensor as Int32 [1, 128]
+    // Note: Model only has 1 input (input_ids). Attention mask is NOT used.
     final inputIdsTensor = Int32List.fromList(inputIds);
-    final attentionMaskTensor = Int32List.fromList(attentionMask);
+    var input = [inputIdsTensor];
 
     // 3. Prepare output buffer [1, 3]
-    final outputBuffer = List.generate(1, (_) => List.filled(3, 0.0));
+    var output = List.filled(1 * 3, 0.0).reshape([1, 3]);
 
-    // 4. Run inference with BOTH inputs (input_ids + attention_mask)
-    _interpreter!.runForMultipleInputs(
-      [inputIdsTensor.reshape([1, 128]), attentionMaskTensor.reshape([1, 128])],
-      {0: outputBuffer},
-    );
+    // 4. Run inference (single input: input_ids only)
+    _interpreter!.run(input, output);
 
     // 5. Process output (Softmax)
-    List<double> logits = outputBuffer[0].map((e) => e.toDouble()).toList();
+    List<double> logits = List<double>.from(output[0]);
     List<double> probs = _softmax(logits);
     
     // DEBUG: Log all scores
