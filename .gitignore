@@ -1,4 +1,13 @@
-# Secrets
+# =============================================
+# DETOOZ - Single Source of Truth .gitignore
+# =============================================
+
+# ---- Secrets & Keys ----
+.env
+**/.env
+.env.*
+*.pem
+detooz-key.pem
 firebase-service-account.json
 **/firebase-service-account.json
 google-services.json
@@ -7,33 +16,50 @@ key.properties
 **/*.keystore
 **/*.jks
 
-# Environment
-.env
-**/.env
-venv/
-**/venv/
+# ---- CI/CD scripts (local paths) ----
+deploy.ps1
+pull.ps1
+
+# ---- Python ----
 __pycache__/
 **/__pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+venv/
+**/venv/
+.venv/
+dist/
 
-# Logs
+# ---- Node ----
+node_modules/
+
+# ---- Logs ----
 logs/
 **/logs/
 *.log
 
-# Databases (Local)
+# ---- Databases (Local) ----
 *.db
 *.sqlite
 
-# OS
+# ---- OS ----
 .DS_Store
 Thumbs.db
 
-# IDE
+# ---- IDE ----
 .idea/
 .vscode/
+*.swp
+*.swo
 
-# Large ML Model Files (exceed GitHub limits)
+# ---- Build outputs ----
+build/
+app/build/
+.dart_tool/
+app/.dart_tool/
+
+# ---- Large ML files (exceed GitHub limits) ----
 backend/results/
 results/
 **/results/
@@ -45,11 +71,16 @@ backend/ml_pipeline/data/
 **/data/*.jsonl
 **/data/*.txt
 **/data/*.parquet
-build/
-app/build/
-.dart_tool/
-app/.dart_tool/
 
-# Private keys
-*.pem
-detooz-key.pem
+# ---- Uploads (runtime data, not code) ----
+backend/app/static/uploads/
+
+# ---- Debug & temp files ----
+app/build_log.txt
+app/errors.txt
+app/errors_ascii.txt
+app/analysis_results.txt
+app/doctor.txt
+temp_file_list.txt
+git_tracked.txt
+git_status.txt

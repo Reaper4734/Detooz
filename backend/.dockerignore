@@ -25,3 +25,7 @@ ml_pipeline/data/
 .vscode/
 .idea/
 *.md
+
+# CI/CD scripts
+deploy.ps1
+pull.ps1
