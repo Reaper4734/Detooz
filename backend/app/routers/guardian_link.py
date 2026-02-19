@@ -44,6 +44,7 @@ class LinkedGuardianResponse(BaseModel):
     guardian_id: int | None
     guardian_name: str | None
     guardian_email: str | None
+    guardian_phone: str | None = None
     status: str
     created_at: datetime
 
@@ -130,17 +131,20 @@ async def get_my_guardians(
     for link in links:
         guardian_name = "Unknown"
         guardian_email = "Unknown"
+        guardian_phone = None
         
         if link.guardian_id:
             g_user = await db.get(User, link.guardian_id)
             if g_user:
                 guardian_name = f"{g_user.first_name} {g_user.last_name}"
                 guardian_email = g_user.email
+                guardian_phone = g_user.phone
         
         guardians.append(LinkedGuardianResponse(
             guardian_id=link.guardian_id,
             guardian_name=guardian_name,
             guardian_email=guardian_email,
+            guardian_phone=guardian_phone,
             status=link.status,
             created_at=link.created_at
         ))

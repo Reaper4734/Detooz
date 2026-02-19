@@ -20,55 +20,17 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
   ScansNotifier(this.ref) : super(const AsyncValue.loading());
   
   Future<void> loadScans() async {
-    // Verify we have a valid token before making API call
-    final token = await apiService.token;
-    if (token == null) {
-      // No token available, use cached data or empty state
+    // Device-only history: read exclusively from local Hive cache.
+    // Each device maintains its own scan history.
+    try {
       final cached = offlineCacheService.getCachedScans();
       if (cached.isNotEmpty) {
         state = AsyncValue.data(cached.map((s) => ScanViewModel.fromJson(s)).toList());
       } else {
         state = const AsyncValue.data([]);
       }
-      return;
-    }
-    
-    try {
-      final history = await apiService.getHistory(limit: 50);
-      final apiScans = history.map((scan) => ScanViewModel.fromJson(scan as Map<String, dynamic>)).toList();
-      
-      // Cache locally
-      for (final scanMap in history) {
-        if (scanMap is Map<String, dynamic>) {
-          await offlineCacheService.cacheScan(scanMap);
-        }
-      }
-      
-      // Merge: API + Local-only (unsynced) logic
-      // This ensures we show "Pending" or "Offline" scans that haven't synced yet
-      final allCached = offlineCacheService.getCachedScans();
-      final apiIds = apiScans.map((s) => s.id.toString()).toSet();
-      
-      final localOnly = allCached
-          .where((s) => !apiIds.contains(s['id']?.toString()))
-          .map((s) => ScanViewModel.fromJson(s));
-          
-      final merged = [...apiScans, ...localOnly].toList();
-      // Sort by date desc (ScanViewModel needs strict comparison, usually createdAt is DateTime)
-      merged.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
-      
-      state = AsyncValue.data(merged);
     } catch (e) {
-      // Don't auto-logout on 401 here to prevent race conditions or loops.
-      // Just show error state. AuthNotifier handles session validity.
-       
-      // Try to load from cache
-      final cached = offlineCacheService.getCachedScans();
-      if (cached.isNotEmpty) {
-        state = AsyncValue.data(cached.map((s) => ScanViewModel.fromJson(s)).toList());
-      } else {
-        state = AsyncValue.error(e, StackTrace.current);
-      }
+      state = AsyncValue.error(e, StackTrace.current);
     }
   }
   
@@ -367,7 +329,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<bool>> {
   
   Future<void> logout() async {
     await apiService.clearToken();
-    await offlineCacheService.clearAll();
+    // Only clear settings (tokens etc), NOT scan history.
+    // Scan history stays on the device for when the user logs back in.
+    await offlineCacheService.clearSettings();
     
     // Reset other providers to clear memory state
     ref.invalidate(scansProvider);

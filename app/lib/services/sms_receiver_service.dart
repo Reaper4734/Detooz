@@ -331,7 +331,24 @@ class SmsReceiverService {
   }) async {
     try {
       // Get cached guardian phone number
-      final guardianPhone = offlineCacheService.getSetting('guardian_phone');
+      String? guardianPhone = offlineCacheService.getSetting('guardian_phone');
+      
+      // If cache is empty, try fetching from API and cache it
+      if ((guardianPhone == null || guardianPhone.isEmpty) && hasInternet) {
+        try {
+          debugPrint('ℹ️ Guardian phone not cached, fetching from API...');
+          final guardians = await apiService.getGuardians();
+          if (guardians.isNotEmpty) {
+            guardianPhone = (guardians[0]['guardian_phone'] ?? guardians[0]['phone'])?.toString();
+            if (guardianPhone != null && guardianPhone.isNotEmpty) {
+              await offlineCacheService.saveSetting('guardian_phone', guardianPhone);
+              debugPrint('📱 Cached guardian phone from API: $guardianPhone');
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ Failed to fetch guardians from API: $e');
+        }
+      }
       
       if (guardianPhone == null || guardianPhone.isEmpty) {
         debugPrint('ℹ️ No guardian linked, skipping alert');

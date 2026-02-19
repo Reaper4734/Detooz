@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,6 +15,9 @@ import 'services/firebase_messaging_service.dart';
 import 'services/ai_service.dart';
 import 'services/translation/translation_service.dart';
 import '../ui/components/tr.dart';
+
+/// Global navigator key for notification tap navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +37,7 @@ void main() async {
   
   // Initialize local push notifications
   await notificationService.initialize();
+  notificationService.setNavigatorKey(navigatorKey);
 
   // Initialize AI Model (Hybrid Shield)
   await aiService.loadModel();
@@ -50,6 +56,7 @@ class MyApp extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: tr('Detooz'),
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,

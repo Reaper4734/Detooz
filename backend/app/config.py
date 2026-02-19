@@ -5,7 +5,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # App
     APP_NAME: str = "Detooz"
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     # Database (SQLite for local, PostgreSQL for production)
     DATABASE_URL: str = "sqlite+aiosqlite:///./detooz.db"
@@ -46,6 +46,17 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "extra": "ignore"
     }
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.SECRET_KEY == "your-secret-key-change-in-production":
+            if not self.DEBUG:
+                raise ValueError(
+                    "CRITICAL SECURITY ERROR: You are running in production (DEBUG=False) "
+                    "with the default SECRET_KEY. Please set a secure SECRET_KEY in your .env file."
+                )
+            else:
+                print("WARNING: Using default SECRET_KEY. This is unsafe for production but allowed in DEBUG mode.")
 
 
 @lru_cache()

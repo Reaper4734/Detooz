@@ -66,7 +66,7 @@ class AIService {
       textForModel = tr.textForModel;
       detectedLang = tr.detectedLanguage;
       wasTranslated = tr.wasTranslated;
-      if (wasTranslated) {
+      if (wasTranslated && kDebugMode) {
         debugPrint('🌐 Detection using translated text: "$textForModel"');
       }
     } catch (e) {
@@ -79,7 +79,7 @@ class AIService {
     final attentionMask = encoded['attention_mask']!;
     
     // DEBUG: Log tokenization
-    debugPrint('🔤 Tokenizing: "$textForModel"');
+    if (kDebugMode) debugPrint('🔤 Tokenizing: "$textForModel"');
     final nonZeroTokens = inputIds.where((t) => t != 0).toList();
     debugPrint('🔤 Token IDs (non-zero): $nonZeroTokens');
 

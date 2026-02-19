@@ -133,7 +133,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
   Future<void> _loadGuardians() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final data = await apiService.getMyGuardians();
+      final data = await apiService.getGuardians();
       if (mounted) {
         setState(() { _guardians = data; _isLoading = false; });
         
@@ -149,6 +149,61 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
     }
+  }
+
+  Future<void> _showAddGuardianDetailsDialog() async {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Tr('Add Guardian Details', style: TextStyle(color: AppColors.textPrimary(context))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Tr('Enter their details so we can alert them via SMS immediately, even before they accept.',
+              style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13),
+            ),
+            SizedBox(height: 16),
+            _buildGlassInput(context, controller: nameController, icon: Icons.person_outline, hint: 'Name (Optional)'),
+            SizedBox(height: 12),
+            _buildGlassInput(context, controller: phoneController, icon: Icons.phone_android, hint: 'Phone Number (Required)', keyboardType: TextInputType.phone),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Tr('Cancel', style: TextStyle(color: AppColors.textSecondary(context))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              final phone = phoneController.text.trim();
+              if (phone.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Tr('Phone number is required')));
+                return;
+              }
+              
+              // Save to cache immediately
+              await offlineCacheService.saveSetting('guardian_phone', phone);
+              if (nameController.text.isNotEmpty) {
+                 // We could cache name too if needed, but phone is critical
+              }
+              
+              if (mounted) {
+                Navigator.pop(ctx);
+                _generateOtp(); // Proceed to generate OTP
+              }
+            },
+            child: Tr('Generate Code'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _generateOtp() async {
@@ -268,7 +323,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
 
           // Add Guardian Button
           _buildPrimaryButton(
-            onPressed: _isGeneratingOtp ? null : _generateOtp,
+            onPressed: _isGeneratingOtp ? null : _showAddGuardianDetailsDialog,
             icon: _isGeneratingOtp
                 ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.add, color: Colors.white),

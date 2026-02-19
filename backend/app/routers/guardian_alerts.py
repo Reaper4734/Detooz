@@ -1,7 +1,7 @@
 """Guardian alerts router - polling endpoint for guardian notifications"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 from pydantic import BaseModel
@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from app.db import get_db
 from app.models import User, GuardianLink, GuardianAlert, Scan
 from app.routers.auth import get_current_user
+from app.services.guardian_alert_service import guardian_alert_service
 
 router = APIRouter()
 
@@ -51,6 +52,65 @@ class ActionResponse(BaseModel):
 
 
 # ============ ENDPOINTS ============
+
+class SendAlertRequest(BaseModel):
+    sender: str
+    scam_type: str
+
+
+@router.post("/send")
+async def send_guardian_alert(
+    request: SendAlertRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send alert to all linked guardians for the current user.
+    Called by the Flutter client when a HIGH risk message is detected locally.
+    Finds the most recent scan matching the sender and triggers FCM push.
+    """
+    
+    # Find the most recent scan for this user matching the sender
+    scan_result = await db.execute(
+        select(Scan).where(
+            Scan.user_id == current_user.id,
+            Scan.sender == request.sender
+        ).order_by(desc(Scan.created_at)).limit(1)
+    )
+    scan = scan_result.scalar_one_or_none()
+    
+    if not scan:
+        # No matching scan found — create a minimal scan record for the alert
+        from app.models import RiskLevel
+        scan = Scan(
+            user_id=current_user.id,
+            sender=request.sender,
+            message_preview="[Alert triggered by local AI detection]",
+            risk_level=RiskLevel.HIGH,
+            scam_type=request.scam_type,
+            confidence=0.9,
+            risk_reason="High-risk message detected by on-device AI",
+            guardian_alerted=False,
+        )
+        db.add(scan)
+        await db.flush()
+    
+    # Use the existing guardian alert service to create alerts + send FCM
+    alerts_created = await guardian_alert_service.create_alerts_for_scan(
+        db, current_user, scan
+    )
+    
+    if alerts_created == 0:
+        return {
+            "message": "No active guardians found to alert",
+            "alerts_sent": 0
+        }
+    
+    return {
+        "message": f"Guardian alert sent successfully",
+        "alerts_sent": alerts_created,
+        "scan_id": scan.id
+    }
 
 @router.get("/pending", response_model=list[AlertResponse])
 async def get_pending_alerts(

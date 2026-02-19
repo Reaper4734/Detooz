@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Offline cache service for storing scan history locally
@@ -10,14 +13,32 @@ class OfflineCacheService {
   late Box<String> _settingsBox;
   bool _isInitialized = false;
 
+  static const _secureStorage = FlutterSecureStorage();
+  static const _hiveKeyName = 'hive_encryption_key';
+
+  /// Get or create a Hive encryption key stored in secure storage
+  Future<List<int>> _getEncryptionKey() async {
+    final existing = await _secureStorage.read(key: _hiveKeyName);
+    if (existing != null) {
+      return base64Url.decode(existing);
+    }
+    // Generate a new 32-byte key
+    final key = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+    await _secureStorage.write(key: _hiveKeyName, value: base64Url.encode(key));
+    return key;
+  }
+
   /// Initialize Hive and open boxes
   Future<void> initialize() async {
     if (_isInitialized) return;
     
     await Hive.initFlutter();
     
-    _scanHistoryBox = await Hive.openBox<Map>('scan_history');
-    _settingsBox = await Hive.openBox<String>('settings');
+    final keyBytes = await _getEncryptionKey();
+    final cipher = HiveAesCipher(keyBytes);
+    
+    _scanHistoryBox = await Hive.openBox<Map>('scan_history', encryptionCipher: cipher);
+    _settingsBox = await Hive.openBox<String>('settings', encryptionCipher: cipher);
     
     _isInitialized = true;
   }
@@ -118,7 +139,12 @@ class OfflineCacheService {
 
   // ============ CLEANUP ============
 
-  /// Clear all cached data
+  /// Clear only settings (tokens, preferences) - keeps scan history on device
+  Future<void> clearSettings() async {
+    await _settingsBox.clear();
+  }
+
+  /// Clear all cached data (both history and settings)
   Future<void> clearAll() async {
     await _scanHistoryBox.clear();
     await _settingsBox.clear();

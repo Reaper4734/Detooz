@@ -79,14 +79,38 @@ class ApiService {
     return false;
   }
 
-  Map<String, dynamic> _processResponse(http.Response response) {
+  dynamic _processResponse(http.Response response) {
     if (response.statusCode == 401) {
-      throw Exception('Unauthorized');
+      throw Exception('Session expired. Please log in again.');
     }
     if (response.statusCode >= 400) {
-      throw Exception('API Error: ${response.statusCode} ${response.body}');
+      // Try to extract a user-friendly message from the response
+      String userMessage;
+      try {
+        final body = jsonDecode(response.body);
+        // FastAPI returns errors in 'detail' field
+        final detail = body['detail'] ?? body['message'] ?? body['error'];
+        if (detail != null && detail is String && detail.length < 200) {
+          userMessage = detail;
+        } else {
+          userMessage = _defaultErrorMessage(response.statusCode);
+        }
+      } catch (_) {
+        userMessage = _defaultErrorMessage(response.statusCode);
+      }
+      throw Exception(userMessage);
     }
     return jsonDecode(response.body);
+  }
+
+  String _defaultErrorMessage(int statusCode) {
+    if (statusCode == 403) return 'You don\'t have permission to do this.';
+    if (statusCode == 404) return 'The requested resource was not found.';
+    if (statusCode == 409) return 'This action conflicts with existing data.';
+    if (statusCode == 422) return 'Please check your input and try again.';
+    if (statusCode == 429) return 'Too many requests. Please wait a moment.';
+    if (statusCode >= 500) return 'Server error. Please try again later.';
+    return 'Something went wrong. Please try again.';
   }
 
   /// Authenticated GET with auto-retry on 401

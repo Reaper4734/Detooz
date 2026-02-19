@@ -22,6 +22,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Show local notification for background message
   final data = message.data;
   if (data.containsKey('type') && data['type'] == 'guardian_alert') {
+    // Ensure notification channels are created in this isolate
+    await NotificationService().initialize();
     await NotificationService().showGuardianAlert(
       protectedUserName: data['user_name'] ?? 'Protected User',
       scamType: data['scam_type'] ?? 'Scam Detected',
@@ -147,7 +149,8 @@ class FirebaseMessagingService {
   /// Handle when app is opened from notification
   void _handleMessageOpenedApp(RemoteMessage message) {
     debugPrint('🔔 App opened from notification: ${message.data}');
-    // TODO: Navigate to specific screen based on message data
+    // App is already open — notification tap brings user to foreground
+    // The NotificationService's navigator key handles further navigation
   }
 
   /// Subscribe to a topic (e.g., "guardian_alerts")

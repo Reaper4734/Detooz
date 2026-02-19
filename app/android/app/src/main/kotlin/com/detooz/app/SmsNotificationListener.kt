@@ -5,11 +5,14 @@ import android.content.ContentResolver
 import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
+import android.os.Build
 import android.os.IBinder
 import android.provider.ContactsContract
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import android.content.pm.ApplicationInfo
 import io.flutter.plugin.common.MethodChannel
 
 /**
@@ -144,10 +147,12 @@ class SmsNotificationListener : NotificationListenerService() {
         val smallText = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
         val message = bigText ?: smallText ?: ""
         
-        Log.d(TAG, "📋 DEBUG: sender='$sender', bigText=${bigText?.take(30)}, smallText=${smallText?.take(30)}")
+        val isDebuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        
+        if (isDebuggable) Log.d(TAG, "📋 DEBUG: sender='$sender', bigText=${bigText?.take(30)}, smallText=${smallText?.take(30)}")
         
         if (message.isBlank() || message.length < 3) {
-            Log.d(TAG, "❌ DEBUG: Message is blank or too short: '$message'")
+            if (isDebuggable) Log.d(TAG, "❌ DEBUG: Message is blank or too short")
             return
         }
         
@@ -181,14 +186,14 @@ class SmsNotificationListener : NotificationListenerService() {
                 // e.g. "2 new messages", "3 photos", "5 unread messages"
                 val summaryPattern = Regex("^\\d+\\s+(new\\s+)?messages?$|^\\d+\\s+photos?$|^\\d+\\s+unread.*$", RegexOption.IGNORE_CASE)
                 if (message.trim().matches(summaryPattern)) {
-                    Log.d(TAG, "⏭️ Skipping group summary notification: '$message'")
+                    Log.d(TAG, "⏭️ Skipping group summary notification")
                     return
                 }
                 
                 // Skip media-only messages (GIF, sticker, photo, video, audio)
                 val mediaPattern = Regex("^.+:\\s*(📷|🎥|🎵|🎤|📎|🎨)?\\s*(GIF|photo|video|audio|sticker|image|document)s?$", RegexOption.IGNORE_CASE)
                 if (message.trim().matches(mediaPattern)) {
-                    Log.d(TAG, "⏭️ Skipping group media notification: '$message'")
+                    Log.d(TAG, "⏭️ Skipping group media notification")
                     return
                 }
                 
@@ -210,7 +215,7 @@ class SmsNotificationListener : NotificationListenerService() {
         }
         
         Log.d(TAG, "📩 $platform message from UNKNOWN sender: $sender")
-        Log.d(TAG, "📝 Message preview: ${message.take(50)}...")
+        if (isDebuggable) Log.d(TAG, "📝 Message preview: ${message.take(50)}...")
         
         // Send to Flutter for scam analysis (with group flag)
         sendToFlutter(sender, message, platform, isGroup)

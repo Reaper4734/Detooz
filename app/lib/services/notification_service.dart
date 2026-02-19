@@ -97,7 +97,30 @@ class NotificationService {
   /// Handle notification tap
   void _onNotificationTapped(NotificationResponse response) {
     debugPrint('🔔 Notification tapped: ${response.payload}');
-    // TODO: Navigate to specific screen based on payload
+    
+    final payload = response.payload;
+    if (payload == null || payload.isEmpty) return;
+    
+    // Import and use the global navigator key to navigate
+    try {
+      // Lazy import to avoid circular dependency
+      final navigator = _navigatorKey?.currentState;
+      if (navigator == null) return;
+      
+      if (payload.startsWith('scam_alert:') || payload.startsWith('guardian_alert:')) {
+        // Navigate to MainScreen — the user will land on the dashboard
+        // which shows recent activity including the alert
+        navigator.pushNamedAndRemoveUntil('/', (route) => false);
+      }
+    } catch (e) {
+      debugPrint('❌ Notification navigation failed: $e');
+    }
+  }
+  
+  /// Set navigator key for notification tap navigation
+  GlobalKey<NavigatorState>? _navigatorKey;
+  void setNavigatorKey(GlobalKey<NavigatorState> key) {
+    _navigatorKey = key;
   }
 
   /// Show Guardian Alert notification (HIGH priority, full screen intent)
