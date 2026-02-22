@@ -445,10 +445,18 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
   UserProfileNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadProfile() async {
+    final previousData = state.asData?.value;
     state = const AsyncValue.loading();
     try {
       final data = await apiService.getUserProfile();
       state = AsyncValue.data(UserProfile.fromJson(data));
+    } on OfflineException {
+      // Preserve last-known profile when offline, or show error if no previous data
+      if (previousData != null) {
+        state = AsyncValue.data(previousData);
+      } else {
+        state = AsyncValue.error(const OfflineException(), StackTrace.current);
+      }
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }
@@ -552,10 +560,18 @@ class UserStatsNotifier extends StateNotifier<AsyncValue<UserStats>> {
   UserStatsNotifier() : super(const AsyncValue.loading());
   
   Future<void> loadStats() async {
+    final previousData = state.asData?.value;
     state = const AsyncValue.loading();
     try {
       final data = await apiService.getUserStats();
       state = AsyncValue.data(UserStats.fromJson(data));
+    } on OfflineException {
+      // Preserve last-known stats when offline
+      if (previousData != null) {
+        state = AsyncValue.data(previousData);
+      } else {
+        state = AsyncValue.error(const OfflineException(), StackTrace.current);
+      }
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }

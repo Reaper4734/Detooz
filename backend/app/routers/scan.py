@@ -14,6 +14,7 @@ from app.services.scam_detector import ScamDetector
 from app.services.confidence_scorer import confidence_scorer
 from app.services.explanation_engine import explanation_engine
 from app.services.guardian_alert_service import guardian_alert_service
+from app.services.cache_service import get_cache
 
 router = APIRouter()
 detector = ScamDetector()
@@ -51,6 +52,10 @@ async def analyze_message(
     db.add(scan)
     await db.commit()
     await db.refresh(scan)
+    
+    # Invalidate cached stats for this user
+    cache = get_cache()
+    await cache.delete(f"user:stats:{current_user.id}")
     
     # Send alert to guardians if HIGH risk
     if result["risk_level"] == "HIGH":
@@ -122,6 +127,10 @@ async def analyze_image(
         await db.commit()
         await db.refresh(scan)
         logger.info(f"Image scan created: id={scan.id}")
+        
+        # Invalidate cached stats
+        cache = get_cache()
+        await cache.delete(f"user:stats:{current_user.id}")
     except Exception as e:
         logger.error(f"Scan record save failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to save scan record")
@@ -193,6 +202,10 @@ async def delete_scan(
     
     await db.delete(scan)
     await db.commit()
+    
+    # Invalidate cached stats
+    cache = get_cache()
+    await cache.delete(f"user:stats:{current_user.id}")
     
     return {"message": "Scan deleted"}
 

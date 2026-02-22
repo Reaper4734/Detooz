@@ -15,6 +15,7 @@ from app.db.database import get_db
 from app.models.models import UserBookmark, DetoozExclusive, ArticleCategory, User
 from app.routers.auth import get_current_user, get_current_user_optional
 from app.services.feed_aggregator import get_cached_feeds, fetch_all_feeds
+from app.services.cache_service import get_cache
 
 router = APIRouter(prefix="/education", tags=["Education"])
 
@@ -270,6 +271,10 @@ async def generate_exclusive_content(
     if not exclusive:
         raise HTTPException(status_code=500, detail="Failed to generate content")
     
+    # Invalidate exclusive content cache
+    cache = get_cache()
+    await cache.delete_pattern("edu:exclusive:*")
+    
     return {
         "success": True,
         "exclusive": {
@@ -288,6 +293,14 @@ async def get_exclusive_content(
     current_user: User = Depends(get_current_user)
 ):
     """Get Detooz Exclusive content list"""
+    
+    # Check cache first
+    cache = get_cache()
+    cache_key = f"edu:exclusive:{limit}"
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     result = await db.execute(
         select(DetoozExclusive)
         .where(DetoozExclusive.is_active == True)
@@ -296,21 +309,23 @@ async def get_exclusive_content(
     )
     articles = result.scalars().all()
     
-    return {
+    response = {
         "exclusive": [
-            ExclusiveResponse(
-                id=e.id,
-                title=e.title,
-                content=e.content,
-                image_url=e.image_url,
-                category=e.category.value,
-                read_time_mins=e.read_time_mins,
-                created_at=e.created_at
-            )
+            {
+                "id": e.id, "title": e.title, "content": e.content,
+                "image_url": e.image_url, "category": e.category.value,
+                "read_time_mins": e.read_time_mins,
+                "created_at": str(e.created_at),
+            }
             for e in articles
         ],
         "total": len(articles)
     }
+    
+    # Cache for 10 minutes
+    await cache.set(cache_key, response, ttl=600)
+    
+    return response
 
 
 # ============================================

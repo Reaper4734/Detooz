@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.db import get_db
 from app.models import User, Scan, TrustedSender, UserSettings, RiskLevel, PlatformType, GuardianLink
 from app.routers.auth import get_current_user
+from app.services.cache_service import get_cache
 
 router = APIRouter()
 
@@ -84,6 +85,13 @@ async def get_user_stats(
 ):
     """Get comprehensive user statistics"""
     
+    # Check cache first
+    cache = get_cache()
+    cache_key = f"user:stats:{current_user.id}"
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     # Total scans
     total_result = await db.execute(
         select(func.count(Scan.id)).where(Scan.user_id == current_user.id)
@@ -157,7 +165,7 @@ async def get_user_stats(
     if blocked_count > 0:  # User is actively blocking
         score += 20
     
-    return UserStats(
+    stats = UserStats(
         total_scans=total_scans,
         high_risk_blocked=high_risk,
         medium_risk_detected=medium_risk,
@@ -169,6 +177,11 @@ async def get_user_stats(
         last_scan_at=last_scan_at,
         protection_score=min(score, 100)
     )
+    
+    # Cache stats for 2 minutes
+    await cache.set(cache_key, stats.model_dump(), ttl=120)
+    
+    return stats
 
 
 @router.get("/settings", response_model=UserSettingsResponse)
@@ -177,6 +190,13 @@ async def get_user_settings(
     current_user: User = Depends(get_current_user)
 ):
     """Get user settings"""
+    
+    # Check cache first
+    cache = get_cache()
+    cache_key = f"user:settings:{current_user.id}"
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
     
     result = await db.execute(
         select(UserSettings).where(UserSettings.user_id == current_user.id)
@@ -189,6 +209,15 @@ async def get_user_settings(
         db.add(settings)
         await db.commit()
         await db.refresh(settings)
+    
+    # Cache settings for 5 minutes
+    settings_dict = {
+        "language": settings.language,
+        "auto_block_high_risk": settings.auto_block_high_risk,
+        "alert_guardians_threshold": settings.alert_guardians_threshold,
+        "receive_tips": settings.receive_tips,
+    }
+    await cache.set(cache_key, settings_dict, ttl=300)
     
     return settings
 
@@ -231,6 +260,10 @@ async def update_user_settings(
     await db.commit()
     await db.refresh(settings)
     
+    # Invalidate settings cache
+    cache = get_cache()
+    await cache.delete(f"user:settings:{current_user.id}")
+    
     return settings
 
 
@@ -257,6 +290,10 @@ async def set_language(
         settings.language = lang
     
     await db.commit()
+    
+    # Invalidate settings cache
+    cache = get_cache()
+    await cache.delete(f"user:settings:{current_user.id}")
     
     return {"message": f"Language set to {lang}", "language": lang}
 

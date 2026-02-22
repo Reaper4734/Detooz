@@ -7,6 +7,7 @@ from app.routers import guardian_link, guardian_alerts, admin, privacy, educatio
 from app.db import init_db
 # Import all models so they're registered with SQLAlchemy before init_db
 from app.models import User, Scan, TrustedSender, Feedback, Blacklist, UserSettings, GuardianLink, GuardianAlert, FeedArticle, CuratedArticle, UserBookmark
+from app.services.cache_service import get_cache
 import asyncio
 import logging
 
@@ -23,6 +24,9 @@ async def auto_sync_feeds():
             async with async_session() as db:
                 added = await sync_feeds_to_db(db)
                 logger.info(f"Auto-sync: Added {added} new articles")
+                # Invalidate education feed cache after sync
+                cache = get_cache()
+                await cache.delete_pattern("edu:feed:*")
         except Exception as e:
             logger.error(f"Auto-sync error: {e}")
         
@@ -32,8 +36,12 @@ async def auto_sync_feeds():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database on startup and start background tasks"""
+    """Initialize database and Redis on startup, start background tasks"""
     await init_db()
+    
+    # Connect Redis cache
+    cache = get_cache()
+    await cache.connect()
     
     # Start feed auto-sync in background
     sync_task = asyncio.create_task(auto_sync_feeds())
@@ -41,12 +49,13 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # Cancel background task on shutdown
+    # Shutdown
     sync_task.cancel()
     try:
         await sync_task
     except asyncio.CancelledError:
         pass
+    await cache.disconnect()
 
 
 
@@ -127,4 +136,5 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    cache = get_cache()
+    return {"status": "healthy", "redis": cache.is_available}

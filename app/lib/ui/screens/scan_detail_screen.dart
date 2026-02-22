@@ -5,6 +5,7 @@ import '../../contracts/scan_view_model.dart';
 import '../../services/api_service.dart';
 // Ensure correct imports
 import '../../utils/datetime_utils.dart'; // Add this for time formatting
+import '../components/offline_aware_widget.dart';
 import '../components/tr.dart';
 
 class ScanDetailScreen extends StatelessWidget {
@@ -348,14 +349,22 @@ class ScanDetailScreen extends StatelessWidget {
               child: Column(
                 children: [
                   _buildPrimaryButton(context, 'Block Sender', const Color(0xFFEF4444), () async {
+                    try {
                       await apiService.blockSender(scan.sender);
                       if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) showOfflineSnackBar(context, e);
+                    }
                   }),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: () async {
-                      await apiService.markTrusted(sender: scan.sender);
-                      if (context.mounted) Navigator.pop(context);
+                      try {
+                        await apiService.markTrusted(sender: scan.sender);
+                        if (context.mounted) Navigator.pop(context);
+                      } catch (e) {
+                        if (context.mounted) showOfflineSnackBar(context, e);
+                      }
                     },
                     child: Tr('Report as Safe',
                       style: TextStyle(color: Color(0xFF71717A), fontSize: 14, fontWeight: FontWeight.w500),

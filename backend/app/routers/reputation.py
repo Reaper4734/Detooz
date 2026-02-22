@@ -14,6 +14,7 @@ from app.db import get_db
 from app.models import User, Blacklist
 from app.routers.auth import get_current_user
 from app.services.blacklist_manager import blacklist_manager
+from app.services.cache_service import get_cache
 
 router = APIRouter()
 
@@ -117,6 +118,13 @@ async def check_reputation(
     normalized = normalize_value(value, value_type)
     value_hash = compute_hash(normalized)
     
+    # Check cache first
+    cache = get_cache()
+    cache_key = f"rep:{value_type}:{value_hash}"
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     # Look up in database
     result = await db.execute(
         select(Blacklist).where(
@@ -133,7 +141,7 @@ async def check_reputation(
             base_score = 0.9
         score = min(base_score + (entry.reports_count * 0.05), 1.0)
         
-        return ReputationCheck(
+        result = ReputationCheck(
             value=value,
             type=value_type,
             is_blacklisted=True,
@@ -141,8 +149,10 @@ async def check_reputation(
             is_verified=entry.is_verified,
             risk_score=round(score, 2)
         )
+        await cache.set(cache_key, result.model_dump(), ttl=300)
+        return result
     
-    return ReputationCheck(
+    result = ReputationCheck(
         value=value,
         type=value_type,
         is_blacklisted=False,
@@ -150,6 +160,8 @@ async def check_reputation(
         is_verified=False,
         risk_score=0.0
     )
+    await cache.set(cache_key, result.model_dump(), ttl=300)
+    return result
 
 
 @router.post("/report")
@@ -183,6 +195,10 @@ async def report_scam(
         existing.last_reported_at = datetime.utcnow()
         await db.commit()
         
+        # Invalidate reputation cache for this value
+        cache = get_cache()
+        await cache.delete(f"rep:{report.type}:{value_hash}")
+        
         return {
             "message": "Report added to existing entry",
             "reports_count": existing.reports_count
@@ -199,6 +215,10 @@ async def report_scam(
     
     db.add(entry)
     await db.commit()
+    
+    # Invalidate reputation cache for this value
+    cache = get_cache()
+    await cache.delete(f"rep:{report.type}:{value_hash}")
     
     return {"message": "Scam reported successfully", "reports_count": 1}
 

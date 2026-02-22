@@ -1,9 +1,20 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:flutter/foundation.dart';
+
+/// Thrown when a network call fails due to no internet / timeout.
+/// Screens should catch this and show a friendly message instead of crashing.
+class OfflineException implements Exception {
+  final String message;
+  const OfflineException([this.message = 'No internet connection. Please check your network and try again.']);
+  @override
+  String toString() => message;
+}
 
 /// API Service for connecting to Detooz Backend
 /// Created by Backend Team for Stitch
@@ -114,50 +125,117 @@ class ApiService {
 
   /// Authenticated GET with auto-retry on 401
   Future<http.Response> _authGet(String path) async {
-    var response = await http.get(
-      Uri.parse('$baseUrl$path'),
-      headers: await _getHeaders(),
-    ).timeout(const Duration(seconds: 45));
-    
-    if (response.statusCode == 401) {
-      if (await _tryRefreshToken()) {
-        response = await http.get(
-          Uri.parse('$baseUrl$path'),
-          headers: await _getHeaders(),
-        ).timeout(const Duration(seconds: 45));
+    try {
+      var response = await http.get(
+        Uri.parse('$baseUrl$path'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 45));
+      
+      if (response.statusCode == 401) {
+        if (await _tryRefreshToken()) {
+          response = await http.get(
+            Uri.parse('$baseUrl$path'),
+            headers: await _getHeaders(),
+          ).timeout(const Duration(seconds: 45));
+        }
       }
+      return response;
+    } on SocketException {
+      throw const OfflineException();
+    } on TimeoutException {
+      throw const OfflineException('Connection timed out. Please try again.');
+    } on http.ClientException {
+      throw const OfflineException();
     }
-    return response;
   }
 
   /// Authenticated POST with auto-retry on 401
   Future<http.Response> _authPost(String path, {Object? body}) async {
-    var response = await http.post(
-      Uri.parse('$baseUrl$path'),
-      headers: await _getHeaders(),
-      body: body is String ? body : (body != null ? jsonEncode(body) : null),
-    ).timeout(const Duration(seconds: 45));
-    
-    if (response.statusCode == 401) {
-      if (await _tryRefreshToken()) {
-        response = await http.post(
-          Uri.parse('$baseUrl$path'),
-          headers: await _getHeaders(),
-          body: body is String ? body : (body != null ? jsonEncode(body) : null),
-        ).timeout(const Duration(seconds: 45));
+    try {
+      var response = await http.post(
+        Uri.parse('$baseUrl$path'),
+        headers: await _getHeaders(),
+        body: body is String ? body : (body != null ? jsonEncode(body) : null),
+      ).timeout(const Duration(seconds: 45));
+      
+      if (response.statusCode == 401) {
+        if (await _tryRefreshToken()) {
+          response = await http.post(
+            Uri.parse('$baseUrl$path'),
+            headers: await _getHeaders(),
+            body: body is String ? body : (body != null ? jsonEncode(body) : null),
+          ).timeout(const Duration(seconds: 45));
+        }
       }
+      return response;
+    } on SocketException {
+      throw const OfflineException();
+    } on TimeoutException {
+      throw const OfflineException('Connection timed out. Please try again.');
+    } on http.ClientException {
+      throw const OfflineException();
     }
-    return response;
+  }
+
+  /// Authenticated PUT with auto-retry on 401
+  Future<http.Response> _authPut(String path, {Object? body}) async {
+    try {
+      var response = await http.put(
+        Uri.parse('$baseUrl$path'),
+        headers: await _getHeaders(),
+        body: body is String ? body : (body != null ? jsonEncode(body) : null),
+      ).timeout(const Duration(seconds: 45));
+      
+      if (response.statusCode == 401) {
+        if (await _tryRefreshToken()) {
+          response = await http.put(
+            Uri.parse('$baseUrl$path'),
+            headers: await _getHeaders(),
+            body: body is String ? body : (body != null ? jsonEncode(body) : null),
+          ).timeout(const Duration(seconds: 45));
+        }
+      }
+      return response;
+    } on SocketException {
+      throw const OfflineException();
+    } on TimeoutException {
+      throw const OfflineException('Connection timed out. Please try again.');
+    } on http.ClientException {
+      throw const OfflineException();
+    }
+  }
+
+  /// Authenticated DELETE with auto-retry on 401
+  Future<http.Response> _authDelete(String path) async {
+    try {
+      var response = await http.delete(
+        Uri.parse('$baseUrl$path'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 45));
+      
+      if (response.statusCode == 401) {
+        if (await _tryRefreshToken()) {
+          response = await http.delete(
+            Uri.parse('$baseUrl$path'),
+            headers: await _getHeaders(),
+          ).timeout(const Duration(seconds: 45));
+        }
+      }
+      return response;
+    } on SocketException {
+      throw const OfflineException();
+    } on TimeoutException {
+      throw const OfflineException('Connection timed out. Please try again.');
+    } on http.ClientException {
+      throw const OfflineException();
+    }
   }
 
   // ============ AUTH ============
 
   /// Get current user profile
   Future<Map<String, dynamic>> getUserProfile() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/auth/me'),
-      headers: await _getHeaders(),
-    ).timeout(const Duration(seconds: 45));
+    final response = await _authGet('/auth/me');
     return _processResponse(response);
   }
 
@@ -179,31 +257,19 @@ class ApiService {
       body['phone'] = phone;
     }
     
-    final response = await http.put(
-      Uri.parse('$baseUrl/user/profile'),
-      headers: await _getHeaders(),
-      body: json.encode(body),
-    ).timeout(const Duration(seconds: 30));
+    final response = await _authPut('/user/profile', body: body);
     return _processResponse(response);
   }
 
   /// Upload profile picture (base64-encoded)
   Future<Map<String, dynamic>> uploadProfilePicture(String base64Image) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/user/profile-picture'),
-      headers: await _getHeaders(),
-      body: json.encode({'image_data': base64Image}),
-    ).timeout(const Duration(seconds: 30));
+    final response = await _authPost('/user/profile-picture', body: {'image_data': base64Image});
     return _processResponse(response);
   }
 
   /// Request forgot password OTP
   Future<Map<String, dynamic>> forgotPassword(String email) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/forgot-password'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'email': email}),
-    ).timeout(const Duration(seconds: 30));
+    final response = await _authPost('/auth/forgot-password', body: {'email': email});
     return _processResponse(response);
   }
 
@@ -213,15 +279,11 @@ class ApiService {
     required String otp,
     required String newPassword,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/reset-password'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
+    final response = await _authPost('/auth/reset-password', body: {
         'email': email,
         'otp': otp,
         'new_password': newPassword,
-      }),
-    ).timeout(const Duration(seconds: 30));
+      });
     return _processResponse(response);
   }
 
@@ -239,10 +301,7 @@ class ApiService {
   }) async {
     print('Registering user: $email');
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+      final response = await _authPost('/auth/register', body: {
           'email': email,
           'password': password,
           'first_name': firstName,
@@ -252,8 +311,7 @@ class ApiService {
           'country_code': countryCode ?? '+91',
           if (emailToken != null) 'email_verification_token': emailToken,
           if (phoneToken != null) 'firebase_phone_token': phoneToken,
-        }),
-      ).timeout(const Duration(seconds: 45));
+        });
       
       print('Register URL: $baseUrl/auth/register');
       print('Register Response: ${response.statusCode} ${response.body}');
@@ -283,11 +341,7 @@ class ApiService {
   }) async {
     print('Logging in user: $email');
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {'username': email, 'password': password},
-      ).timeout(const Duration(seconds: 45));
+      final response = await _authPost('/auth/login', body: 'username=${Uri.encodeComponent(email)}&password=${Uri.encodeComponent(password)}');
       
       print('Login URL: $baseUrl/auth/login');
       print('Login Response: ${response.statusCode} ${response.body}');
@@ -314,11 +368,7 @@ class ApiService {
   Future<Map<String, dynamic>> googleSignIn({required String idToken}) async {
     print('Google Sign-In with token...');
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/google-signin'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id_token': idToken}),
-      ).timeout(const Duration(seconds: 30));
+      final response = await _authPost('/auth/google-signin', body: {'id_token': idToken});
       
       final data = jsonDecode(response.body);
       
@@ -342,11 +392,7 @@ class ApiService {
   /// Send Email OTP for verification
   Future<Map<String, dynamic>> sendEmailOTP({required String email}) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/send-email-otp'),
-        headers: await _getHeaders(),
-        body: jsonEncode({'email': email}),
-      ).timeout(const Duration(seconds: 30));
+      final response = await _authPost('/auth/send-email-otp', body: {'email': email});
       
       final data = jsonDecode(response.body);
       
@@ -368,11 +414,7 @@ class ApiService {
   /// Verify Email OTP (Login/Auth)
   Future<Map<String, dynamic>> verifyEmailOTP({required String email, required String otp}) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/verify-email-otp'),
-        headers: await _getHeaders(),
-        body: jsonEncode({'email': email, 'otp': otp}),
-      ).timeout(const Duration(seconds: 30));
+      final response = await _authPost('/auth/verify-email-otp', body: {'email': email, 'otp': otp});
       
       final data = jsonDecode(response.body);
       
@@ -397,11 +439,7 @@ class ApiService {
   /// Returns verification token if successful
   Future<String?> verifyEmailOnly({required String email, required String otp}) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/verify-email-only'),
-        headers: await _getHeaders(),
-        body: jsonEncode({'email': email, 'otp': otp}),
-      ).timeout(const Duration(seconds: 30));
+      final response = await _authPost('/auth/verify-email-only', body: {'email': email, 'otp': otp});
       
       final data = jsonDecode(response.body);
       
@@ -424,11 +462,7 @@ class ApiService {
   /// Register FCM token for push notifications
   Future<bool> registerFcmToken(String fcmToken) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/user/fcm-token'),
-        headers: await _getHeaders(),
-        body: jsonEncode({'fcm_token': fcmToken}),
-      ).timeout(const Duration(seconds: 10));
+      final response = await _authPost('/user/fcm-token', body: {'fcm_token': fcmToken});
       
       return response.statusCode == 200;
     } catch (e) {
@@ -440,10 +474,7 @@ class ApiService {
   /// Remove FCM token (on logout)
   Future<bool> removeFcmToken() async {
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/user/fcm-token'),
-        headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      final response = await _authDelete('/user/fcm-token');
       
       return response.statusCode == 200;
     } catch (e) {
@@ -460,34 +491,24 @@ class ApiService {
     required String sender,
     required String message,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/sms/analyze'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/sms/analyze', body: {
         'sender': sender,
         'message': message,
         'timestamp': DateTime.now().toIso8601String(),
-      }),
-    ).timeout(const Duration(seconds: 30));
+      });
     
     return _processResponse(response);
   }
 
   /// Block a sender
   Future<bool> blockSender(String sender) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/sms/block/$sender'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authPost('/sms/block/$sender');
     return response.statusCode == 200;
   }
 
   /// Get scan history
   Future<List<dynamic>> getHistory({int limit = 50}) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/scan/history?limit=$limit'),
-      headers: await _getHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    final response = await _authGet('/scan/history?limit=$limit');
     
     final dynamic res = _processResponse(response);
     if (res is List) return res;
@@ -503,24 +524,17 @@ class ApiService {
     required String phone,
     String? telegramChatId,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/guardian/add'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/guardian/add', body: {
         'name': name,
         'phone': phone,
         if (telegramChatId != null) 'telegram_chat_id': telegramChatId,
-      }),
-    );
+      });
     return jsonDecode(response.body);
   }
 
   /// Get all guardians
   Future<List<dynamic>> getGuardians() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/guardian-link/my-guardians'),
-      headers: await _getHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    final response = await _authGet('/guardian-link/my-guardians');
     final dynamic res = _processResponse(response);
     return res is List ? res : [];
   }
@@ -530,14 +544,10 @@ class ApiService {
     required String sender,
     required String scamType,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/guardian-alerts/send'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/guardian-alerts/send', body: {
         'sender': sender,
         'scam_type': scamType,
-      }),
-    ).timeout(const Duration(seconds: 15));
+      });
     return _processResponse(response);
   }
 
@@ -549,42 +559,29 @@ class ApiService {
     String? name,
     String? reason,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/trusted/add'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/trusted/add', body: {
         'sender': sender,
         if (name != null) 'name': name,
         if (reason != null) 'reason': reason,
-      }),
-    );
+      });
     return jsonDecode(response.body);
   }
 
   /// Remove trusted status from a sender
   Future<bool> removeTrusted(String sender) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/trusted/$sender'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authDelete('/trusted/$sender');
     return response.statusCode == 200;
   }
 
   /// Get list of trusted senders
   Future<List<dynamic>> getTrustedSenders() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/trusted/list'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/trusted/list');
     return jsonDecode(response.body);
   }
 
   /// Check if sender is trusted
   Future<Map<String, dynamic>> checkTrusted(String sender) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/trusted/check/$sender'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/trusted/check/$sender');
     return jsonDecode(response.body);
   }
 
@@ -592,10 +589,7 @@ class ApiService {
 
   /// Get user statistics
   Future<Map<String, dynamic>> getUserStats() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/user/stats'),
-      headers: await _getHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    final response = await _authGet('/user/stats');
     
     print('User Stats Response: ${response.statusCode}');
     return _processResponse(response);
@@ -603,10 +597,7 @@ class ApiService {
 
   /// Get user settings
   Future<Map<String, dynamic>> getUserSettings() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/user/settings'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/user/settings');
     return jsonDecode(response.body);
   }
 
@@ -617,25 +608,18 @@ class ApiService {
     String? alertGuardiansThreshold,
     bool? receiveTips,
   }) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/user/settings'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPut('/user/settings', body: {
         if (language != null) 'language': language,
         if (autoBlockHighRisk != null) 'auto_block_high_risk': autoBlockHighRisk,
         if (alertGuardiansThreshold != null) 'alert_guardians_threshold': alertGuardiansThreshold,
         if (receiveTips != null) 'receive_tips': receiveTips,
-      }),
-    );
+      });
     return jsonDecode(response.body);
   }
 
   /// Set language preference
   Future<bool> setLanguage(String lang) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/user/language/$lang'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authPut('/user/language/$lang');
     return response.statusCode == 200;
   }
 
@@ -647,32 +631,22 @@ class ApiService {
     required String userVerdict, // "safe", "scam", "unsure"
     String? comment,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/feedback/scan/$scanId'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/feedback/scan/$scanId', body: {
         'user_verdict': userVerdict,
         if (comment != null) 'comment': comment,
-      }),
-    );
+      });
     return jsonDecode(response.body);
   }
 
   /// Get user's feedback history
   Future<List<dynamic>> getMyFeedback({int limit = 50}) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/feedback/my-feedback?limit=$limit'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/feedback/my-feedback?limit=$limit');
     return jsonDecode(response.body);
   }
 
   /// Get feedback statistics
   Future<Map<String, dynamic>> getFeedbackStats() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/feedback/stats'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/feedback/stats');
     return jsonDecode(response.body);
   }
 
@@ -680,48 +654,35 @@ class ApiService {
 
   /// Check reputation of a URL
   Future<Map<String, dynamic>> checkUrlReputation(String url) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/reputation/check?url=${Uri.encodeComponent(url)}'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/reputation/check?url=${Uri.encodeComponent(url)}');
     return jsonDecode(response.body);
   }
 
   /// Check reputation of a phone number
   Future<Map<String, dynamic>> checkPhoneReputation(String phone) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/reputation/check?phone=${Uri.encodeComponent(phone)}'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/reputation/check?phone=${Uri.encodeComponent(phone)}');
     return jsonDecode(response.body);
   }
 
   /// Report a scam URL/phone/domain
   Future<Map<String, dynamic>> reportScam({
     required String value,
-    required String type, // "url", "phone", "domain"
+    required String type,
     String? reason,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/reputation/report'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/reputation/report', body: {
         'value': value,
         'type': type,
         if (reason != null) 'reason': reason,
-      }),
-    );
+      });
     return jsonDecode(response.body);
   }
 
   /// Get recently reported scams
   Future<List<dynamic>> getRecentReports({int limit = 20, String? type}) async {
-    String url = '$baseUrl/reputation/recent?limit=$limit';
-    if (type != null) url += '&type=$type';
-    final response = await http.get(
-      Uri.parse(url),
-      headers: await _getHeaders(),
-    );
+    String path = '/reputation/recent?limit=$limit';
+    if (type != null) path += '&type=$type';
+    final response = await _authGet(path);
     return jsonDecode(response.body);
   }
 
@@ -733,24 +694,17 @@ class ApiService {
     String contentType = 'auto', // "text", "url", "phone", "auto"
   }) async {
     print('Manual Scan: $content');
-    final response = await http.post(
-      Uri.parse('$baseUrl/manual/analyze'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/manual/analyze', body: {
         'content': content,
         'content_type': contentType,
-      }),
-    ).timeout(const Duration(seconds: 45));
+      });
     
     return _processResponse(response);
   }
 
   /// Analyze URL specifically
   Future<Map<String, dynamic>> analyzeUrl(String url) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/manual/analyze-url?url=${Uri.encodeComponent(url)}'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authPost('/manual/analyze-url?url=${Uri.encodeComponent(url)}');
     return jsonDecode(response.body);
   }
 
@@ -777,6 +731,10 @@ class ApiService {
       print('Image Analysis Response: ${response.statusCode}');
       
       return _processResponse(response);
+    } on SocketException {
+      throw const OfflineException();
+    } on TimeoutException {
+      throw const OfflineException('Connection timed out. Please try again.');
     } catch (e) {
       print('Image Analysis Error: $e');
       rethrow;
@@ -785,10 +743,7 @@ class ApiService {
 
   /// Check phone number specifically
   Future<Map<String, dynamic>> checkPhone(String phone) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/manual/check-phone?phone=${Uri.encodeComponent(phone)}'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authPost('/manual/check-phone?phone=${Uri.encodeComponent(phone)}');
     return jsonDecode(response.body);
   }
 
@@ -798,24 +753,17 @@ class ApiService {
     String? scamType,
     String language = 'en',
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/manual/explain'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/manual/explain', body: {
         'risk_level': riskLevel,
         if (scamType != null) 'scam_type': scamType,
         'language': language,
-      }),
-    );
+      });
     return jsonDecode(response.body);
   }
 
   /// Get list of all known scam types
   Future<List<dynamic>> getScamTypes() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/manual/scam-types'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/manual/scam-types');
     return jsonDecode(response.body);
   }
 
@@ -823,10 +771,7 @@ class ApiService {
 
   /// Get pending alerts for guardian
   Future<List<dynamic>> getGuardianAlerts() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/guardian-alerts/pending'),
-      headers: await _getHeaders(),
-    ).timeout(const Duration(seconds: 15));
+    final response = await _authGet('/guardian-alerts/pending');
     
     if (response.statusCode >= 400) {
       throw Exception('Failed to get alerts: ${response.body}');
@@ -836,10 +781,7 @@ class ApiService {
 
   /// Mark alert as seen
   Future<void> markAlertSeen(int alertId) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/guardian-alerts/$alertId/seen'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authPost('/guardian-alerts/$alertId/seen');
     if (response.statusCode >= 400) {
       throw Exception('Failed to mark seen: ${response.body}');
     }
@@ -847,14 +789,10 @@ class ApiService {
 
   /// Take action on alert
   Future<void> takeAlertAction(int alertId, String action, {String? notes}) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/guardian-alerts/$alertId/action'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/guardian-alerts/$alertId/action', body: {
         'action': action,
         'notes': notes,
-      }),
-    );
+      });
     if (response.statusCode >= 400) {
       throw Exception('Failed to take action: ${response.body}');
     }
@@ -864,10 +802,7 @@ class ApiService {
 
   /// Get protected users (for guardian)
   Future<List<dynamic>> getProtectedUsers() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/guardian-link/my-protected-users'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/guardian-link/my-protected-users');
     if (response.statusCode >= 400) {
       throw Exception('Failed to get users: ${response.body}');
     }
@@ -876,32 +811,22 @@ class ApiService {
 
   /// Generate OTP for linking (user side)
   Future<Map<String, dynamic>> generateGuardianOtp() async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/guardian-link/generate-otp'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authPost('/guardian-link/generate-otp');
     return _processResponse(response);
   }
 
   /// Verify OTP and link (guardian side)
   Future<Map<String, dynamic>> verifyGuardianOtp(String userEmail, String otp) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/guardian-link/verify-otp'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/guardian-link/verify-otp', body: {
         'user_email': userEmail,
         'otp_code': otp,
-      }),
-    );
+      });
     return _processResponse(response);
   }
 
   /// Get my guardians (user side)
   Future<List<dynamic>> getMyGuardians() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/guardian-link/my-guardians'),
-      headers: await _getHeaders(),
-    );
+    final response = await _authGet('/guardian-link/my-guardians');
     if (response.statusCode >= 400) {
       throw Exception('Failed to get guardians: ${response.body}');
     }
@@ -911,51 +836,47 @@ class ApiService {
   // ============ ADMIN DASHBOARD ============
 
   Future<Map<String, dynamic>> getAdminStats() async {
-    final response = await http.get(Uri.parse('$baseUrl/admin/stats'));
+    final response = await _authGet('/admin/stats');
     if (response.statusCode >= 400) throw Exception('Failed to load stats');
     return jsonDecode(response.body);
   }
 
   Future<List<dynamic>> getAdminUsers() async {
-    final response = await http.get(Uri.parse('$baseUrl/admin/users'));
+    final response = await _authGet('/admin/users');
     if (response.statusCode >= 400) throw Exception('Failed to load users');
     return jsonDecode(response.body);
   }
   
   Future<List<dynamic>> getAdminGuardians() async {
-    final response = await http.get(Uri.parse('$baseUrl/admin/guardians'));
+    final response = await _authGet('/admin/guardians');
     if (response.statusCode >= 400) throw Exception('Failed to load guardians');
     return jsonDecode(response.body);
   }
   
   Future<List<dynamic>> getAdminAlerts() async {
-    final response = await http.get(Uri.parse('$baseUrl/admin/alerts'));
+    final response = await _authGet('/admin/alerts');
     if (response.statusCode >= 400) throw Exception('Failed to load alerts');
     return jsonDecode(response.body);
   }
 
   Future<void> deleteUser(int userId) async {
-    final response = await http.delete(Uri.parse('$baseUrl/admin/users/$userId'));
+    final response = await _authDelete('/admin/users/$userId');
     if (response.statusCode >= 400) throw Exception('Failed to delete user');
   }
 
 
   Future<void> updateUser(int userId, String name, String phone) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/admin/users/$userId'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'name': name, 'phone': phone}),
-    );
+    final response = await _authPut('/admin/users/$userId', body: {'name': name, 'phone': phone});
     if (response.statusCode >= 400) throw Exception('Failed to update user');
   }
 
   Future<void> deleteGuardian(int guardianId) async {
-    final response = await http.delete(Uri.parse('$baseUrl/admin/guardians/$guardianId'));
+    final response = await _authDelete('/admin/guardians/$guardianId');
     if (response.statusCode >= 400) throw Exception('Failed to delete guardian');
   }
 
   Future<void> deleteAlert(int alertId) async {
-    final response = await http.delete(Uri.parse('$baseUrl/admin/alerts/$alertId'));
+    final response = await _authDelete('/admin/alerts/$alertId');
     if (response.statusCode >= 400) throw Exception('Failed to delete alert');
   }
 
@@ -966,14 +887,10 @@ class ApiService {
     required String currentPassword,
     required String newPassword,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/user/change-password'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
+    final response = await _authPost('/user/change-password', body: {
         'current_password': currentPassword,
         'new_password': newPassword,
-      }),
-    ).timeout(const Duration(seconds: 30));
+      });
     
     if (response.statusCode == 400) {
       final data = jsonDecode(response.body);
@@ -986,10 +903,7 @@ class ApiService {
 
   /// Export all user data as formatted TXT
   Future<String> exportData() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/user/export-data'),
-      headers: await _getHeaders(),
-    ).timeout(const Duration(seconds: 60));
+    final response = await _authGet('/user/export-data');
     
     if (response.statusCode >= 400) {
       throw Exception('Failed to export data');
@@ -999,11 +913,7 @@ class ApiService {
 
   /// Delete account permanently (requires password confirmation)
   Future<void> deleteAccount({required String password}) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/user/delete-account'),
-      headers: await _getHeaders(),
-      body: jsonEncode({'password': password}),
-    ).timeout(const Duration(seconds: 30));
+    final response = await _authDelete('/user/delete-account');
     
     if (response.statusCode == 400) {
       final data = jsonDecode(response.body);

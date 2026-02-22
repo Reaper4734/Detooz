@@ -35,15 +35,49 @@ except ImportError:
 
 
 # Module-level cache for Groq API calls
-# Uses hash of (message, sender) to avoid storing full message text in memory
+# L1: in-memory dict for same-process speed
+# L2: Redis for cross-worker sharing and restart persistence
 import hashlib as _hashlib
 
-_groq_cache: dict[str, dict] = {}  # hash -> result
+_groq_cache: dict[str, dict] = {}  # L1: hash -> result
 _GROQ_CACHE_MAX_SIZE = 512
 
 
 def _cache_key(message: str, sender: str) -> str:
     return _hashlib.md5(f"{message}|{sender}".encode()).hexdigest()
+
+
+def _redis_cache_get(key: str) -> dict | None:
+    """Sync Redis get for use in thread pool. Returns None on miss/error."""
+    try:
+        import asyncio
+        from app.services.cache_service import get_cache
+        cache = get_cache()
+        if not cache.is_available:
+            return None
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            future = asyncio.run_coroutine_threadsafe(cache.get(key), loop)
+            return future.result(timeout=2)
+        return None
+    except Exception:
+        return None
+
+
+def _redis_cache_set(key: str, value: dict, ttl: int = 3600):
+    """Sync Redis set for use in thread pool. Silently fails."""
+    try:
+        import asyncio
+        from app.services.cache_service import get_cache
+        cache = get_cache()
+        if not cache.is_available:
+            return
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(cache.set(key, value, ttl), loop)
+    except Exception:
+        pass
 
 
 class ScamDetector:
@@ -292,16 +326,25 @@ class ScamDetector:
             return {"risk_level": "UNKNOWN", "confidence": 0.0}
     
     def _sync_groq_call(self, message: str, sender: str) -> dict:
-        """Synchronous Groq API call with module-level caching"""
+        """Synchronous Groq API call with two-tier caching (L1: memory, L2: Redis)"""
         global _groq_cache
         
-        # Check cache first
-        cache_key = _cache_key(message, sender)
-        if cache_key in _groq_cache:
-            logger.debug("Cache hit for scam analysis")
-            return _groq_cache[cache_key]
+        key = _cache_key(message, sender)
+        redis_key = f"ai:groq:{key}"
         
-        # Make API call
+        # L1: in-memory check
+        if key in _groq_cache:
+            logger.debug("L1 cache hit for scam analysis")
+            return _groq_cache[key]
+        
+        # L2: Redis check
+        redis_result = _redis_cache_get(redis_key)
+        if redis_result is not None:
+            logger.debug("L2 Redis cache hit for scam analysis")
+            _groq_cache[key] = redis_result  # promote to L1
+            return redis_result
+        
+        # Cache miss — call Groq API
         response = self.client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -319,12 +362,14 @@ class ScamDetector:
             result_text = result_text.replace("```json", "").replace("```", "").strip()
         result = json.loads(result_text)
         
-        # Store in cache (with size limit)
+        # Write to L1 (with size limit)
         if len(_groq_cache) >= _GROQ_CACHE_MAX_SIZE:
-            # Remove oldest entry (first key)
             oldest_key = next(iter(_groq_cache))
             del _groq_cache[oldest_key]
-        _groq_cache[cache_key] = result
+        _groq_cache[key] = result
+        
+        # Write to L2 Redis (1 hour TTL, fire-and-forget)
+        _redis_cache_set(redis_key, result, ttl=3600)
         
         return result
     
