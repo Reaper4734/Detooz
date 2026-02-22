@@ -203,22 +203,19 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               const SizedBox(height: 32),
               
               // OTP Input
-              PinCodeTextField(
-                appContext: context,
+              MaterialPinField(
                 length: 6,
-                controller: _otpController,
-                focusNode: _focusNode,
+                pinController: PinInputController(),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                animationType: AnimationType.fade,
+                animationType: MaterialPinAnimationType.fade,
                 animationDuration: const Duration(milliseconds: 200),
                 enableActiveFill: true,
                 autoFocus: true,
-                pinTheme: PinTheme(
-                  shape: PinCodeFieldShape.box,
+                pinTheme: MaterialPinTheme(
+                  shape: MaterialPinShape.outlined,
                   borderRadius: BorderRadius.circular(12),
-                  fieldHeight: 56,
-                  fieldWidth: 48,
+                  cellSize: const Size(48, 56),
                   activeFillColor: colorScheme.surface,
                   inactiveFillColor: colorScheme.surfaceContainerHighest,
                   selectedFillColor: colorScheme.primaryContainer,
@@ -229,6 +226,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 ),
                 onCompleted: (_) => _verifyOTP(),
                 onChanged: (value) {
+                  _otpController.text = value;
                   if (_errorMessage != null) {
                     setState(() => _errorMessage = null);
                   }

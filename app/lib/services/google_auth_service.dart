@@ -5,11 +5,7 @@ import 'package:flutter/foundation.dart';
 /// Google Sign-In Service using Firebase
 /// Auto-verifies email - no OTP needed
 class GoogleAuthService {
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-    // Web Client ID from google-services.json for ID token
-    serverClientId: '497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com',
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   /// Sign in with Google
@@ -17,7 +13,10 @@ class GoogleAuthService {
   Future<GoogleSignInResult> signIn() async {
     try {
       // Trigger Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate(
+        scopeHint: ['email', 'profile'],
+        serverClientIdHint: '497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com',
+      );
       
       if (googleUser == null) {
         // User cancelled
@@ -32,7 +31,6 @@ class GoogleAuthService {
       
       // Create credential
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
       

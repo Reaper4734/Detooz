@@ -36,7 +36,7 @@ class NotificationService {
     );
 
     await _notifications.initialize(
-      initSettings,
+      initializationSettings: initSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
@@ -161,10 +161,10 @@ class NotificationService {
     );
 
     await _notifications.show(
-      alertId ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      '🚨 SCAM ALERT: $protectedUserName',
-      '$scamType detected from $sender\n"${messagePreview.length > 80 ? '${messagePreview.substring(0, 80)}...' : messagePreview}"',
-      details,
+      id: alertId ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: '🚨 SCAM ALERT: $protectedUserName',
+      body: '$scamType detected from $sender\n"${messagePreview.length > 80 ? '${messagePreview.substring(0, 80)}...' : messagePreview}"',
+      notificationDetails: details,
       payload: 'guardian_alert:$alertId',
     );
 
@@ -210,10 +210,10 @@ class NotificationService {
     final title = '$icon $riskLevel Risk: $platform message from $sender';
 
     await _notifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      reason,
-      details,
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: title,
+      body: reason,
+      notificationDetails: details,
       payload: 'scam_alert:$sender',
     );
   }
@@ -243,17 +243,17 @@ class NotificationService {
     );
 
     await _notifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      details,
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: title,
+      body: body,
+      notificationDetails: details,
       payload: payload,
     );
   }
 
   /// Cancel a specific notification
   Future<void> cancelNotification(int id) async {
-    await _notifications.cancel(id);
+    await _notifications.cancel(id: id);
   }
 
   /// Cancel all notifications

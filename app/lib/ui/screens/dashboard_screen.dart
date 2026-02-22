@@ -777,6 +777,8 @@ class _MarqueeText extends StatefulWidget {
   const _MarqueeText({
     required this.text,
     required this.style,
+    this.pauseDuration = const Duration(seconds: 2),
+    this.animationDuration = const Duration(seconds: 5),
   });
 
   @override

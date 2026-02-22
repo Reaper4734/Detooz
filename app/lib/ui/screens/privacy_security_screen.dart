@@ -267,10 +267,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       try {
         final didAuthenticate = await _localAuth.authenticate(
           localizedReason: 'Enable biometric lock for Detooz',
-          options: const AuthenticationOptions(
-            biometricOnly: true,
-            stickyAuth: true,
-          ),
         );
         if (didAuthenticate) {
           setState(() => _biometricEnabled = true);
