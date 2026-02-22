@@ -41,7 +41,7 @@ dependencies:
   url_launcher: ^6.3.2
   image_picker: ^1.0.7
   webview_flutter: ^4.7.0
-  share_plus: ^12.0.1
+  share_plus: ^10.1.4
   
   # Backend Integration (Added by Backend Team)
   http: ^1.2.0
