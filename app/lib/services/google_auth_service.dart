@@ -7,15 +7,24 @@ import 'package:flutter/foundation.dart';
 class GoogleAuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _initialized = false;
+
+  Future<void> _ensureInitialized() async {
+    if (_initialized) return;
+    await _googleSignIn.initialize(
+      serverClientId: '497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com',
+    );
+    _initialized = true;
+  }
   
   /// Sign in with Google
   /// Returns Firebase ID token to send to backend
   Future<GoogleSignInResult> signIn() async {
     try {
+      await _ensureInitialized();
       // Trigger Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate(
         scopeHint: ['email', 'profile'],
-        serverClientIdHint: '497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com',
       );
       
       if (googleUser == null) {
