@@ -2,6 +2,7 @@
 ///
 /// Navigated to when a user initiates a language model download.
 /// Checks connectivity type and prompts for mobile data confirmation if needed.
+library;
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -9,9 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/connectivity_service.dart';
 import '../../services/translation/translation_service.dart';
-import '../../services/translation/language_config.dart';
 import '../theme/app_colors.dart';
-import '../providers.dart';
 import '../components/tr.dart';
 
 enum _DownloadState { checkingConnection, confirmMobileData, downloading, success, error }

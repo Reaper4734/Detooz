@@ -1,8 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
 import '../theme/theme_provider.dart';
 import '../providers.dart';
 import 'language_selector_screen.dart';
@@ -489,7 +487,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF7C3AED), // Primary Purple
+            activeThumbColor: const Color(0xFF7C3AED), // Primary Purple
             activeTrackColor: const Color(0xFF7C3AED).withOpacity(0.5),
             inactiveThumbColor: AppColors.isDark(context) ? const Color(0xFFA1A1AA) : const Color(0xFFD4D4D8),
             inactiveTrackColor: AppColors.isDark(context) ? const Color(0xFF27272A) : const Color(0xFFE5E7EB),

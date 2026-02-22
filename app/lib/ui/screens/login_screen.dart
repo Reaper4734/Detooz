@@ -661,7 +661,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             // Google "G" Logo
-                                            Container(
+                                            SizedBox(
                                               width: 24,
                                               height: 24,
                                               child: CustomPaint(

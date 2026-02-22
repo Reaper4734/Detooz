@@ -411,14 +411,12 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
       final result = await apiService.verifyGuardianOtp(email, otp);
       
       // Cache protected user's phone for offline SMS alerts
-      if (result != null && result is Map) {
-        final userPhone = result['user_phone'] ?? result['phone'];
-        if (userPhone != null && userPhone.toString().isNotEmpty) {
-          await offlineCacheService.saveSetting('guardian_phone', userPhone.toString());
-          debugPrint('📱 Cached protected user phone for offline alerts: $userPhone');
-        }
+      final userPhone = result['user_phone'] ?? result['phone'];
+      if (userPhone != null && userPhone.toString().isNotEmpty) {
+        await offlineCacheService.saveSetting('guardian_phone', userPhone.toString());
+        debugPrint('📱 Cached protected user phone for offline alerts: $userPhone');
       }
-      
+          
       if (mounted) {
         setState(() => _isLinking = false);
         _emailController.clear();

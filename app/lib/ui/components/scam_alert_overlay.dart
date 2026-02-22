@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'tr.dart';
-import 'tr.dart';
 
 /// Full-screen scam alert overlay shown when HIGH risk detected
 class ScamAlertOverlay extends StatelessWidget {

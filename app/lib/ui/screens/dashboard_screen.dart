@@ -12,7 +12,6 @@ import 'manual_result_screen.dart';
 import '../../contracts/scan_view_model.dart';
 import '../../contracts/risk_level.dart';
 
-import 'package:image_picker/image_picker.dart';
 import '../components/tr.dart';
 import 'main_screen.dart';
 import '../components/verification_info_card.dart';
@@ -192,7 +191,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             );
                           },
                           loading: () => Text(
-                            '$greeting',
+                            greeting,
                             style: TextStyle(
                               color: AppColors.textPrimary(context),
                               fontSize: 24,
@@ -200,7 +199,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ),
                           error: (_, __) => Text(
-                            '$greeting',
+                            greeting,
                             style: TextStyle(
                               color: AppColors.textPrimary(context),
                               fontSize: 24,
@@ -778,8 +777,6 @@ class _MarqueeText extends StatefulWidget {
   const _MarqueeText({
     required this.text,
     required this.style,
-    this.pauseDuration = const Duration(seconds: 1),
-    this.animationDuration = const Duration(seconds: 3),
   });
 
   @override

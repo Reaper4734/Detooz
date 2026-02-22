@@ -1,10 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../contracts/risk_level.dart';
 import '../../contracts/scan_view_model.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
 import '../components/tr.dart';
 import '../../utils/datetime_utils.dart'; // Added for time formatting
 
@@ -33,8 +30,9 @@ class ManualResultScreen extends StatelessWidget {
     if (scan.confidence != null) {
       score = (scan.confidence! * 100).toInt();
     } else {
-       if (scan.riskLevel == RiskLevel.high) score = 95;
-       else if (scan.riskLevel == RiskLevel.medium) score = 65;
+       if (scan.riskLevel == RiskLevel.high) {
+         score = 95;
+       } else if (scan.riskLevel == RiskLevel.medium) score = 65;
        else score = 10;
     }
 

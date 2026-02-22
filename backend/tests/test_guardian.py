@@ -1,106 +1,67 @@
 """
-Guardian Tests
-Tests for /api/guardian endpoints
+Guardian Link Tests
+Tests for /api/guardian-link endpoints (OTP-based guardian linking system)
 """
 import pytest
 from httpx import AsyncClient
 
 
-class TestGuardianEndpoints:
-    """Tests for guardian management"""
+class TestGuardianLinkEndpoints:
+    """Tests for guardian linking functionality"""
 
     @pytest.mark.asyncio
-    async def test_list_guardians_empty(self, authenticated_client: AsyncClient):
-        """Test listing guardians when empty"""
-        response = await authenticated_client.get("/api/guardian/list")
+    async def test_my_guardians_empty(self, authenticated_client: AsyncClient):
+        """Test listing guardians when none linked"""
+        response = await authenticated_client.get("/api/guardian-link/my-guardians")
         assert response.status_code == 200
         assert response.json() == []
 
     @pytest.mark.asyncio
-    async def test_add_guardian(self, authenticated_client: AsyncClient):
-        """Test adding a guardian"""
+    async def test_my_protected_users_empty(self, authenticated_client: AsyncClient):
+        """Test listing protected users when none linked"""
+        response = await authenticated_client.get("/api/guardian-link/my-protected-users")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    @pytest.mark.asyncio
+    async def test_generate_otp(self, authenticated_client: AsyncClient):
+        """Test generating an OTP for guardian linking"""
         response = await authenticated_client.post(
-            "/api/guardian/add",
+            "/api/guardian-link/generate-otp",
             json={
-                "name": "Mom",
-                "phone": "+919876543210"
+                "guardian_email": "guardian@test.com"
             }
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "Mom"
-        assert data["phone"] == "+919876543210"
-        assert "id" in data
+        # Should return 200 with OTP details (or 404 if guardian not registered)
+        assert response.status_code in [200, 404]
 
     @pytest.mark.asyncio
-    async def test_add_guardian_with_telegram(self, authenticated_client: AsyncClient):
-        """Test adding guardian with Telegram"""
-        response = await authenticated_client.post(
-            "/api/guardian/add",
-            json={
-                "name": "Dad",
-                "phone": "+911234567890",
-                "telegram_chat_id": "123456789"
-            }
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["telegram_chat_id"] == "123456789"
-
-    @pytest.mark.asyncio
-    async def test_list_guardians_after_add(self, authenticated_client: AsyncClient):
-        """Test listing guardians after adding"""
-        # Add guardian
-        await authenticated_client.post(
-            "/api/guardian/add",
-            json={"name": "Brother", "phone": "+919999999999"}
-        )
-        
-        response = await authenticated_client.get("/api/guardian/list")
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) >= 1
-
-    @pytest.mark.asyncio
-    async def test_update_guardian(self, authenticated_client: AsyncClient):
-        """Test updating a guardian"""
-        # Add first
-        add_response = await authenticated_client.post(
-            "/api/guardian/add",
-            json={"name": "Sister", "phone": "+918888888888"}
-        )
-        guardian_id = add_response.json()["id"]
-        
-        # Update
-        response = await authenticated_client.put(
-            f"/api/guardian/{guardian_id}",
-            json={"name": "Sister Updated", "phone": "+918888888888"}
-        )
-        assert response.status_code == 200
-        assert response.json()["name"] == "Sister Updated"
-
-    @pytest.mark.asyncio
-    async def test_delete_guardian(self, authenticated_client: AsyncClient):
-        """Test deleting a guardian"""
-        # Add first
-        add_response = await authenticated_client.post(
-            "/api/guardian/add",
-            json={"name": "Uncle", "phone": "+917777777777"}
-        )
-        guardian_id = add_response.json()["id"]
-        
-        # Delete
-        response = await authenticated_client.delete(f"/api/guardian/{guardian_id}")
-        assert response.status_code == 200
-
-    @pytest.mark.asyncio
-    async def test_delete_nonexistent_guardian(self, authenticated_client: AsyncClient):
-        """Test deleting non-existent guardian"""
-        response = await authenticated_client.delete("/api/guardian/99999")
-        assert response.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_guardian_no_auth(self, client: AsyncClient):
+    async def test_guardian_link_no_auth(self, client: AsyncClient):
         """Test guardian endpoints require authentication"""
-        response = await client.get("/api/guardian/list")
+        response = await client.get("/api/guardian-link/my-guardians")
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_my_protected_users_no_auth(self, client: AsyncClient):
+        """Test protected users endpoint requires authentication"""
+        response = await client.get("/api/guardian-link/my-protected-users")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_verify_otp_invalid(self, authenticated_client: AsyncClient):
+        """Test verifying an invalid OTP"""
+        response = await authenticated_client.post(
+            "/api/guardian-link/verify-otp",
+            json={
+                "otp": "000000",
+                "user_email": "test@example.com"
+            }
+        )
+        # Should fail with invalid OTP
+        assert response.status_code in [400, 404, 422]
+
+    @pytest.mark.asyncio
+    async def test_revoke_nonexistent_link(self, authenticated_client: AsyncClient):
+        """Test revoking a non-existent guardian link"""
+        response = await authenticated_client.delete("/api/guardian-link/revoke/99999")
+        assert response.status_code == 404

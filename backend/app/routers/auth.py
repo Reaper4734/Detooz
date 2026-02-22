@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 import re
 from app.config import settings
 from app.db import get_db
@@ -14,8 +14,7 @@ from app.services.firebase_service import FirebaseService
 
 router = APIRouter()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Auth config
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
@@ -30,11 +29,13 @@ def validate_password(password: str) -> None:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = plain_password.encode("utf-8")[:72]
+    return bcrypt.checkpw(password_bytes, hashed_password.encode("utf-8"))
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    password_bytes = password.encode("utf-8")[:72]
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

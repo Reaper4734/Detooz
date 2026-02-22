@@ -1,7 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'article_webview.dart';
 import '../components/tr.dart';
 import '../theme/app_colors.dart';
@@ -176,16 +174,14 @@ class _BookmarkCard extends ConsumerWidget {
   }
 
   void _openArticle(BuildContext context, Article article) {
-    if (article.url != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ArticleWebView(
-            url: article.url!,
-            title: article.title,
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ArticleWebView(
+          url: article.url,
+          title: article.title,
         ),
-      );
+      ),
+    );
     }
-  }
 }

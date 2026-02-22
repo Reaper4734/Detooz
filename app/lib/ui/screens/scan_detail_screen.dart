@@ -1,12 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../contracts/risk_level.dart';
 import '../../contracts/scan_view_model.dart';
 import '../../services/api_service.dart';
-import '../theme/app_colors.dart';
-import '../../contracts/scan_view_model.dart'; // Ensure correct imports
-import '../theme/app_spacing.dart';
+// Ensure correct imports
 import '../../utils/datetime_utils.dart'; // Add this for time formatting
 import '../components/tr.dart';
 
@@ -30,8 +27,9 @@ class ScanDetailScreen extends StatelessWidget {
     if (scan.confidence != null) {
       score = (scan.confidence! * 100).toInt();
     } else {
-       if (scan.riskLevel == RiskLevel.high) score = 85;
-       else if (scan.riskLevel == RiskLevel.medium) score = 65;
+       if (scan.riskLevel == RiskLevel.high) {
+         score = 85;
+       } else if (scan.riskLevel == RiskLevel.medium) score = 65;
        else score = 10;
     }
 

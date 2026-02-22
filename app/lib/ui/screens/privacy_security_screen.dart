@@ -21,7 +21,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   bool _biometricEnabled = false;
   bool _sharePatterns = false;
   bool _isExporting = false;
-  bool _isDeleting = false;
+  final bool _isDeleting = false;
 
   @override
   void initState() {
@@ -565,7 +565,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF7C3AED),
+            activeThumbColor: const Color(0xFF7C3AED),
             activeTrackColor: const Color(0xFF7C3AED).withOpacity(0.5),
             inactiveThumbColor: AppColors.isDark(context) ? const Color(0xFFA1A1AA) : const Color(0xFFD4D4D8),
             inactiveTrackColor: AppColors.isDark(context) ? const Color(0xFF27272A) : const Color(0xFFE5E7EB),

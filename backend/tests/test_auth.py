@@ -16,8 +16,9 @@ class TestAuthEndpoints:
             "/api/auth/register",
             json={
                 "email": "newuser@test.com",
-                "password": "securepass123",
-                "name": "New User",
+                "password": "Secure1pass23",
+                "first_name": "New",
+                "last_name": "User",
                 "phone": "+919876543210"
             }
         )
@@ -33,8 +34,9 @@ class TestAuthEndpoints:
             "/api/auth/register",
             json={
                 "email": "test@example.com",  # Same as test_user
-                "password": "anotherpass123",
-                "name": "Another User",
+                "password": "Another1pass23",
+                "first_name": "Another",
+                "last_name": "User",
                 "phone": "+919999999999"
             }
         )
@@ -48,8 +50,9 @@ class TestAuthEndpoints:
             "/api/auth/register",
             json={
                 "email": "notanemail",
-                "password": "securepass123",
-                "name": "Bad Email User",
+                "password": "Secure1pass23",
+                "first_name": "Bad",
+                "last_name": "Email User",
                 "phone": "+919876543210"
             }
         )
@@ -105,7 +108,7 @@ class TestAuthEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == test_user.email
-        assert data["name"] == test_user.name
+        assert data["first_name"] == test_user.first_name
 
     @pytest.mark.asyncio
     async def test_get_current_user_no_auth(self, client: AsyncClient):

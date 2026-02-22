@@ -22,14 +22,12 @@
 library;
 
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 import 'vocab_loader.dart';
 import 'token_encoder.dart';
 import 'sms_translator.dart';
-import '../../ui/components/tr.dart';
 
 /// Result of scam detection inference
 class DetectionResult {

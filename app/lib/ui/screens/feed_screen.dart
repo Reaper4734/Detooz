@@ -312,22 +312,18 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   }
 
   void _shareArticle(Article article) {
-    if (article.url != null) {
-      Share.share('Check out this article: ${article.title}\n${article.url}');
+    Share.share('Check out this article: ${article.title}\n${article.url}');
     }
-  }
 
   void _openArticle(Article article) {
-    if (article.url != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ArticleWebView(
-            url: article.url!,
-            title: article.title,
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ArticleWebView(
+          url: article.url,
+          title: article.title,
         ),
-      );
+      ),
+    );
     }
-  }
 }

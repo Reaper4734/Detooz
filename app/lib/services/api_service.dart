@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 /// API Service for connecting to Detooz Backend

@@ -79,7 +79,8 @@ async def test_user(db_session):
     user = User(
         email="test@example.com",
         password_hash=hashed_password,
-        name="Test User",
+        first_name="Test",
+        last_name="User",
         phone="+919876543210"
     )
     db_session.add(user)

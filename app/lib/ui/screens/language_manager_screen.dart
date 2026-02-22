@@ -2,6 +2,7 @@
 ///
 /// Accessible from Settings. Shows installed language models and allows
 /// users to download additional ones for offline scam detection.
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';

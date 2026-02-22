@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:async'; // Added
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,15 +5,9 @@ import 'package:intl/intl.dart'; // Added
 import '../../contracts/risk_level.dart';
 import '../../contracts/scan_view_model.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
 import '../providers.dart';
 import 'scan_detail_screen.dart';
-import '../../utils/datetime_utils.dart'; // Added
-import '../../contracts/risk_level.dart';
-import '../../contracts/scan_view_model.dart';
-import '../theme/app_colors.dart';
-import '../providers.dart';
-import 'scan_detail_screen.dart';
+// Added
 import '../components/tr.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {

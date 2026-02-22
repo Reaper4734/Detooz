@@ -9,7 +9,6 @@ import '../theme/app_colors.dart';
 import '../providers.dart';
 import '../providers/education_provider.dart';
 import '../../contracts/article.dart';
-import '../../services/education_service.dart';
 
 class EducationScreen extends ConsumerStatefulWidget {
   const EducationScreen({super.key});
