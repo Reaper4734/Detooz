@@ -19,18 +19,24 @@ class OfflineException implements Exception {
 /// API Service for connecting to Detooz Backend
 /// Created by Backend Team for Stitch
 class ApiService {
+  // --------------------------------------------------------------------------
+  // ENVIRONMENT TOGGLE: 
+  // Set to TRUE to connect to a local running backend (e.g. localhost:8000)
+  // Set to FALSE to connect to the AWS Cloud backend
+  // --------------------------------------------------------------------------
+  static const bool useLocalBackend = false;
+
   // AWS EC2 Production Backend
   static const String _prodUrl = 'http://3.108.220.220:8000/api';
   
   // Smart URL detection
   static String get baseUrl {
-    // Use production AWS backend for all platforms
-    return _prodUrl;
+    if (!useLocalBackend) return _prodUrl;
     
-    // Uncomment for local development:
-    // if (kIsWeb) return 'http://localhost:8000/api';
-    // if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
-    // return 'http://127.0.0.1:8000/api';
+    // Auto-detect local backend IP based on emulator/physical device
+    if (kIsWeb) return 'http://localhost:8000/api';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+    return 'http://127.0.0.1:8000/api'; // iOS Simulator or Desktop
   }
   
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -152,18 +158,29 @@ class ApiService {
   /// Authenticated POST with auto-retry on 401
   Future<http.Response> _authPost(String path, {Object? body}) async {
     try {
+      final headers = await _getHeaders();
+      // Use form-urlencoded content type for string bodies (e.g., login form)
+      if (body is String) {
+        headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      }
+      final encodedBody = body is String ? body : (body != null ? jsonEncode(body) : null);
+      
       var response = await http.post(
         Uri.parse('$baseUrl$path'),
-        headers: await _getHeaders(),
-        body: body is String ? body : (body != null ? jsonEncode(body) : null),
+        headers: headers,
+        body: encodedBody,
       ).timeout(const Duration(seconds: 45));
       
       if (response.statusCode == 401) {
         if (await _tryRefreshToken()) {
+          final retryHeaders = await _getHeaders();
+          if (body is String) {
+            retryHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+          }
           response = await http.post(
             Uri.parse('$baseUrl$path'),
-            headers: await _getHeaders(),
-            body: body is String ? body : (body != null ? jsonEncode(body) : null),
+            headers: retryHeaders,
+            body: encodedBody,
           ).timeout(const Duration(seconds: 45));
         }
       }

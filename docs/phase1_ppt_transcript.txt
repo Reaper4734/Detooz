@@ -1,0 +1,156 @@
+Detooz — Phase 1 PPT Transcript
+Subject: Community Engagement Project (CEP)
+Type: Phase 1 — Idea Explanation & Proposed Solution
+Slides: 13
+
+---
+
+SLIDE 1 — Title
+
+- Detooz — AI-Powered Scam Detection for India
+- Community Engagement Project — Phase 1
+- Team: Atharva Joshi, Rohit Jadhav, Priyaj Gawade
+
+---
+
+SLIDE 2 — The National Crisis
+
+- Heading: Digital Scams in India
+- 1.2+ Billion Mobile Users
+- Massive surge in SMS, WhatsApp, and Telegram fraud
+- The Tactic: Exploiting fear, urgency, and authority
+- The Language Gap: Scams arrive in native regional languages
+- Most Vulnerable: Elderly, rural, and non-tech-savvy populations
+- Annual Loss: Estimated ₹10,000+ crore to digital fraud
+
+---
+
+SLIDE 3 — Local Ground Reality & The Human Cost
+
+- Heading: Field Work: Survey & Case Study
+- The Survey: Avoided generic questions; tested real identification
+    - Result: High general awareness, but low ability to identify sophisticated scams
+- The Case Study: Real local victim lost ₹10–12 lakhs
+    - Victim Profile: Educated, generally aware of digital fraud
+    - The Mechanism: Exploited extreme urgency and greed, bypassing logic entirely
+- Takeaway: In the heat of the moment, human judgment fails
+
+---
+
+SLIDE 4 — The Core Insight
+
+- Heading: The Psychology of a Scam
+- Insight: A scam is a psychological attack, not just a technical trick.
+- Awareness campaigns are necessary but insufficient
+- Panicked users cannot rationally verify links in split seconds
+- Requirement: A technological system that intercepts the threat before the user has to make a judgment call
+- Proposed Solution: Detooz
+
+---
+
+SLIDE 5 — Introducing Detooz
+
+- Heading: What is Detooz?
+- An AI-powered, automated scam detection mobile application
+- How It Works:
+    - Runs silently in the background
+    - Monitors incoming messages (SMS, WhatsApp, Telegram)
+    - Provides instant notifications with plain-language explanations
+- Core Principle: Active intervention with zero user effort
+
+---
+
+SLIDE 6 — The Flow Architecture
+
+- Heading: How Detooz Works in Real-Time
+- [INSERT DIAGRAM]
+
+---
+
+SLIDE 7 — Proposed Tech Stack
+
+- Heading: Technological Foundation
+- Frontend (Mobile App):
+    - Flutter (Cross-platform UI)
+    - TFLite (On-device ML inference)
+- Backend & Database:
+    - FastAPI (Python REST API)
+    - SQLite / PostgreSQL
+    - Firebase (Authentication & Push Notifications)
+    - Docker (Containerized backend deployment)
+
+---
+
+SLIDE 8 — The AI Strategy
+
+- Heading: On-Device AI Model
+- Proposed Model: MobileBERT (Lightweight & Mobile-optimized)
+- Training Concept:
+    - Utilizing 90,000+ real-world messages across multiple Indian languages
+    - Validation Technique: Stratified K-Fold Cross-Validation to ensure the model performs consistently across all scam categories without overfitting.
+- Classification Strategy: Safe / OTP / Scam
+- Target: High accuracy without relying on cloud servers
+- Privacy Focus: 100% offline inference capability
+
+---
+
+SLIDE 9 — Target Scams
+
+- Heading: Focus Areas for Detection
+- System designed to intercept common attacks:
+    - Fake KYC & Bank Alerts
+    - Prize and Lottery Scams
+    - OTP Theft Attempts
+    - Fraudulent Job Offers
+    - Fake Loan Apps
+    - Government Impersonation
+
+---
+
+SLIDE 10 — Protecting the Vulnerable
+
+- Heading: The Guardian System
+- Designed to protect non-tech-savvy relatives
+- Mechanism: Link Detooz app to a parent or grandparent's phone
+- The Alert: If the relative receives a suspicious message, the "Guardian" receives an instant notification
+- Result: Enabling tech-savvy family members to provide remote protection
+
+---
+
+SLIDE 11 — Feature Blueprint
+
+- Heading: Proposed App Features
+- Core Detection: Automatic background scanning
+- Manual Tools: Scanning suspicious screenshots or pasted text
+- Family Safety: Remote Guardian Alert system
+- Accessibility: Multilingual UI and AI detection support
+- Privacy & Security: On-device processing, biometric app lock
+
+---
+
+SLIDE 12 — Differentiation
+
+- Heading: Why Detooz is Unique
+- Comparison table:
+
+Feature              | Truecaller | Google Spam Filter | Awareness Campaigns | Detooz
+---------------------|------------|-------------------|---------------------|-------
+Deep content analysis| No         | Basic             | No                  | Yes
+Indian languages     | No         | No                | Partial             | Yes
+Explains the scam    | No         | No                | Yes                 | Yes
+Offline inference    | Yes        | No                | N/A                 | Yes
+Guardian alerts      | No         | No                | No                  | Yes
+Pre-emptive action   | No         | Partial           | No                  | Yes
+
+---
+
+SLIDE 13 — Conclusion
+
+- Heading: Summary
+- Digital scams heavily exploit human psychology
+- Field Work & Case Study confirm awareness alone is insufficient
+- Detooz: The proposed technological intervention
+    - AI-powered, multilingual, offline-first
+    - Multilayered AI Dome & Guardian System
+- The Goal: A scalable, active defense shield for Indian mobile users
+- Thank You / Questions?
