@@ -387,7 +387,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       ),
                                       SizedBox(height: 4),
                                       Text(
-                                        userStats.isLoading ? '-' : '${userStats.value?.totalScans ?? 0}',
+                                        userStats.isLoading ? '-' : '${userStats.valueOrNull?.totalScans ?? 0}',
                                         style: TextStyle(
                                           color: AppColors.textPrimary(context),
                                           fontSize: 24,
@@ -423,7 +423,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.end,
                                         children: [
                                           Text(
-                                            userStats.isLoading ? '-' : '${userStats.value?.highRiskBlocked ?? 0}',
+                                            userStats.isLoading ? '-' : '${userStats.valueOrNull?.highRiskBlocked ?? 0}',
                                             style: TextStyle(
                                               color: AppColors.textPrimary(context),
                                               fontSize: 24,

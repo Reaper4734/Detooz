@@ -19,6 +19,9 @@ key.properties
 # ---- CI/CD scripts (local paths) ----
 deploy.ps1
 pull.ps1
+run_local.ps1
+DEV_SCRIPTS_README.md
+detooz_scripts.zip
 
 # ---- Python ----
 __pycache__/

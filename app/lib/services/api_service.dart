@@ -24,7 +24,7 @@ class ApiService {
   // Set to TRUE to connect to a local running backend (e.g. localhost:8000)
   // Set to FALSE to connect to the AWS Cloud backend
   // --------------------------------------------------------------------------
-  static const bool useLocalBackend = false;
+  static const bool useLocalBackend = true;
 
   // AWS EC2 Production Backend
   static const String _prodUrl = 'http://3.108.220.220:8000/api';
