@@ -118,39 +118,6 @@ class VerificationInfoCard extends StatelessWidget {
               ),
             ),
             
-            // Grace period warning
-            if (daysRemaining != null && daysRemaining! <= 30) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: daysRemaining! <= 7 
-                      ? Colors.red.withOpacity(0.2)
-                      : Colors.orange.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 14,
-                      color: daysRemaining! <= 7 ? Colors.redAccent : warningColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$daysRemaining days remaining',
-                      style: TextStyle(
-                        color: daysRemaining! <= 7 ? Colors.redAccent : warningColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            
             const SizedBox(height: 16),
             
             // Buttons
