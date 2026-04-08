@@ -90,6 +90,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       } else {
         // ─── REGISTRATION FLOW ───
+        // 1. Force Email Verification FIRST (Mandatory)
+        if (_emailVerificationToken == null) {
+          final isVerified = await _forceEmailVerification();
+          if (!isVerified) {
+            setState(() => _isLoading = false);
+            return; // Abort registration, let user fix email/try again
+          }
+        }
+
+        // 2. We now have the token; proceed to register the user
         success = await ref.read(authProvider.notifier).register(
           _emailController.text.trim(),
           _passwordController.text.trim(),
@@ -103,9 +113,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         if (success && mounted) {
           setState(() => _isLoading = false);
-          // Registration succeeded → force OTP email verification (mandatory)
-          await _forceEmailVerification();
-          return; // Don't fall through
+          _showAddGuardianPrompt();
+          return;
         }
       }
 
@@ -125,9 +134,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // ─── MANDATORY EMAIL VERIFICATION AFTER REGISTRATION ──
+  // ─── MANDATORY EMAIL VERIFICATION BEFORE REGISTRATION ──
 
-  Future<void> _forceEmailVerification() async {
+  Future<bool> _forceEmailVerification() async {
     final email = _emailController.text.trim();
 
     try {
@@ -137,9 +146,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // Even if sending fails, still navigate to OTP screen (it has a resend button)
     }
 
-    if (!mounted) return;
+    if (!mounted) return false;
 
-    // Navigate to OTP screen — user CANNOT skip this
+    // Navigate to OTP screen
     final verified = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -163,17 +172,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (verified == true && mounted) {
       setState(() => _emailVerified = true);
-      _showAddGuardianPrompt();
-    } else if (mounted) {
-      // User tried to go back — push them back to OTP screen
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(tr('Email verification is required to continue')),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      // Re-attempt verification
-      await _forceEmailVerification();
+      return true;
+    } else {
+      if (mounted) {
+        // User tried to go back or failed — allow them to edit email
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('Email verification is required to create an account.')),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+      return false;
     }
   }
 
