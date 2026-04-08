@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/responsive_utils.dart';
 import '../components/tr.dart';
 import '../../services/api_service.dart';
 
@@ -15,7 +16,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _otpController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _otpSent = false;
   bool _obscurePassword = true;
@@ -32,20 +33,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
+  // ─── BACKEND LOGIC ──────────────────────────────────
+
   Future<void> _sendOtp() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      setState(() { _message = 'Please enter your email'; _isError = true; });
+      setState(() { _message = tr('Please enter your email'); _isError = true; });
       return;
     }
-    
+
     setState(() { _isLoading = true; _message = null; });
-    
+
     try {
       final result = await apiService.forgotPassword(email);
       setState(() {
         _otpSent = true;
-        _message = result['message'] ?? 'OTP sent to your email';
+        _message = result['message'] ?? tr('OTP sent to your email');
         _isError = !(result['success'] ?? true);
       });
     } catch (e) {
@@ -60,39 +63,39 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final otp = _otpController.text.trim();
     final password = _passwordController.text;
     final confirm = _confirmPasswordController.text;
-    
+
     if (otp.isEmpty || password.isEmpty) {
-      setState(() { _message = 'Please fill all fields'; _isError = true; });
+      setState(() { _message = tr('Please fill all fields'); _isError = true; });
       return;
     }
-    
+
     if (password != confirm) {
-      setState(() { _message = 'Passwords do not match'; _isError = true; });
+      setState(() { _message = tr('Passwords do not match'); _isError = true; });
       return;
     }
-    
+
     if (password.length < 8) {
-      setState(() { _message = 'Password must be at least 8 characters'; _isError = true; });
+      setState(() { _message = tr('Password must be at least 8 characters'); _isError = true; });
       return;
     }
-    
+
     setState(() { _isLoading = true; _message = null; });
-    
+
     try {
       final result = await apiService.resetPassword(
         email: email,
         otp: otp,
         newPassword: password,
       );
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Password reset successfully!'),
+            content: Text(result['message'] ?? tr('Password reset successfully!')),
             backgroundColor: AppColors.success,
           ),
         );
-        Navigator.pop(context); // Back to login
+        Navigator.pop(context);
       }
     } catch (e) {
       setState(() { _message = '$e'; _isError = true; });
@@ -101,188 +104,346 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
+  // ═══════════════════════════════════════════════════════
+  // ─── BUILD — Neo-Brutalist UI ─────────────────────────
+  // ═══════════════════════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        backgroundColor: AppColors.background(context),
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
-        ),
-        title: Tr('Reset Password', style: TextStyle(
-          color: AppColors.textPrimary(context),
-          fontWeight: FontWeight.bold,
-        )),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Icon
-            Icon(
-              Icons.lock_reset_rounded,
-              size: 80,
-              color: AppColors.primary,
-            ),
-            const SizedBox(height: 16),
-            
-            // Description
-            Tr(
-              _otpSent
-                ? 'Enter the OTP sent to your email and set a new password.'
-                : 'Enter your email address and we will send you an OTP to reset your password.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary(context), fontSize: 14),
-            ),
-            const SizedBox(height: 32),
-            
-            // Message banner
-            if (_message != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
+      body: Stack(
+        children: [
+          // ─── Background Decorations ───
+          Positioned(
+            bottom: -50, left: -50,
+            child: Transform.rotate(
+              angle: 45 * 3.14159 / 180,
+              child: Container(
+                width: 250, height: 250,
                 decoration: BoxDecoration(
-                  color: _isError ? AppColors.danger.withOpacity(0.1) : AppColors.success.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _isError ? AppColors.danger : AppColors.success, width: 0.5),
-                ),
-                child: Text(
-                  _message!,
-                  style: TextStyle(color: _isError ? AppColors.danger : AppColors.success, fontSize: 13),
-                  textAlign: TextAlign.center,
+                  border: Border.all(color: AppColors.divider(context).withOpacity(0.05)),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-            
-            // Email field (always visible)
-            _buildField(
-              controller: _emailController,
-              label: 'Email',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              enabled: !_otpSent,
             ),
-            const SizedBox(height: 16),
-            
-            if (!_otpSent) ...[
-              // Send OTP button
-              _buildButton('Send OTP', _sendOtp),
-            ] else ...[
-              // OTP field
-              _buildField(
-                controller: _otpController,
-                label: 'Enter OTP',
-                icon: Icons.pin_outlined,
-                keyboardType: TextInputType.number,
+          ),
+          Positioned(
+            top: 30, right: -30,
+            child: Transform.rotate(
+              angle: -15 * 3.14159 / 180,
+              child: Container(
+                width: 200, height: 200,
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+                ),
               ),
-              const SizedBox(height: 16),
-              
-              // New password field
-              _buildField(
-                controller: _passwordController,
-                label: 'New Password',
-                icon: Icons.lock_outline,
-                obscure: _obscurePassword,
-                toggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
-              ),
-              const SizedBox(height: 16),
-              
-              // Confirm password field
-              _buildField(
-                controller: _confirmPasswordController,
-                label: 'Confirm Password',
-                icon: Icons.lock_outline,
-                obscure: _obscureConfirm,
-                toggleObscure: () => setState(() => _obscureConfirm = !_obscureConfirm),
-              ),
-              const SizedBox(height: 24),
-              
-              // Reset button
-              _buildButton('Reset Password', _resetPassword),
-              
-              const SizedBox(height: 12),
-              
-              // Resend OTP
-              TextButton(
-                onPressed: _isLoading ? null : _sendOtp,
-                child: Tr('Resend OTP', style: TextStyle(color: AppColors.primary)),
-              ),
-            ],
-          ],
+            ),
+          ),
+
+          // ─── Main Content ───
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Responsive.sp(24),
+                          vertical: Responsive.sp(24),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ─── Back Button ───
+                            GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: Container(
+                                width: Responsive.sp(40),
+                                height: Responsive.sp(40),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background(context),
+                                  border: Border.all(color: AppColors.textPrimary(context)),
+                                  boxShadow: const [BoxShadow(offset: Offset(4, 4), color: Colors.black)],
+                                ),
+                                child: Center(
+                                  child: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: Responsive.sp(28)),
+
+                            // ─── Icon Box ───
+                            Container(
+                              width: Responsive.sp(48),
+                              height: Responsive.sp(48),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                boxShadow: [BoxShadow(offset: Offset(4, 4), color: Colors.black)],
+                              ),
+                              child: Center(
+                                child: Icon(Icons.lock_reset, color: Colors.white, size: Responsive.sp(28)),
+                              ),
+                            ),
+                            SizedBox(height: Responsive.sp(22)),
+
+                            // ─── Title ───
+                            Text(
+                              _otpSent ? 'RESET\nPASSWORD' : 'FORGOT\nPASSWORD',
+                              style: TextStyle(
+                                fontFamily: 'IntegralCF',
+                                fontSize: Responsive.sp(36),
+                                fontWeight: FontWeight.w700,
+                                height: 1.0,
+                                letterSpacing: -1,
+                                color: AppColors.textPrimary(context),
+                              ),
+                            ),
+                            SizedBox(height: Responsive.sp(8)),
+
+                            // ─── Subtitle ───
+                            Tr(
+                              _otpSent
+                                ? 'Enter the OTP sent to your email and set a new password.'
+                                : 'Enter your email address and we will send you an OTP to reset your password.',
+                              style: TextStyle(
+                                fontSize: Responsive.sp(15),
+                                color: AppColors.textSecondary(context),
+                                height: 1.4,
+                              ),
+                            ),
+                            SizedBox(height: Responsive.sp(28)),
+
+                            // ─── Message Banner ───
+                            if (_message != null) ...[
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(Responsive.sp(12)),
+                                decoration: BoxDecoration(
+                                  color: _isError
+                                    ? AppColors.danger.withOpacity(0.1)
+                                    : AppColors.success.withOpacity(0.1),
+                                  border: Border.all(
+                                    color: _isError ? AppColors.danger : AppColors.success,
+                                    width: AppColors.brutalBorderWidth,
+                                  ),
+                                ),
+                                child: Text(
+                                  _message!,
+                                  style: TextStyle(
+                                    color: _isError ? AppColors.danger : AppColors.success,
+                                    fontSize: Responsive.sp(13),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: Responsive.sp(16)),
+                            ],
+
+                            // ─── Email Field (always visible) ───
+                            _buildLabel(tr('EMAIL ADDRESS')),
+                            _buildNeoField(
+                              controller: _emailController,
+                              hint: 'name@example.com',
+                              keyboardType: TextInputType.emailAddress,
+                              enabled: !_otpSent,
+                            ),
+                            SizedBox(height: Responsive.sp(20)),
+
+                            if (!_otpSent) ...[
+                              const Spacer(),
+                              const SizedBox(height: 24),
+                              // ─── Send OTP Button ───
+                              _buildNeoButton(tr('SEND OTP'), _sendOtp),
+                            ] else ...[
+                              // ─── OTP Field ───
+                              _buildLabel(tr('ENTER OTP')),
+                              _buildNeoField(
+                                controller: _otpController,
+                                hint: tr('6-digit code'),
+                                keyboardType: TextInputType.number,
+                              ),
+                              SizedBox(height: Responsive.sp(20)),
+
+                              // ─── New Password ───
+                              _buildLabel(tr('NEW PASSWORD')),
+                              _buildNeoPasswordField(
+                                controller: _passwordController,
+                                hint: tr('Enter new password'),
+                                obscure: _obscurePassword,
+                                toggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
+                              ),
+                              SizedBox(height: Responsive.sp(20)),
+
+                              // ─── Confirm Password ───
+                              _buildLabel(tr('CONFIRM PASSWORD')),
+                              _buildNeoPasswordField(
+                                controller: _confirmPasswordController,
+                                hint: tr('Re-enter password'),
+                                obscure: _obscureConfirm,
+                                toggleObscure: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                              ),
+                              SizedBox(height: Responsive.sp(28)),
+
+                              // ─── Reset Button ───
+                              _buildNeoButton(tr('RESET PASSWORD'), _resetPassword),
+                              SizedBox(height: Responsive.sp(12)),
+
+                              // ─── Resend OTP ───
+                              Center(
+                                child: GestureDetector(
+                                  onTap: _isLoading ? null : _sendOtp,
+                                  child: Text(
+                                    tr('RESEND OTP'),
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: Responsive.sp(13),
+                                      fontWeight: FontWeight.w800,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // ─── UI HELPERS ───────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: Responsive.sp(8)),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: Responsive.sp(11),
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1,
+          color: AppColors.textPrimary(context),
         ),
       ),
     );
   }
 
-  Widget _buildField({
+  Widget _buildNeoField({
     required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType? keyboardType,
-    bool obscure = false,
-    VoidCallback? toggleObscure,
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
     bool enabled = true,
   }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscure,
-      enabled: enabled,
-      style: TextStyle(color: AppColors.textPrimary(context)),
-      decoration: InputDecoration(
-        labelText: tr(label),
-        labelStyle: TextStyle(color: AppColors.textSecondary(context)),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary(context)),
-        suffixIcon: toggleObscure != null
-          ? IconButton(
-              icon: Icon(obscure ? Icons.visibility_off : Icons.visibility, color: AppColors.textSecondary(context)),
-              onPressed: toggleObscure,
-            )
+    return Container(
+      height: Responsive.h(56),
+      decoration: BoxDecoration(
+        color: AppColors.background(context),
+        border: Border.all(color: enabled ? AppColors.textPrimary(context) : AppColors.divider(context)),
+        boxShadow: enabled
+          ? const [BoxShadow(offset: Offset(4, 4), color: Colors.black)]
           : null,
-        filled: true,
-        fillColor: AppColors.surface(context),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border(context)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border(context)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primary, width: 2),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border(context).withOpacity(0.5)),
+      ),
+      child: Center(
+        child: TextField(
+          controller: controller,
+          enabled: enabled,
+          keyboardType: keyboardType,
+          style: TextStyle(
+            fontSize: Responsive.sp(15),
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary(context),
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: AppColors.textPrimary(context).withOpacity(0.4)),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: Responsive.sp(16)),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildButton(String label, VoidCallback onPressed) {
-    return SizedBox(
-      height: 52,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 0,
+  Widget _buildNeoPasswordField({
+    required TextEditingController controller,
+    required String hint,
+    required bool obscure,
+    required VoidCallback toggleObscure,
+  }) {
+    return Container(
+      height: Responsive.h(56),
+      decoration: BoxDecoration(
+        color: AppColors.background(context),
+        border: Border.all(color: AppColors.textPrimary(context)),
+        boxShadow: const [BoxShadow(offset: Offset(4, 4), color: Colors.black)],
+      ),
+      child: Center(
+        child: TextField(
+          controller: controller,
+          obscureText: obscure,
+          style: TextStyle(
+            fontSize: Responsive.sp(15),
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary(context),
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: AppColors.textPrimary(context).withOpacity(0.4)),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: Responsive.sp(16)),
+            suffixIcon: GestureDetector(
+              onTap: toggleObscure,
+              child: Icon(
+                obscure ? Icons.visibility : Icons.visibility_off,
+                color: AppColors.textSecondary(context),
+                size: 20,
+              ),
+            ),
+          ),
         ),
-        child: _isLoading
-          ? const SizedBox(
-              width: 24, height: 24,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-            )
-          : Tr(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  Widget _buildNeoButton(String label, VoidCallback onPressed) {
+    return GestureDetector(
+      onTap: _isLoading ? null : onPressed,
+      child: Container(
+        width: double.infinity,
+        height: Responsive.h(56),
+        decoration: const BoxDecoration(
+          color: AppColors.primary,
+          boxShadow: [BoxShadow(offset: Offset(4, 4), color: Colors.black)],
+        ),
+        child: Center(
+          child: _isLoading
+            ? const SizedBox(
+                width: 24, height: 24,
+                child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+              )
+            : Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'IntegralCF',
+                  fontSize: Responsive.sp(18),
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
+        ),
       ),
     );
   }
