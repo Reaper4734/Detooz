@@ -121,16 +121,25 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
                 detail="Phone number already registered"
             )
     
-    # Create new user with 30-day grace period
-    # Check for verification tokens
-    email_verified = False
-    if user_data.email_verification_token:
-        try:
-            payload = jwt.decode(user_data.email_verification_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            if payload.get("sub") == normalized_email and payload.get("type") == "email_verification":
-                email_verified = True
-        except JWTError:
-            pass
+    # Enforce mandatory email verification
+    if not user_data.email_verification_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email verification is mandatory. Please verify your email via OTP before registering."
+        )
+
+    try:
+        payload = jwt.decode(user_data.email_verification_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("sub") != normalized_email or payload.get("type") != "email_verification":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid email verification token for this email."
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired email verification token."
+        )
 
     phone_verified = False
     if user_data.firebase_phone_token and user_data.phone:
@@ -141,7 +150,6 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
             if firebase_user.get('phone_number') == expected_phone:
                 phone_verified = True
 
-    grace_period_end = datetime.utcnow() + timedelta(days=30)
     user = User(
         email=normalized_email,
         password_hash=get_password_hash(user_data.password),
@@ -150,9 +158,9 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         last_name=user_data.last_name,
         phone=user_data.phone.strip() if user_data.phone else None,
         country_code=user_data.country_code,
-        email_verified=email_verified,
+        email_verified=True,
         phone_verified=phone_verified,
-        verification_grace_period_end=grace_period_end
+        verification_grace_period_end=None
     )
     db.add(user)
     await db.commit()
