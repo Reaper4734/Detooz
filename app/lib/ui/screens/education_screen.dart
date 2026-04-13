@@ -1,10 +1,13 @@
 import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:video_player/video_player.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'article_webview.dart';
 import '../components/tr.dart';
-import 'feed_screen.dart';
 import '../theme/app_colors.dart';
 import '../providers.dart';
 import '../providers/education_provider.dart';
@@ -18,638 +21,375 @@ class EducationScreen extends ConsumerStatefulWidget {
 }
 
 class _EducationScreenState extends ConsumerState<EducationScreen> {
-  String _selectedCategory = 'all';
-  final List<String> _categories = ['all', 'alert', 'tip', 'news'];
-  final _searchController = TextEditingController();
-  bool _isRefreshing = false;
+  final PageController _pageController = PageController();
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _pageController.dispose();
     super.dispose();
-  }
-
-  Future<void> _refresh() async {
-    setState(() => _isRefreshing = true);
-    ref.invalidate(educationFeedProvider(_selectedCategory));
-    await Future.delayed(const Duration(milliseconds: 500));
-    setState(() => _isRefreshing = false);
   }
 
   @override
   Widget build(BuildContext context) {
     ref.watch(languageProvider);
-    final feedAsync = ref.watch(educationFeedProvider(_selectedCategory));
+    final feedState = ref.watch(feedProvider('all'));
+    final articles = feedState.articles;
 
     return Scaffold(
-      backgroundColor: AppColors.background(context),
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          color: AppColors.primary,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 100),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 24),
-                _buildHeader(),
-                const SizedBox(height: 16),
-                _buildCategoryChips(),
-                const SizedBox(height: 24),
-                
-                // Dynamic content
-                feedAsync.when(
-                  loading: () => _buildLoadingState(),
-                  error: (e, _) => _buildErrorState(e.toString()),
-                  data: (feed) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Featured Alert (first article)
-                      if (feed.articles.isNotEmpty)
-                        _buildFeaturedAlert(feed.articles.first),
-                      
-                      // Detooz Exclusive
-                      if (feed.exclusive.isNotEmpty) ...[
-                        const SizedBox(height: 32),
-                        _buildSectionTitle('⭐ Detooz Exclusive'),
-                        const SizedBox(height: 12),
-                        _buildHorizontalList(feed.exclusive.map((e) => e.toArticle()).toList()),
-                      ],
-                      
-                      // Latest Articles
-                      if (feed.articles.length > 1) ...[
-                        const SizedBox(height: 32),
-                        _buildSectionTitle(
-                          '📰 Latest Articles',
-                          actionText: 'View All',
-                          onAction: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => FeedScreen(category: _selectedCategory)),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildHorizontalList(feed.articles.skip(1).take(10).toList()),
-                      ],
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                _buildGoldenRules(),
-                const SizedBox(height: 32),
-                _buildQuickCheck(),
-                const SizedBox(height: 24),
-              ],
+      backgroundColor: Colors.black,
+      body: feedState.isLoading && articles.isEmpty
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : PageView.builder(
+              controller: _pageController,
+              scrollDirection: Axis.vertical,
+              itemCount: articles.length + (feedState.hasMore ? 1 : 0),
+              onPageChanged: (index) {
+                if (index >= articles.length - 2 && feedState.hasMore) {
+                  ref.read(feedProvider('all').notifier).loadMore();
+                }
+              },
+              itemBuilder: (context, index) {
+                if (index == articles.length) {
+                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                }
+                return _ReelItem(article: articles[index]);
+              },
             ),
-          ),
-        ),
-      ),
     );
   }
+}
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Tr(
-            'Learn to Protect Yourself',
-            style: GoogleFonts.inter(
-              color: AppColors.textPrimary(context),
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              height: 1.1,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(50),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface(context),
-                  borderRadius: BorderRadius.circular(50),
-                  border: Border.all(color: AppColors.border(context)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, color: Color(0xFF9CA3AF)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        style: TextStyle(color: AppColors.textPrimary(context)),
-                        decoration: InputDecoration(
-                          hintText: tr('Search scams, tips...'),
-                          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+class _ReelItem extends ConsumerStatefulWidget {
+  final Article article;
+
+  const _ReelItem({required this.article});
+
+  @override
+  ConsumerState<_ReelItem> createState() => _ReelItemState();
+}
+
+class _ReelItemState extends ConsumerState<_ReelItem> with SingleTickerProviderStateMixin {
+  VideoPlayerController? _videoController;
+  bool _isPlaying = true;
+  bool _showLikeAnimation = false;
+  late AnimationController _likeAnimController;
+  late Animation<double> _likeScaleAnim;
+  late bool _isBookmarked;
+  bool _isLiked = false; // Local state for likes since Article doesn't map likes yet
+
+  // Track double tap vs triple tap
+  Timer? _tapTimer;
+  int _tapCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _likeAnimController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _likeScaleAnim = Tween<double>(begin: 0.5, end: 1.5).animate(
+      CurvedAnimation(parent: _likeAnimController, curve: Curves.elasticOut),
     );
+    _isBookmarked = widget.article.isBookmarked;
+    _isLiked = false;
+
+    _initializeMedia();
   }
 
-  Widget _buildCategoryChips() {
-    final labels = {
-      'all': tr('All'),
-      'alert': '🚨 ${tr('Alerts')}',
-      'tip': '💡 ${tr('Tips')}',
-      'news': '📰 ${tr('News')}',
-    };
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: _categories.map((category) {
-          final isSelected = _selectedCategory == category;
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedCategory = category),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : AppColors.surface(context),
-                  borderRadius: BorderRadius.circular(50),
-                  border: Border.all(
-                    color: isSelected ? Colors.transparent : AppColors.border(context),
-                  ),
-                ),
-                child: Text(
-                  labels[category] ?? category,
-                  style: GoogleFonts.inter(
-                    color: isSelected ? Colors.white : AppColors.textPrimary(context),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
+  void _initializeMedia() {
+    if (widget.article.mediaType == 'video' && widget.article.imageUrl != null) {
+      _videoController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.article.imageUrl!),
+      )..initialize().then((_) {
+          setState(() {});
+          _videoController!.setLooping(true);
+          _videoController!.play();
+        });
+    }
   }
 
-  Widget _buildLoadingState() {
-    return Container(
-      height: 200,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
-    );
+  @override
+  void dispose() {
+    _tapTimer?.cancel();
+    _videoController?.dispose();
+    _likeAnimController.dispose();
+    super.dispose();
   }
 
-  Widget _buildErrorState(String error) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.error_outline, color: AppColors.danger, size: 48),
-          const SizedBox(height: 12),
-          Tr('Failed to load content', style: TextStyle(color: AppColors.textPrimary(context))),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: _refresh,
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Tr('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title, {String? actionText, VoidCallback? onAction}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Tr(
-            title,
-            style: GoogleFonts.inter(
-              color: AppColors.textPrimary(context),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          if (actionText != null && onAction != null)
-            GestureDetector(
-              onTap: onAction,
-              child: Tr(
-                actionText,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturedAlert(Article article) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border(context)),
-          color: AppColors.surface(context),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            children: [
-              // Image
-              Container(
-                height: 160,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.3),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (article.imageUrl != null)
-                      Image.network(
-                        article.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const SizedBox(),
-                      ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                        ),
-                      ),
-                    ),
-                    // Badge
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Tr(
-                          article.category.toUpperCase(),
-                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    // Bookmark button
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: _buildBookmarkButton(article),
-                    ),
-                  ],
-                ),
-              ),
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Tr(
-                            article.title,
-                            style: GoogleFonts.inter(
-                              color: AppColors.textPrimary(context),
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              height: 1.2,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${article.source} • ${article.readTimeMins} ${tr('min read')}',
-                      style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    if (article.summary != null)
-                      Tr(
-                        article.summary!,
-                        style: GoogleFonts.inter(color: AppColors.textSecondary(context), fontSize: 14, height: 1.5),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () => _openArticle(article),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Tr('Read Full Article', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward, size: 18, color: Colors.white),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHorizontalList(List<Article> articles) {
-    return SizedBox(
-      height: 180,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: articles.length,
-        itemBuilder: (context, index) {
-          final article = articles[index];
-          return Container(
-            width: 280,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border(context)),
-            ),
-            child: InkWell(
-              onTap: () => _openArticle(article),
-              borderRadius: BorderRadius.circular(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Image
-                  Container(
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.25),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                      image: article.imageUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(article.imageUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: _buildBookmarkButton(article, small: true),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Content
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Tr(
-                            article.title,
-                            style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w600, fontSize: 14),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const Spacer(),
-                          Row(
-                            children: [
-                              Text(
-                                article.source,
-                                style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11),
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${article.readTimeMins} min',
-                                style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildBookmarkButton(Article article, {bool small = false}) {
-    return GestureDetector(
-      onTap: () async {
-        try {
-          if (article.isBookmarked) {
-            await ref.read(bookmarksNotifierProvider.notifier).removeBookmark(article);
-          } else {
-            await ref.read(bookmarksNotifierProvider.notifier).addBookmark(article);
-          }
-          ref.invalidate(educationFeedProvider(_selectedCategory));
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
-            );
-          }
+  void _handleTap() {
+    _tapCount++;
+    _tapTimer?.cancel();
+    _tapTimer = Timer(const Duration(milliseconds: 300), () {
+      if (_tapCount == 1) {
+        // Single tap -> Toggle Play/Pause
+        if (_videoController != null && _videoController!.value.isInitialized) {
+          setState(() {
+            _isPlaying = !_isPlaying;
+            _isPlaying ? _videoController!.play() : _videoController!.pause();
+          });
         }
-      },
-      child: Container(
-        padding: EdgeInsets.all(small ? 4 : 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.5),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          article.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-          color: article.isBookmarked ? AppColors.warning : AppColors.textPrimary(context),
-          size: small ? 16 : 20,
-        ),
-      ),
-    );
+      } else if (_tapCount == 2) {
+        // Double tap -> Like
+        _handleDoubleTapLike();
+      } else if (_tapCount >= 3) {
+        // Triple tap -> Open Article
+        _openArticle();
+      }
+      _tapCount = 0;
+    });
   }
 
-  void _openArticle(Article article) {
-    if (article.url.isNotEmpty) {
+  void _handleDoubleTapLike() async {
+    setState(() => _showLikeAnimation = true);
+    _likeAnimController.forward().then((_) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) {
+          _likeAnimController.reverse();
+          setState(() => _showLikeAnimation = false);
+        }
+      });
+    });
+
+    if (!_isLiked) {
+      _toggleLike();
+    }
+  }
+
+  void _toggleLike() {
+    setState(() => _isLiked = !_isLiked);
+    // Future backend implementation for liking an article
+  }
+
+  void _toggleBookmark() async {
+    setState(() => _isBookmarked = !_isBookmarked);
+    try {
+      if (_isBookmarked) {
+        await ref.read(bookmarksNotifierProvider.notifier).addBookmark(widget.article);
+      } else {
+        await ref.read(bookmarksNotifierProvider.notifier).removeBookmark(widget.article); // Passing full Article instead of URL string
+      }
+      // Note: We deliberately avoid calling ref.read(feedProvider('all').notifier).refresh() 
+      // because refreshing resets pagination and forces the user to the top of the feed!
+    } catch (_) {
+      // Revert if failed
+      if (mounted) setState(() => _isBookmarked = !_isBookmarked);
+    }
+  }
+
+  void _openArticle() {
+    if (widget.article.url.isNotEmpty) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ArticleWebView(
-            url: article.url,
-            title: article.title,
+            url: widget.article.url,
+            title: widget.article.title,
           ),
         ),
       );
     }
   }
 
-  // Static sections (keeping Golden Rules and Quick Check)
-  Widget _buildGoldenRules() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Tr('Golden Rules', style: GoogleFonts.inter(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface(context),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border(context)),
-              boxShadow: AppColors.cardShadow(context),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF131A13), // Match screenshot dark olive
+      body: GestureDetector(
+        onTap: _handleTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Safe Background
+            _buildForegroundMedia(),
+
+            // Paused Indicator Overlays
+            if (!_isPlaying)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.play_arrow, size: 64, color: Colors.white),
+                ),
+              ),
+
+            // Like Animation
+            if (_showLikeAnimation)
+              Center(
+                child: ScaleTransition(
+                  scale: _likeScaleAnim,
+                  child: const Icon(Icons.favorite, size: 100, color: Colors.red),
+                ),
+              ),
+
+            // Content Overlay (Title, Actions)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 110, // Increased bottom clearance to avoid colliding with main navbar
+              child: _buildOverlays(),
             ),
-            child: Column(
-              children: [
-                _buildRuleItem(Icons.shield, 'Never share OTPs', 'Banks will never ask for your One-Time Password.'),
-                Divider(height: 1, color: AppColors.border(context)),
-                _buildRuleItem(Icons.link_off, 'Verify before clicking', 'Check sender\'s address for misspellings.'),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildRuleItem(IconData icon, String title, String desc) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: Colors.green.withOpacity(0.2), shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.green.shade400, size: 16),
+  Widget _buildForegroundMedia() {
+    if (widget.article.imageUrl == null) {
+      return Center(child: Icon(Icons.article, size: 100, color: Colors.white.withOpacity(0.1)));
+    }
+
+    if (widget.article.mediaType == 'video' && _videoController != null && _videoController!.value.isInitialized) {
+      return Center(
+        child: AspectRatio(
+          aspectRatio: _videoController!.value.aspectRatio,
+          child: VideoPlayer(_videoController!),
+        ),
+      );
+    } else {
+      return Center(
+        child: CachedNetworkImage(
+          imageUrl: widget.article.imageUrl!,
+          fit: BoxFit.contain, // Keep ratios perfect
+          placeholder: (context, url) => const CircularProgressIndicator(color: AppColors.primary),
+          errorWidget: (context, url, error) {
+            return Center(
+              child: Icon(Icons.article, size: 100, color: Colors.white.withOpacity(0.1)),
+            );
+          },
+        ),
+      );
+    }
+  }
+
+  Widget _buildOverlays() {
+    String formattedDate = '';
+    if (widget.article.publishedAt != null) {
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final d = widget.article.publishedAt!;
+      formattedDate = '${months[d.month - 1]} ${d.day}, ${d.year}';
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Left Side Content
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Category/Source
+              Text(
+                widget.article.source,
+                style: const TextStyle(
+                  color: Color(0xFF00E5FF), // Cyan matching the screenshot
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Title
+              Text(
+                widget.article.title.toUpperCase(),
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                  letterSpacing: -0.5,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+
+              // Summary
+              if (widget.article.summary != null)
+                Text(
+                  widget.article.summary!,
+                  style: const TextStyle(
+                    color: Colors.white70, 
+                    fontSize: 14, 
+                    height: 1.4,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                
+              const SizedBox(height: 8),
+
+              // Date
+              if (formattedDate.isNotEmpty)
+                Text(
+                  formattedDate,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Tr(title, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w500, fontSize: 14)),
-                const SizedBox(height: 4),
-                Tr(desc, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12, height: 1.4)),
-              ],
+        ),
+        
+        const SizedBox(width: 16),
+        
+        // Right Side Actions Stack
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildActionBtn(
+              icon: Icons.favorite_border,
+              activeIcon: Icons.favorite,
+              isActive: _isLiked, // Now independent!
+              activeColor: Colors.red,
+              onTap: _toggleLike, // Toggles like state only
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 24),
+            _buildActionBtn(
+              icon: Icons.bookmark_border,
+              activeIcon: Icons.bookmark,
+              isActive: _isBookmarked,
+              activeColor: Colors.white,
+              onTap: _toggleBookmark, 
+            ),
+            const SizedBox(height: 24),
+            _buildActionBtn(
+              icon: Icons.share,
+              activeIcon: Icons.share,
+              isActive: false,
+              activeColor: Colors.white,
+              onTap: () => Share.share('Check out: ${widget.article.title} ${widget.article.url}'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildQuickCheck() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Tr('Quick Check: Bank Calls', style: GoogleFonts.inter(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.surface(context),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border(context)),
-              boxShadow: AppColors.cardShadow(context),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        const Icon(Icons.check_circle, color: Colors.green, size: 18),
-                        const SizedBox(width: 6),
-                        const Tr('DO', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14)),
-                      ]),
-                      const SizedBox(height: 8),
-                      Tr('Hang up and call the number on the back of your card.', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13)),
-                    ],
-                  ),
-                ),
-                Container(width: 1, height: 80, color: AppColors.border(context), margin: const EdgeInsets.symmetric(horizontal: 16)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        const Icon(Icons.cancel, color: Colors.red, size: 18),
-                        const SizedBox(width: 6),
-                        const Tr('DON\'T', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14)),
-                      ]),
-                      const SizedBox(height: 8),
-                      Tr('Trust caller ID or press numbers to "speak to an agent".', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildActionBtn({
+    required IconData icon, 
+    required IconData activeIcon,
+    required bool isActive,
+    required Color activeColor, 
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.3),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          isActive ? activeIcon : icon, 
+          color: isActive ? activeColor : Colors.white, 
+          size: 26,
+        ),
       ),
     );
   }

@@ -9,7 +9,7 @@ import 'privacy_security_screen.dart';
 import 'bookmarks_screen.dart';
 import 'language_manager_screen.dart';
 import '../components/tr.dart';
-import 'main_screen.dart';
+import '../components/settings_widgets.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -29,511 +29,191 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
     // Watch providers
     final currentTheme = ref.watch(themeProvider);
     final settingsAsync = ref.watch(userSettingsProvider);
 
-    
-    // Aesthetic Constants
-    final glassColor = AppColors.surface(context);
-    final glassBorder = AppColors.border(context);
-    const primaryColor = Color(0xFF7C3AED); // Violet-600
-    final bgColor = AppColors.background(context);
-
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        title: Tr('Settings', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
-        centerTitle: true,
-        backgroundColor: bgColor.withOpacity(0.9),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leadingWidth: 80,
-        leading: GestureDetector(
-          onTap: () => Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const MainScreen()),
-            (route) => false,
-          ),
-          behavior: HitTestBehavior.opaque,
-          child: Row(
+      backgroundColor: AppColors.background(context),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(width: 8),
-              Icon(Icons.arrow_back_ios_new, color: primaryColor, size: 20),
-              const SizedBox(width: 4),
-              Tr('Back', style: TextStyle(color: primaryColor, fontSize: 17, fontWeight: FontWeight.w400)),
+              buildBrutalistHeader(context, 'Settings'),
+
+              // ── ACCOUNT ──
+              buildSectionLabel(context, 'Account'),
+              buildSettingsCard(context, children: [
+                buildSettingsRow(context,
+                  leading: buildRowIcon(context, Icons.person),
+                  title: tr('My Profile'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())),
+                ),
+                buildSettingsRow(context,
+                  leading: buildRowIcon(context, Icons.security),
+                  title: tr('Privacy & Security'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacySecurityScreen())),
+                ),
+                buildSettingsRow(context,
+                  leading: buildRowIcon(context, Icons.bookmark),
+                  title: tr('My Bookmarks'),
+                  isLast: true,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BookmarksScreen())),
+                ),
+              ]),
+              const SizedBox(height: 24),
+
+              // ── ALERTS ──
+              buildSectionLabel(context, 'Alerts'),
+              settingsAsync.when(
+                data: (settings) => buildSettingsCard(context, children: [
+                  buildSettingsRow(context,
+                    leading: buildRowIcon(context, Icons.lightbulb_outline),
+                    title: tr('Safety Tips'),
+                    trailing: BrutalToggle(
+                      value: settings.receiveTips,
+                      onChanged: (v) => ref.read(userSettingsProvider.notifier).updateSettings(receiveTips: v),
+                    ),
+                    isLast: true,
+                  ),
+                ]),
+                loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED))),
+                error: (e, _) => Text(e.toString(), style: const TextStyle(color: Color(0xFFEF4444))),
+              ),
+              const SizedBox(height: 24),
+
+              // ── LANGUAGE ──
+              buildSectionLabel(context, 'Language'),
+              buildSettingsCard(context, children: [
+                Consumer(builder: (context, ref, _) {
+                    final langCode = ref.watch(languageProvider);
+                    final langName = langCode == 'en' ? 'English' : 
+                                      langCode == 'hi' ? 'हिन्दी' : langCode;
+                    return buildSettingsRow(context,
+                      leading: buildRowIcon(context, Icons.language),
+                      title: tr('App Language'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(langName, style: TextStyle(fontSize: 13, color: AppColors.textSecondary(context))),
+                          const SizedBox(width: 8),
+                          Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary(context)),
+                        ],
+                      ),
+                      onTap: () => showLanguageSelector(context, ref), // Assuming this still pops up or routes. Wait, the original code had this. I'll keep it. 
+                    );
+                }),
+                buildSettingsRow(context,
+                  leading: buildRowIcon(context, Icons.translate),
+                  title: tr('SMS Detection Language'),
+                  subtitle: tr('Manage scam detection language packs'),
+                  trailing: Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary(context)),
+                  isLast: true,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LanguageManagerScreen())),
+                ),
+              ]),
+              const SizedBox(height: 24),
+
+              // ── APPEARANCE ──
+              buildSectionLabel(context, 'Appearance'),
+              buildSettingsCard(context, children: [
+                _radioRow('System', ThemeMode.system, currentTheme, ref),
+                _radioRow('Dark Mode', ThemeMode.dark, currentTheme, ref),
+                _radioRow('Light Mode', ThemeMode.light, currentTheme, ref, isLast: true),
+              ]),
+              const SizedBox(height: 24),
+
+              // ── LOG OUT ──
+              GestureDetector(
+                onTap: () async {
+                  await ref.read(authProvider.notifier).logout();
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    border: Border.all(color: const Color(0xFFEF4444), width: 2), // Red border
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.logout, color: Color(0xFFEF4444), size: 18),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'LOG OUT',
+                        style: TextStyle(
+                          fontFamily: 'IntegralCF',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700, // Explicitly heavy for Brutalism
+                          color: Color(0xFFEF4444),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // ── FOOTER ──
+              Center(
+                child: Column(
+                  children: [
+                     Tr('DeTooz Enterprise v2.4.0 (Build 301)', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12, fontWeight: FontWeight.w600)),
+                     const SizedBox(height: 4),
+                     Tr('© 2024 DeTooz Security Inc. All rights reserved.', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11)),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
-        bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(color: AppColors.border(context), height: 1),
-        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget _radioRow(String title, ThemeMode mode, ThemeMode currentTheme, WidgetRef ref, {bool isLast = false}) {
+    final isActive = currentTheme == mode;
+    return GestureDetector(
+      onTap: () => ref.read(themeProvider.notifier).setTheme(mode),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          border: isLast ? null : Border(bottom: BorderSide(color: AppColors.divider(context))),
+        ),
+        child: Row(
           children: [
-            // Profile Summary Card (name + email, no edit button)
-            _buildProfileCard(),
-            
-            const SizedBox(height: 32),
-            
-            // Account Section
-            _buildSectionHeader('Account'),
-            _buildGlassCard(
-              padding: EdgeInsets.zero,
-              child: InkWell(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                ),
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      _buildIcon(Icons.person, const Color(0x1A7C3AED), primaryColor),
-                      const SizedBox(width: 16),
-                      Expanded(child: Tr('My Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
-                      const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
-                    ],
-                  ),
+            Expanded(
+              child: Text(tr(title), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context))),
+            ),
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isActive ? const Color(0xFF7C3AED) : AppColors.textSecondary(context),
+                  width: 2,
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            // Privacy & Security Row
-            _buildGlassCard(
-              padding: EdgeInsets.zero,
-              child: InkWell(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const PrivacySecurityScreen()),
-                ),
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      _buildIcon(Icons.security, const Color(0x1A22C55E), const Color(0xFF22C55E)),
-                      const SizedBox(width: 16),
-                      Expanded(child: Tr('Privacy & Security', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
-                      const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // My Bookmarks Row
-            _buildGlassCard(
-              padding: EdgeInsets.zero,
-              child: InkWell(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const BookmarksScreen()),
-                ),
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      _buildIcon(Icons.bookmark, const Color(0x1AF59E0B), const Color(0xFFF59E0B)),
-                      const SizedBox(width: 16),
-                      Expanded(child: Tr('My Bookmarks', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
-                      const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Alerts Section (Only Safety Tips)
-            _buildSectionHeader('Alerts'),
-            settingsAsync.when(
-              data: (settings) => _buildGlassCard(
-                child: _buildSwitchRow(
-                  icon: Icons.lightbulb,
-                  iconBg: const Color(0x1AEAB308),
-                  iconColor: const Color(0xFFEAB308),
-                  title: tr('Safety Tips'),
-                  value: settings.receiveTips,
-                  onChanged: (v) => ref.read(userSettingsProvider.notifier).updateSettings(receiveTips: v),
-                ),
-              ),
-              loading: () => _buildLoadingCard(),
-              error: (e, _) => _buildErrorCard(e.toString()),
-            ),
-
-            const SizedBox(height: 32),
-
-            // 5️⃣ Language Section (Independent)
-            _buildSectionHeader('Language'),
-            _buildGlassCard(
-              padding: EdgeInsets.zero,
-              child: InkWell(
-                onTap: () => showLanguageSelector(context, ref),
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      _buildIcon(Icons.language, const Color(0x1A6366F1), const Color(0xFF6366F1)),
-                      const SizedBox(width: 16),
-                      Expanded(child: Tr('App Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
-                      Consumer(builder: (context, ref, _) {
-                          final langCode = ref.watch(languageProvider);
-                          final langName = langCode == 'en' ? 'English' : 
-                                            langCode == 'hi' ? 'हिन्दी' : langCode;
-                          return Text(
-                              langName,
-                              style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 15),
-                          );
-                      }),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFFA1A1AA)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Offline Languages (Detection)
-            _buildGlassCard(
-              padding: EdgeInsets.zero,
-              child: InkWell(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const LanguageManagerScreen()),
-                ),
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      _buildIcon(Icons.translate, const Color(0x1A22C55E), const Color(0xFF22C55E)),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Tr('SMS Detection Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context))),
-                            const SizedBox(height: 2),
-                            Tr('Manage scam detection language packs', style: TextStyle(fontSize: 12, color: AppColors.textSecondary(context))),
-                          ],
+              child: isActive
+                  ? Center(
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF7C3AED),
                         ),
                       ),
-                      const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFFA1A1AA)),
-                    ],
-                  ),
-                ),
-              ),
+                    )
+                  : null,
             ),
-
-            const SizedBox(height: 32),
-
-            // 6️⃣ Appearance Section (Independent)
-            _buildSectionHeader('Appearance'),
-            _buildGlassCard(
-              child: Column(
-                children: [
-                  _buildSelectionRow(
-                    title: tr('System'),
-                    isSelected: currentTheme == ThemeMode.system,
-                    onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.system),
-                  ),
-                  _buildDivider(),
-                  _buildSelectionRow(
-                    title: tr('Dark Mode'),
-                    isSelected: currentTheme == ThemeMode.dark,
-                    onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.dark),
-                  ),
-                  _buildDivider(),
-                  _buildSelectionRow(
-                    title: tr('Light Mode'),
-                    isSelected: currentTheme == ThemeMode.light,
-                    onTap: () => ref.read(themeProvider.notifier).setTheme(ThemeMode.light),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // 7️⃣ Logout
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () async {
-                  await ref.read(authProvider.notifier).logout();
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFEF4444),
-                  side: const BorderSide(color: Color(0xFFEF4444)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                      const Icon(Icons.logout, size: 20),
-                      const SizedBox(width: 8),
-                      Tr('Log Out', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // 8️⃣ Footer
-            Center(
-              child: Column(
-                children: [
-                   Tr('DeTooz Enterprise v2.4.0 (Build 301)', style: const TextStyle(color: Color(0xFF52525B), fontSize: 12, fontWeight: FontWeight.w500)),
-                   const SizedBox(height: 4),
-                   Tr('© 2024 DeTooz Security Inc. All rights reserved.', style: const TextStyle(color: Color(0xFF3F3F46), fontSize: 10)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- Helpers ---
-
-  Widget _buildProfileCard() {
-    final profileAsync = ref.watch(userProfileProvider);
-    
-    return profileAsync.when(
-      data: (user) => _buildGlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 56, height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.surface(context),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border(context)),
-              ),
-              child: Center(
-                child: Text(
-                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                  style: TextStyle(color: AppColors.textPrimary(context), fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user.name,
-                    style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold, height: 1.1),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    user.email,
-                    style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 14, fontWeight: FontWeight.w500),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                  ),
-                  // Unverified badge
-                  if (user.needsVerification) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 14),
-                          const SizedBox(width: 4),
-                          Tr('Unverified', style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            // No Edit button - just arrow to indicate tappable
-          ],
-        ),
-      ),
-      loading: () => _buildGlassCard(child: const SizedBox(height: 80, child: Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED))))),
-      error: (e, __) => _buildGlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 56, height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.surface(context),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border(context)),
-              ),
-              child: Center(
-                child: Text('?', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 24, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('User', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 2),
-                  Text('Loading...', style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 14)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
-      child: Tr(
-        title.toUpperCase(),
-        style: const TextStyle(
-          color: Color(0xFF71717A), // Zinc-500
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.0,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
-    return Container(
-      width: double.infinity,
-      padding: padding ?? const EdgeInsets.all(0),
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border(context)),
-        boxShadow: AppColors.cardShadow(context),
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildLoadingCard() {
-    return _buildGlassCard(
-      child: const SizedBox(height: 150, child: Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED)))),
-    );
-  }
-
-  Widget _buildErrorCard(String error) {
-     return _buildGlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Text(error, style: const TextStyle(color: Colors.red)),
-    );
-  }
-
-  Widget _buildIcon(IconData icon, Color bg, Color color) {
-    return Container(
-      width: 36, height: 36,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(icon, color: color, size: 20),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Divider(height: 1, thickness: 1, indent: 68, color: AppColors.border(context));
-  }
-
-  Widget _buildSwitchRow({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          _buildIcon(icon, iconBg, iconColor),
-          const SizedBox(width: 16),
-          Expanded(child: Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: const Color(0xFF7C3AED), // Primary Purple
-            activeTrackColor: const Color(0xFF7C3AED).withOpacity(0.5),
-            inactiveThumbColor: AppColors.isDark(context) ? const Color(0xFFA1A1AA) : const Color(0xFFD4D4D8),
-            inactiveTrackColor: AppColors.isDark(context) ? const Color(0xFF27272A) : const Color(0xFFE5E7EB),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionRow({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    required Widget trailing,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          _buildIcon(icon, iconBg, iconColor),
-          const SizedBox(width: 16),
-          Expanded(child: Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
-          trailing,
-        ],
-      ),
-    );
-  }
-
-    Widget _buildSelectionRow({
-    required String title,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(
-          children: [
-            const SizedBox(width: 4), 
-            Expanded(child: Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context)))),
-            if (isSelected) 
-              const Icon(Icons.check_circle, color: Color(0xFF7C3AED), size: 20)
-            else
-              Container(width: 20, height: 20, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF52525B), width: 2))),
           ],
         ),
       ),

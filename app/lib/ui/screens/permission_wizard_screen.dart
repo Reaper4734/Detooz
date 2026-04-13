@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/sms_receiver_service.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
-import '../theme/app_spacing.dart';
+import '../theme/responsive_utils.dart';
 
 import 'package:permission_handler/permission_handler.dart';
 import '../components/tr.dart';
@@ -19,8 +18,7 @@ class PermissionWizardScreen extends StatefulWidget {
 class _PermissionWizardScreenState extends State<PermissionWizardScreen> with WidgetsBindingObserver {
   bool _notificationGranted = false;
   bool _autostartDone = false;
-  final bool _batteryDone = false;
-  bool _offlineSetupDone = true; // Default to true (skip setup), set to false if first launch
+  bool _offlineSetupDone = true;
 
   @override
   void initState() {
@@ -61,78 +59,93 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
     }
   }
   
-  // This logic is tricky without public access. 
-  // I will rely on the user clicking "I did it" for Autostart,
-  // and for Notification Access, I'll attempt to check.
-  
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        title: Tr('Setup Detooz Protection'),
-        centerTitle: true,
-        automaticallyImplyLeading: false, 
-        backgroundColor: AppColors.background(context),
-        foregroundColor: AppColors.textPrimary(context),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Tr('To protect you 24/7, Detooz needs 3 permissions.',
-              style: AppTypography.bodySmall,
-            ),
-            SizedBox(height: AppSpacing.xl),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(Responsive.sp(24)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: Responsive.sp(12)),
+              // ─── Header ───
+              Text(
+                'SETUP',
+                style: TextStyle(
+                  fontFamily: 'IntegralCF',
+                  fontSize: Responsive.sp(36),
+                  fontWeight: FontWeight.w700,
+                  height: 1.0,
+                  letterSpacing: -1,
+                  color: AppColors.textPrimary(context),
+                ),
+              ),
+              Text(
+                'DETOOZ',
+                style: TextStyle(
+                  fontFamily: 'IntegralCF',
+                  fontSize: Responsive.sp(36),
+                  fontWeight: FontWeight.w700,
+                  height: 1.0,
+                  letterSpacing: -1,
+                  color: AppColors.primary,
+                ),
+              ),
+              SizedBox(height: Responsive.sp(12)),
+              Tr(
+                'To protect you 24/7, Detooz needs system permissions to operate successfully.',
+                style: TextStyle(
+                  fontSize: Responsive.sp(14),
+                  color: AppColors.textSecondary(context),
+                  height: 1.4,
+                ),
+              ),
+              SizedBox(height: Responsive.sp(40)),
 
-            // Step 1: Notification Access (Critical)
-            _buildStepCard(
-              index: 1,
-              title: tr("Scam Detection Access"),
-              description: "Required to read incoming SMS/WhatsApp messages.",
-              icon: Icons.notifications_active,
-              isDone: _notificationGranted,
-              actionLabel: "Grant Access",
-              onAction: () async {
-                 // Request Standard Permissions first (SMS & Contacts)
-                 await [Permission.sms, Permission.contacts].request();
-                 
-                 // Then Open Notification Listener Settings
-                 await smsReceiverService.openNotificationListenerSettings();
-                 // Polling happens in didChangeAppLifecycleState
-              },
-            ),
-            
-            SizedBox(height: AppSpacing.md),
+              // ─── Step 1: Notification Access ───
+              _buildStepCard(
+                index: 1,
+                title: tr("SCAM DETECTION ACCESS"),
+                description: "Required to read incoming SMS/WhatsApp messages independently.",
+                icon: Icons.notifications_active,
+                isDone: _notificationGranted,
+                actionLabel: "GRANT ACCESS",
+                onAction: () async {
+                   await [Permission.sms, Permission.contacts].request();
+                   await smsReceiverService.openNotificationListenerSettings();
+                },
+              ),
+              
+              SizedBox(height: Responsive.sp(20)),
 
-            // Step 2: Autostart (Xiaomi/Oppo/Vivo)
-            _buildStepCard(
-              index: 2,
-              title: tr("Run in Background"),
-              description: "Prevents the system from killing Detooz. Enable 'Autostart'.",
-              icon: Icons.flash_on,
-              isDone: _autostartDone,
-              actionLabel: "Open Settings",
-              onAction: () async {
-                try {
-                  await smsReceiverService.openAutostartSettings();
-                } catch (e) {
-                  debugPrint('Autostart error: $e');
-                } finally {
-                  if (mounted) setState(() => _autostartDone = true);
-                }
-              },
-            ),
+              // ─── Step 2: Autostart (Xiaomi/Oppo/Vivo) ───
+              _buildStepCard(
+                index: 2,
+                title: tr("RUN IN BACKGROUND"),
+                description: "Prevents the system from killing Detooz. Enable 'Autostart'.",
+                icon: Icons.flash_on,
+                isDone: _autostartDone,
+                actionLabel: "OPEN SETTINGS",
+                onAction: () async {
+                  try {
+                    await smsReceiverService.openAutostartSettings();
+                  } catch (e) {
+                    debugPrint('Autostart error: $e');
+                  } finally {
+                    if (mounted) setState(() => _autostartDone = true);
+                  }
+                },
+              ),
 
-            const Spacer(),
-            
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _notificationGranted ? () async {
+              const Spacer(),
+              
+              // ─── Continue Button ───
+              GestureDetector(
+                onTap: _notificationGranted ? () async {
                   if (!_offlineSetupDone) {
-                    // First launch: chain to offline language setup
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.setBool('offline_setup_done', true);
                     if (!mounted) return;
@@ -140,26 +153,44 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
                       MaterialPageRoute(
                         builder: (_) => SetupOfflineProtectionScreen(
                           onComplete: () {
-                            // Navigate to dashboard, clearing all previous routes.
-                            // We use navigatorKey or a builder context — NOT the wizard's context.
+                            Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (Route<dynamic> route) => false);
                           },
                         ),
                       ),
                     );
                   } else {
-                    // Subsequent launches: just return
                     Navigator.of(context).pop();
                   }
                 } : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  disabledBackgroundColor: Colors.grey[800],
+                child: Container(
+                  width: double.infinity,
+                  height: Responsive.h(56),
+                  decoration: BoxDecoration(
+                    color: _notificationGranted ? AppColors.primary : AppColors.divider(context),
+                    boxShadow: _notificationGranted 
+                        ? const [BoxShadow(offset: Offset(4, 4), color: Colors.black)]
+                        : [],
+                    border: Border.all(
+                      color: _notificationGranted ? Colors.transparent : AppColors.textSecondary(context).withOpacity(0.5),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'START PROTECTING ME',
+                      style: TextStyle(
+                        fontFamily: 'IntegralCF',
+                        fontSize: Responsive.sp(16),
+                        fontWeight: FontWeight.w700,
+                        color: _notificationGranted ? Colors.black : AppColors.textSecondary(context).withOpacity(0.5),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Tr('Start Protecting Me', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-            ),
-          ],
+              SizedBox(height: Responsive.sp(16)),
+            ],
+          ),
         ),
       ),
     );
@@ -175,54 +206,88 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
     required VoidCallback onAction,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.sp(16)),
       decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.background(context),
         border: Border.all(
-          color: isDone ? Colors.green.withOpacity(0.5) : AppColors.border(context),
+          color: isDone ? AppColors.success : AppColors.textPrimary(context),
+          width: 2,
         ),
+        boxShadow: [
+          if (!isDone) const BoxShadow(offset: Offset(4, 4), color: Colors.black)
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDone ? Colors.green.withOpacity(0.2) : AppColors.surface(context).withOpacity(0.3),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isDone ? Icons.check : icon,
-              color: isDone ? Colors.green : AppColors.textSecondary(context),
-              size: 24,
-            ),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold, fontSize: 16)),
-                SizedBox(height: 4),
-                Text(description, style: TextStyle(color: AppColors.textSecondary(context), fontSize: 12)),
-                if (!isDone) ...[
-                  SizedBox(height: 12),
-                  SizedBox(
-                    height: 36,
-                    child: OutlinedButton(
-                      onPressed: onAction,
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppColors.primary.withOpacity(0.8)),
-                        foregroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      child: Text(actionLabel),
-                    ),
+          Row(
+            children: [
+              Container(
+                width: Responsive.sp(36),
+                height: Responsive.sp(36),
+                decoration: BoxDecoration(
+                  color: isDone ? AppColors.success : AppColors.background(context),
+                  border: Border.all(color: isDone ? AppColors.success : AppColors.textPrimary(context), width: 2),
+                ),
+                child: Center(
+                  child: Icon(
+                    isDone ? Icons.check : icon,
+                    color: isDone ? Colors.white : AppColors.textPrimary(context),
+                    size: Responsive.sp(18),
                   ),
-                ],
-              ],
+                ),
+              ),
+              SizedBox(width: Responsive.sp(16)),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'IntegralCF',
+                    fontSize: Responsive.sp(14),
+                    fontWeight: FontWeight.w700,
+                    color: isDone ? AppColors.success : AppColors.textPrimary(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: Responsive.sp(12)),
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: Responsive.sp(13),
+              color: AppColors.textSecondary(context),
+              height: 1.4,
             ),
           ),
+          if (!isDone) ...[
+            SizedBox(height: Responsive.sp(16)),
+            GestureDetector(
+              onTap: onAction,
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: Responsive.sp(10), horizontal: Responsive.sp(16)),
+                decoration: const BoxDecoration(
+                  color: Colors.black,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      actionLabel,
+                      style: TextStyle(
+                        fontFamily: 'IntegralCF',
+                        fontSize: Responsive.sp(11),
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: Responsive.sp(8)),
+                    Icon(Icons.arrow_forward, color: Colors.white, size: Responsive.sp(14)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

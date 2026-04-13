@@ -139,6 +139,11 @@ class OfflineCacheService {
 
   // ============ CLEANUP ============
 
+  /// Clear all scan history
+  Future<void> clearScans() async {
+    await _scanHistoryBox.clear();
+  }
+
   /// Clear only settings (tokens, preferences) - keeps scan history on device
   Future<void> clearSettings() async {
     await _settingsBox.clear();

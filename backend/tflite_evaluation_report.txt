@@ -1,0 +1,19 @@
+✅ Accuracy: 0.9690 (96.90%)
+
+📋 Classification Report:
+              precision    recall  f1-score   support
+
+         HAM       0.98      0.97      0.98      1318
+         OTP       1.00      1.00      1.00        98
+        SCAM       0.94      0.95      0.95       584
+
+    accuracy                           0.97      2000
+   macro avg       0.97      0.98      0.97      2000
+weighted avg       0.97      0.97      0.97      2000
+
+
+😵 Confusion Matrix:
+True/Pred  HAM      OTP      SCAM    
+HAM        1283     0        35      
+OTP        0        98       0       
+SCAM       27       0        557     

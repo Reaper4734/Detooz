@@ -1,0 +1,26 @@
+[INFO] Loading TFLite Model...
+Loading tokenizer from C:\Users\Admin\Downloads\detooz app\Detooz\backend\ml_pipeline\saved_model
+[DEBUG] Input Details: [{'name': 'input_ids', 'index': 0, 'shape': array([  1, 128], dtype=int32), 'shape_signature': array([  1, 128], dtype=int32), 'dtype': <class 'numpy.int32'>, 'quantization': (0.0, 0), 'quantization_parameters': {'scales': array([], dtype=float32), 'zero_points': array([], dtype=int32), 'quantized_dimension': 0}, 'sparsity_parameters': {}}]
+[DEBUG] Output Details: [{'name': 'Identity', 'index': 3007, 'shape': array([1, 3], dtype=int32), 'shape_signature': array([1, 3], dtype=int32), 'dtype': <class 'numpy.float32'>, 'quantization': (0.0, 0), 'quantization_parameters': {'scales': array([], dtype=float32), 'zero_points': array([], dtype=int32), 'quantized_dimension': 0}, 'sparsity_parameters': {}}]
+================================================================================
+Message                                       | Pred | Confidence | Logits
+================================================================================
+Hi mom how are you                            | HAM  | 100.0%
+Hello mom, how are you doing today?           | HAM  | 100.0%
+Hey dad, I am fine                            | HAM  | 100.0%
+Good morning, hope you are well               | HAM  | 100.0%
+How are you doing?                            | HAM  | 99.9%
+I am fine, thank you                          | HAM  | 100.0%
+Hi mom, I lost my phone                       | HAM  | 100.0%
+Hey dad, I need money urgently                | HAM  | 99.9%
+Hi this is your son, send money to this numbe | SCAM | 99.0%
+Mom I am in trouble please help               | HAM  | 99.9%
+Please send me 5000 rupees urgent             | SCAM | 83.8% (HAM:16% | OTP:0% | SCAM:84%)
+Congratulations! You won lottery click here   | SCAM | 100.0%
+Your KYC is expiring, update now              | SCAM | 99.9%
+Meeting at 5pm tomorrow                       | HAM  | 98.4%
+Did you buy groceries?                        | HAM  | 100.0%
+What time is dinner?                          | HAM  | 99.5%
+Your OTP is 123456                            | OTP  | 99.7%
+Verification code: 5678                       | SCAM | 73.2% (HAM:0% | OTP:27% | SCAM:73%)
+================================================================================

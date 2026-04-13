@@ -8,9 +8,12 @@ import '../../utils/datetime_utils.dart'; // Added
 import '../theme/app_colors.dart';
 import '../providers.dart';
 import 'scan_detail_screen.dart';
-import 'manual_result_screen.dart';
+
 import '../../contracts/scan_view_model.dart';
 import '../../contracts/risk_level.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:intl/intl.dart';
+import '../theme/responsive_utils.dart';
 
 import '../components/tr.dart';
 import 'main_screen.dart';
@@ -82,7 +85,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (scan != null && mounted) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan, isCloudAnalysis: true)),
+            MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan, isCloudAnalysis: true)),
           );
       }
     } catch (e) {
@@ -111,20 +114,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       _manualCheckController.clear();
       
       if (scan != null && mounted) {
-        // Navigate directly - no overlay needed for manual check
-        
-        // Navigate to appropriate screen
-        if (scan.sender.startsWith('Manual')) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan)),
-            );
-        } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
-            );
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
+        );
       }
     } catch (e) {
       setState(() => _isAnalyzing = false);
@@ -138,6 +131,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
     final recentScans = ref.watch(recentScansProvider);
     final userStats = ref.watch(userStatsProvider);
     final userProfile = ref.watch(userProfileProvider);
@@ -163,62 +157,66 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.fromLTRB(Responsive.sp(20), Responsive.sp(24), Responsive.sp(20), Responsive.sp(100)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        userProfile.when(
-                          data: (profile) {
-                            final firstName = profile.name.split(' ').first;
-                            final capitalized = firstName.isNotEmpty
-                                ? '${firstName[0].toUpperCase()}${firstName.substring(1)}'
-                                : '';
-                            return Text(
-                              '$greeting, $capitalized',
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      userProfile.when(
+                        data: (profile) {
+                          final firstName = profile.name.split(' ').first;
+                          final capitalized = firstName.isNotEmpty
+                              ? firstName[0].toUpperCase() + firstName.substring(1).toLowerCase()
+                              : '';
+                          return Text.rich(
+                            TextSpan(
+                              text: '$greeting, ',
                               style: TextStyle(
-                                color: AppColors.textPrimary(context),
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
+                                fontSize: Responsive.sp(14),
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary(context),
+                                letterSpacing: 1,
                               ),
-                            );
-                          },
-                          loading: () => Text(
-                            greeting,
-                            style: TextStyle(
-                              color: AppColors.textPrimary(context),
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                              children: [
+                                TextSpan(
+                                  text: capitalized,
+                                  style: TextStyle(
+                                    fontFamily: 'IntegralCF',
+                                    fontSize: Responsive.sp(16),
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary(context),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          error: (_, __) => Text(
-                            greeting,
-                            style: TextStyle(
-                              color: AppColors.textPrimary(context),
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Tr('Stay safe today',
+                          );
+                        },
+                        loading: () => Text(
+                          greeting,
                           style: TextStyle(
-                            color: AppColors.textSecondary(context),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary(context),
+                            fontSize: Responsive.sp(14),
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
+                        error: (_, __) => Text(
+                          greeting,
+                          style: TextStyle(
+                            color: AppColors.textPrimary(context),
+                            fontSize: Responsive.sp(14),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 12),
                   GestureDetector(
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
@@ -228,7 +226,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
               
-              SizedBox(height: 32),
+              SizedBox(height: 22),
               
               // Verification Info Card (dismissible)
               if (!_verificationCardDismissed)
@@ -266,286 +264,139 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               
               // Protection Active Card
               Container(
-                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(32),
-                  color: AppColors.surface(context).withOpacity(0.8),
-                  border: Border.all(color: AppColors.border(context)),
+                  color: AppColors.surface(context),
+                  border: Border.all(color: AppColors.border(context), width: 2),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: AppColors.brutalCardShadow(context),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(32),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: Stack(
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Gradient overlay
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          left: 0,
-                          height: 200,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                              gradient: LinearGradient(
-                                begin: Alignment.topRight,
-                                end: Alignment.bottomLeft,
-                                colors: [
-                                  AppColors.primary.withOpacity(0.1),
-                                  Colors.transparent,
-                                ],
+                        Text(
+                          'PROTECTION ACTIVE',
+                          style: TextStyle(
+                            fontFamily: 'IntegralCF',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.5,
+                            color: AppColors.textPrimary(context),
+                          ),
+                        ),
+                        // 3 green dots
+                        Row(
+                          children: List.generate(
+                            3,
+                            (index) => Container(
+                              width: 6,
+                              height: 6,
+                              margin: const EdgeInsets.only(left: 4),
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                                boxShadow: [BoxShadow(color: Color(0x5928C76F), blurRadius: 4)],
                               ),
                             ),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            children: [
-                              // Card Header
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.isDark(context) ? const Color(0xFF1E1E24) : AppColors.backgroundLight,
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: AppColors.border(context)),
-                                        ),
-                                        child: const Icon(Icons.security, color: AppColors.primary, size: 24),
-                                      ),
-                                      SizedBox(width: 16),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Tr('Protection Active',
-                                            style: TextStyle(
-                                              color: AppColors.textPrimary(context),
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 8,
-                                                height: 8,
-                                                decoration: const BoxDecoration(
-                                                  color: AppColors.success,
-                                                  shape: BoxShape.circle,
-                                                  boxShadow: [
-                                                    BoxShadow(color: AppColors.success, blurRadius: 8), 
-                                                  ],
-                                                ),
-                                              ),
-                                              SizedBox(width: 8),
-                                              Tr('Monitoring active',
-                                                style: TextStyle(
-                                                  color: AppColors.success,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  Icon(Icons.more_horiz, color: AppColors.textSecondary(context)),
-                                ],
-                              ),
-                          
-                          SizedBox(height: 24),
-                          
-                          // Metrics Grid
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.isDark(context) ? Colors.black.withOpacity(0.2) : AppColors.backgroundLight,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: AppColors.border(context)),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Tr('Items Scanned',
-                                        style: TextStyle(
-                                          color: AppColors.textSecondary(context),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        userStats.isLoading ? '-' : '${userStats.valueOrNull?.totalScans ?? 0}',
-                                        style: TextStyle(
-                                          color: AppColors.textPrimary(context),
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.isDark(context) ? Colors.black.withOpacity(0.2) : AppColors.backgroundLight,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: AppColors.border(context)),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Tr('High Risk Blocked',
-                                        style: TextStyle(
-                                          color: AppColors.textSecondary(context),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            userStats.isLoading ? '-' : '${userStats.valueOrNull?.highRiskBlocked ?? 0}',
-                                            style: TextStyle(
-                                              color: AppColors.textPrimary(context),
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.only(bottom: 4),
-                                            child: Tr('Today',
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 10,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(context, 'SCANNED', userStats.isLoading ? '-' : '${userStats.valueOrNull?.totalScans ?? 0}', isRisk: false),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildStatCard(context, 'HIGH RISK', userStats.isLoading ? '-' : '${userStats.valueOrNull?.highRiskBlocked ?? 0}', isRisk: true),
+                        ),
+                      ],
                     ),
                   ],
-                    ),
-                  ),
                 ),
               ),
               
-              SizedBox(height: 36),
+              SizedBox(height: 22),
               
-              // Manual Check
-              Padding(
-                padding: EdgeInsets.only(left: 4, bottom: 12),
-                child: Tr('Manual Check',
-                  style: TextStyle(
-                    color: AppColors.textPrimary(context),
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+              // Manual Check Profile
+              Text(
+                'MANUAL CHECK',
+                style: TextStyle(
+                  fontFamily: 'IntegralCF',
+                  fontSize: Responsive.sp(11),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary(context),
+                  letterSpacing: 1.5,
                 ),
               ),
+              SizedBox(height: Responsive.sp(12)),
               Container(
-                padding: const EdgeInsets.all(8),
+                margin: EdgeInsets.symmetric(horizontal: Responsive.sp(4)),
                 decoration: BoxDecoration(
-                  color: AppColors.isDark(context) ? const Color(0xFF141416) : Colors.white,
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: AppColors.border(context)),
-                  boxShadow: AppColors.cardShadow(context),
+                  color: AppColors.surface(context),
+                  border: Border.all(color: AppColors.divider(context)),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
                   children: [
-                    SizedBox(width: 12),
-                    Icon(Icons.search, color: Colors.grey[600], size: 24),
-                    SizedBox(width: 12),
                     Expanded(
                       child: TextField(
                         controller: _manualCheckController,
-                        style: TextStyle(color: AppColors.textPrimary(context)),
+                        maxLines: 4,
+                        minLines: 1,
+                        style: TextStyle(fontSize: Responsive.sp(13), color: AppColors.textPrimary(context)),
                         decoration: InputDecoration(
-                          hintText: tr('Check text, URL, or number'),
-                          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                          hintText: 'Paste or type text, URL...',
+                          hintStyle: TextStyle(color: AppColors.textSecondary(context)),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
+                          contentPadding: EdgeInsets.symmetric(horizontal: Responsive.sp(14), vertical: Responsive.sp(11)),
                         ),
                         onSubmitted: (_) => _analyzeManualInput(),
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.camera_alt_outlined, color: Colors.grey[400]),
+                      icon: Icon(Icons.add_photo_alternate, color: AppColors.textSecondary(context), size: Responsive.sp(22)),
                       onPressed: _pickImage,
-                      padding: EdgeInsets.zero,
+                      padding: const EdgeInsets.all(8),
                       constraints: const BoxConstraints(),
                     ),
-                    SizedBox(width: 12),
-                    Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(100),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryGlow.withOpacity(0.5),
-                            blurRadius: 20,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _isAnalyzing ? null : _analyzeManualInput,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: const StadiumBorder(),
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: _isAnalyzing ? null : _analyzeManualInput,
+                      child: Container(
+                        width: Responsive.sp(28),
+                        height: Responsive.sp(28),
+                        margin: EdgeInsets.only(right: Responsive.sp(10)),
+                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                        child: Center(
+                          child: _isAnalyzing 
+                            ? SizedBox(width: 12, height: 12, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                            : Icon(Icons.arrow_upward, size: Responsive.sp(18), color: Colors.black),
                         ),
-                        child: _isAnalyzing 
-                          ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : Tr('Scan', style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
                 ),
               ),
               
-              SizedBox(height: 36),
+              SizedBox(height: 32),
               
               // Recent Scans
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 4),
-                    child: Tr('Recent Scans',
-                      style: TextStyle(
-                        color: AppColors.textPrimary(context),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                   Text(
+                    'RECENT SCANS',
+                    style: TextStyle(
+                      fontFamily: 'IntegralCF',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: AppColors.textPrimary(context),
                     ),
                   ),
                   TextButton(
@@ -553,20 +404,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       // Navigate to History tab (index 1)
                       context.findAncestorStateOfType<MainScreenState>()?.navigateToTab(1);
                     },
-                    child: Tr('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'VIEW All',
+                      style: TextStyle(
+                        fontFamily: 'IntegralCF',
+                        fontSize: 14,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ],
               ),
               SizedBox(height: 12),
               
-              // Dynamic List
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: recentScans.length,
-                separatorBuilder: (context, index) => SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return _buildScanItem(context, recentScans[index]);
+              // Dynamic List Grouped
+              Builder(
+                builder: (context) {
+                  if (recentScans.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: Text(
+                          'No recent scans',
+                          style: TextStyle(color: AppColors.textSecondary(context)),
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  final groupedScans = _groupScansByDate(recentScans);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: groupedScans.map((group) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(top: Responsive.sp(16), bottom: Responsive.sp(8)),
+                            child: Text(
+                              group.label,
+                              style: TextStyle(
+                                fontFamily: 'IntegralCF',
+                                fontSize: Responsive.sp(11),
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondary(context),
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
+                          ...group.scans.map((scan) => _buildScanItem(context, scan)),
+                        ],
+                      );
+                    }).toList(),
+                  );
                 },
               ),
               
@@ -603,7 +499,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           initial,
           style: TextStyle(
             color: AppColors.primary,
-            fontSize: 20,
+            fontSize: Responsive.sp(16),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -613,11 +509,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     return Container(
-      width: 48,
-      height: 48,
+      width: Responsive.sp(38),
+      height: Responsive.sp(38),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.primary, width: 2),
+        border: Border.all(color: AppColors.divider(context)),
         color: avatarImage == null ? AppColors.primary.withOpacity(0.1) : null,
         image: avatarImage,
       ),
@@ -625,147 +521,236 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+  Widget _buildStatCard(BuildContext context, String label, String value, {required bool isRisk}) {
+    return Container(
+      padding: EdgeInsets.all(Responsive.sp(12)),
+      decoration: BoxDecoration(
+        color: AppColors.surface(context),
+        borderRadius: BorderRadius.circular(2),
+        border: Border.all(color: AppColors.divider(context)),
+      ),
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: Responsive.sp(9),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary(context),
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: TextStyle(
+                  fontFamily: 'IntegralCF',
+                  fontSize: Responsive.sp(24),
+                  fontWeight: FontWeight.w700,
+                  color: isRisk ? AppColors.danger : AppColors.textPrimary(context),
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.surface(context),
+                border: Border.all(color: AppColors.divider(context)),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: Text(
+                'TODAY',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: isRisk ? AppColors.danger : Colors.green,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
   Widget _buildScanItem(BuildContext context, ScanViewModel scan) {
-    // LOGIC: Map ScanViewModel to UI
     final RiskLevel risk = scan.riskLevel;
-    
     Color statusColor;
-    IconData statusIcon;
 
     switch (risk) {
       case RiskLevel.high:
         statusColor = const Color(0xFFF87171); // Red-400
-        statusIcon = Icons.gpp_bad_outlined;
-         break;
+        break;
       case RiskLevel.medium:
         statusColor = const Color(0xFFFBBF24); // Amber-400
-        statusIcon = Icons.warning_amber_rounded;
         break;
       case RiskLevel.low:
         statusColor = const Color(0xFF34D399); // Emerald-400
-        statusIcon = Icons.verified_user_outlined;
         break;
     }
 
-    // Platform Icon logic
-    IconData platformIcon;
-    switch (scan.platform) {
-      case PlatformType.whatsapp:
-        platformIcon = Icons.chat_bubble_outline;
-        break;
-      case PlatformType.telegram:
-        platformIcon = Icons.send;
-        break;
-      case PlatformType.sms:
-      default:
-        platformIcon = Icons.message_outlined;
-        break;
-    }
+    final bool isDark = AppColors.isDark(context);
+    final String labelInfo = scan.senderNumber;
     
-    // Time logic using DateTimeUtils
-    final timeAgo = DateTimeUtils.formatSmartDate(scan.scannedAt);
+    Widget platformIconWidget;
+    if (scan.sender.startsWith('Manual')) {
+      platformIconWidget = Icon(
+        Icons.search,
+        color: AppColors.textPrimary(context),
+        size: Responsive.sp(16),
+      );
+    } else {
+      switch (scan.platform) {
+        case PlatformType.whatsapp:
+          platformIconWidget = FaIcon(FontAwesomeIcons.whatsapp,
+              color: AppColors.textPrimary(context), size: Responsive.sp(18));
+          break;
+        case PlatformType.telegram:
+          platformIconWidget = FaIcon(FontAwesomeIcons.telegram,
+              color: AppColors.textPrimary(context), size: Responsive.sp(18));
+          break;
+        case PlatformType.sms:
+        default:
+          platformIconWidget = Icon(Icons.sms_rounded,
+              color: AppColors.textPrimary(context), size: Responsive.sp(18));
+          break;
+      }
+    }
+
+    // Format cleaner time
+    final timeStr = "${scan.scannedAt.hour % 12 == 0 ? 12 : scan.scannedAt.hour % 12}:${scan.scannedAt.minute.toString().padLeft(2, '0')} ${scan.scannedAt.hour >= 12 ? 'PM' : 'AM'}";
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface(context).withOpacity(0.8),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border(context).withOpacity(0.3)),
+        color: Colors.transparent,
+        border: Border(bottom: BorderSide(color: AppColors.divider(context), width: 1)),
       ),
-      child: InkWell(
-        onTap: () {
-            if (scan.sender.startsWith('Manual')) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ManualResultScreen(scan: scan)),
-              );
-            } else {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
-              );
-            }
-        },
-        child: Row(
-          children: [
-            // Icon Container
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.isDark(context) ? const Color(0xFF27272A) : AppColors.backgroundLight,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border(context).withOpacity(0.3)),
-              ),
-              child: Icon(
-                platformIcon,
-                color: AppColors.textPrimary(context),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 16),
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ScanDetailScreen(scan: scan)),
+            );
+          },
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: Responsive.sp(12)),
+            child: Row(
+              children: [
+                // Icon block
+                Container(
+                  width: Responsive.sp(34),
+                  height: Responsive.sp(34),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface(context),
+                    border: Border.all(color: AppColors.divider(context)),
+                  ),
+                  child: Center(child: platformIconWidget),
+                ),
+                SizedBox(width: 12),
+                
+                // Text Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: Text(
-                          scan.sender,
-                          style: TextStyle(
-                            color: AppColors.textPrimary(context),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Inter',
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        timeAgo,
-                        style: const TextStyle(
-                            color: Color(0xFFA1A1AA), fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        width: 6, height: 6,
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: statusColor.withOpacity(0.4), blurRadius: 4)],
+                        labelInfo.isNotEmpty ? labelInfo : 'Unlabeled Scan',
+                        style: TextStyle(
+                          fontSize: Responsive.sp(13),
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary(context),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          scan.messagePreview.replaceAll('\n', ' '),
-                          style: const TextStyle(
-                            color: Color(0xFFD4D4D8), // Zinc-300
-                            fontSize: 13,
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              scan.messagePreview,
+                              style: TextStyle(
+                                fontSize: Responsive.sp(11),
+                                color: AppColors.textSecondary(context),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontSize: Responsive.sp(10),
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary(context),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  List<_DateGroup> _groupScansByDate(List<ScanViewModel> scans) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final groups = <_DateGroup>[];
+    final Map<String, List<ScanViewModel>> olderGroups = {};
+    final todayScans = <ScanViewModel>[];
+    final yesterdayScans = <ScanViewModel>[];
+
+    for (var scan in scans) {
+      final localScanDate = scan.scannedAt.toLocal();
+      final scanDate = DateTime(localScanDate.year, localScanDate.month, localScanDate.day);
+      
+      if (scanDate == today) {
+        todayScans.add(scan);
+      } else if (scanDate == yesterday) {
+        yesterdayScans.add(scan);
+      } else {
+        final label = DateFormat('dd/MM/yy').format(localScanDate);
+        olderGroups.putIfAbsent(label, () => []).add(scan);
+      }
+    }
+
+    if (todayScans.isNotEmpty) groups.add(_DateGroup('TODAY', todayScans));
+    if (yesterdayScans.isNotEmpty) groups.add(_DateGroup('YESTERDAY', yesterdayScans));
+    olderGroups.forEach((label, scans) {
+      groups.add(_DateGroup(label, scans));
+    });
+
+    return groups;
+  }
+}
+
+class _DateGroup {
+  final String label;
+  final List<ScanViewModel> scans;
+  _DateGroup(this.label, this.scans);
 }
 
 class _MarqueeText extends StatefulWidget {

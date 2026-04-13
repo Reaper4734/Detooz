@@ -78,77 +78,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
-    try {
-      bool success;
-      if (_isLogin) {
-        // ─── LOGIN FLOW ───
-        success = await ref.read(authProvider.notifier).login(
+    if (_isLogin) {
+      // ─── LOGIN FLOW ───
+      setState(() => _isLoading = true);
+      try {
+        await ref.read(authProvider.notifier).login(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
-      } else {
-        // ─── REGISTRATION FLOW ───
-        // 1. Force Email Verification FIRST (Mandatory)
-        if (_emailVerificationToken == null) {
-          final isVerified = await _forceEmailVerification();
-          if (!isVerified) {
-            setState(() => _isLoading = false);
-            return; // Abort registration, let user fix email/try again
-          }
-        }
-
-        // 2. We now have the token; proceed to register the user
-        success = await ref.read(authProvider.notifier).register(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          _firstNameController.text.trim(),
-          _middleNameController.text.trim().isEmpty ? null : _middleNameController.text.trim(),
-          _lastNameController.text.trim(),
-          _phoneController.text.trim(),
-          countryCode: _countryCode,
-          emailToken: _emailVerificationToken,
-        );
-
-        if (success && mounted) {
-          setState(() => _isLoading = false);
-          _showAddGuardianPrompt();
-          return;
-        }
+      } catch (e) {
+        _showError(e.toString().replaceAll('Exception: ', ''));
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
-
-      setState(() => _isLoading = false);
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.danger,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(label: tr('OK'), onPressed: () {}, textColor: Colors.white),
-          ),
-        );
-      }
+    } else {
+      // ─── REGISTRATION FLOW ───
+      // First, send the OTP and verify the email. Registration happens INSIDE that flow.
+      _startRegistrationAndVerificationOTheFly();
     }
   }
 
-  // ─── MANDATORY EMAIL VERIFICATION BEFORE REGISTRATION ──
+  // ─── MANDATORY EMAIL VERIFICATION & REGISTRATION ───
 
-  Future<bool> _forceEmailVerification() async {
+  Future<void> _startRegistrationAndVerificationOTheFly() async {
     final email = _emailController.text.trim();
 
+    setState(() => _isLoading = true);
+
     try {
-      // Send OTP automatically
-      await ApiService().sendEmailOTP(email: email);
+      // 1. Send OTP
+      final response = await ApiService().sendEmailOTP(email: email);
+      if (response['success'] == false) {
+        _showError(response['message'] ?? 'Failed to send OTP');
+        setState(() => _isLoading = false);
+        return;
+      }
     } catch (e) {
-      // Even if sending fails, still navigate to OTP screen (it has a resend button)
+      // Even if sending fails, we can proceed to the OTP screen where the user can click resend
     }
 
-    if (!mounted) return false;
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-    // Navigate to OTP screen
+    // 2. Navigate to OTP screen
     final verified = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -156,6 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           identifier: email,
           isPhone: false,
           onVerifyOTP: (otp) async {
+            // Verify OTP -> Get secure token
             final token = await ApiService().verifyEmailOnly(email: email, otp: otp);
             if (token != null) {
               _emailVerificationToken = token;
@@ -170,21 +143,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
 
-    if (verified == true && mounted) {
-      setState(() => _emailVerified = true);
-      return true;
-    } else {
-      if (mounted) {
-        // User tried to go back or failed — allow them to edit email
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr('Email verification is required to create an account.')),
-            backgroundColor: AppColors.danger,
-          ),
+    if (verified == true && _emailVerificationToken != null) {
+      // 3. Email is verified! NOW we register the user in the database.
+      setState(() => _isLoading = true);
+      try {
+        final success = await ref.read(authProvider.notifier).register(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          _firstNameController.text.trim(),
+          _middleNameController.text.trim().isEmpty ? null : _middleNameController.text.trim(),
+          _lastNameController.text.trim(),
+          _phoneController.text.trim(),
+          countryCode: _countryCode,
+          emailToken: _emailVerificationToken,
         );
+
+        if (success && mounted) {
+          setState(() => _emailVerified = true);
+          // 4. Show Guardian prompt for the newly registered user
+          _showAddGuardianPrompt();
+        }
+      } catch (e) {
+        _showError(e.toString().replaceAll('Exception: ', ''));
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
-      return false;
+    } else {
+      // User aborted the OTP screen
+      _showError(tr('Email verification was cancelled. Registration incomplete.'));
     }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.danger,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(label: tr('OK'), onPressed: () {}, textColor: Colors.white),
+      ),
+    );
   }
 
   // ─── ADD GUARDIAN PROMPT (Neo-Brutalist) ─────────────
@@ -406,84 +405,82 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
 
-                    if (_isLogin) ...[
-                      SizedBox(height: Responsive.sp(28)),
+                    SizedBox(height: Responsive.sp(28)),
 
-                      // ─── OR Divider ───
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: AppColors.divider(context))),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: Responsive.sp(14)),
-                            child: Tr('OR CONTINUE WITH',
-                              style: TextStyle(
-                                fontSize: Responsive.sp(10),
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1,
-                                color: AppColors.textSecondary(context),
-                              ),
+                    // ─── OR Divider ───
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: AppColors.divider(context))),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: Responsive.sp(14)),
+                          child: Tr('OR CONTINUE WITH',
+                            style: TextStyle(
+                              fontSize: Responsive.sp(10),
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                              color: AppColors.textSecondary(context),
                             ),
                           ),
-                          Expanded(child: Divider(color: AppColors.divider(context))),
-                        ],
-                      ),
+                        ),
+                        Expanded(child: Divider(color: AppColors.divider(context))),
+                      ],
+                    ),
 
-                      SizedBox(height: Responsive.sp(28)),
+                    SizedBox(height: Responsive.sp(28)),
 
-                      // ─── Google Button ───
-                      GestureDetector(
-                        onTap: _isLoading ? null : _handleGoogleSignIn,
-                        child: Container(
-                          height: Responsive.h(52),
-                          decoration: BoxDecoration(
-                            color: AppColors.isDark(context) ? Colors.white : Colors.black,
-                            boxShadow: [
-                              BoxShadow(
-                                offset: const Offset(4, 4),
-                                color: AppColors.isDark(context) 
-                                  ? Colors.white.withOpacity(0.15) 
-                                  : Colors.black,
+                    // ─── Google Button ───
+                    GestureDetector(
+                      onTap: _isLoading ? null : _handleGoogleSignIn,
+                      child: Container(
+                        height: Responsive.h(52),
+                        decoration: BoxDecoration(
+                          color: AppColors.isDark(context) ? Colors.white : Colors.black,
+                          boxShadow: [
+                            BoxShadow(
+                              offset: const Offset(4, 4),
+                              color: AppColors.isDark(context) 
+                                ? Colors.white.withOpacity(0.15) 
+                                : Colors.black,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Google "G" — simple text approach to avoid painter overlap
+                            Container(
+                              width: 28, height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.isDark(context) ? Colors.black54 : Colors.white54,
+                                  width: 2,
+                                ),
                               ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Google "G" — simple text approach to avoid painter overlap
-                              Container(
-                                width: 28, height: 28,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.isDark(context) ? Colors.black54 : Colors.white54,
-                                    width: 2,
+                              child: Center(
+                                child: Text(
+                                  'G',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.isDark(context) ? Colors.black : Colors.white,
                                   ),
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    'G',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w900,
-                                      color: AppColors.isDark(context) ? Colors.black : Colors.white,
-                                    ),
-                                  ),
-                                ),
                               ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'GOOGLE',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: Responsive.sp(14),
-                                  color: AppColors.isDark(context) ? Colors.black : Colors.white,
-                                ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'GOOGLE',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: Responsive.sp(14),
+                                color: AppColors.isDark(context) ? Colors.black : Colors.white,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
 
                     SizedBox(height: Responsive.sp(40)),
 

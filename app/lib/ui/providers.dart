@@ -153,6 +153,15 @@ class ScansNotifier extends StateNotifier<AsyncValue<List<ScanViewModel>>> {
       rethrow;
     }
   }
+
+  Future<void> clearAllScans() async {
+    try {
+      await offlineCacheService.clearScans();
+      state = const AsyncValue.data([]);
+    } catch (e) {
+      print('Clear scans error in provider: \$e');
+    }
+  }
 }
 
 /// Manages guardians from API

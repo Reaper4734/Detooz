@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../components/bottom_nav_bar.dart';
+import '../theme/responsive_utils.dart';
 import 'dashboard_screen.dart';
 import 'history_screen.dart';
 import 'guardians_screen.dart';
@@ -41,7 +42,6 @@ class MainScreenState extends State<MainScreen> {
     super.initState();
     
     // Register FCM token with backend for push notifications
-    // This enables guardian alerts even when app is closed
     firebaseMessagingService.registerTokenWithBackend();
     
     // Initialize SMS/WhatsApp/Telegram receiver
@@ -52,18 +52,28 @@ class MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: BottomNavBar(
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

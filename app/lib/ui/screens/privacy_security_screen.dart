@@ -8,6 +8,7 @@ import '../components/tr.dart';
 import '../theme/app_colors.dart';
 import '../providers.dart';
 import '../../services/api_service.dart';
+import '../components/settings_widgets.dart';
 
 class PrivacySecurityScreen extends ConsumerStatefulWidget {
   const PrivacySecurityScreen({super.key});
@@ -22,6 +23,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   bool _sharePatterns = false;
   bool _isExporting = false;
   final bool _isDeleting = false;
+  bool _showDeleteModal = false;
 
   @override
   void initState() {
@@ -30,8 +32,6 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   }
 
   Future<void> _loadSettings() async {
-    // Load settings - share patterns defaults to false
-    // TODO: Add shareScamPatterns to backend UserSettings model
     setState(() {
       _sharePatterns = false;
     });
@@ -43,96 +43,221 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        backgroundColor: AppColors.background(context),
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
-        ),
-        title: Tr('Privacy & Security', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Stack(
           children: [
-            // Security Section
-            _buildSectionHeader('Security'),
-            _buildGlassCard(
+            SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildNavigationRow(
-                    icon: Icons.key,
-                    iconColor: const Color(0xFFF59E0B),
-                    title: 'Change Password',
-                    onTap: _showChangePasswordDialog,
-                  ),
-                  Divider(color: AppColors.border(context), height: 1),
-                  _buildSwitchRow(
-                    icon: Icons.fingerprint,
-                    iconColor: const Color(0xFF7C3AED),
-                    title: 'Biometric Lock',
-                    subtitle: 'Use fingerprint or face to unlock',
-                    value: _biometricEnabled,
-                    onChanged: _toggleBiometric,
-                  ),
+                  buildBrutalistHeader(context, 'Privacy & Security'),
+
+                  // ── Security Section ──
+                  buildSectionLabel(context, 'Security'),
+                  buildSettingsCard(context, children: [
+                    buildSettingsRow(context,
+                      leading: buildRowIcon(context, Icons.key, iconColor: const Color(0xFFF5A623)),
+                      title: tr('Change Password'),
+                      trailing: Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary(context).withOpacity(0.3)),
+                      onTap: _showChangePasswordDialog,
+                    ),
+                    buildSettingsRow(context,
+                      leading: buildRowIcon(context, Icons.fingerprint, iconColor: const Color(0xFF7C3AED)), // Primary Violet
+                      title: tr('Biometric Lock'),
+                      subtitle: tr('Require fingerprint or face to open'),
+                      trailing: BrutalToggle(value: _biometricEnabled, onChanged: _toggleBiometric),
+                      isLast: true,
+                    ),
+                  ]),
+                  const SizedBox(height: 24),
+
+                  // ── Data Privacy Section ──
+                  buildSectionLabel(context, 'Data Privacy'),
+                  buildSettingsCard(context, children: [
+                    buildSettingsRow(context,
+                      leading: buildRowIcon(context, Icons.analytics, iconColor: AppColors.textSecondary(context).withOpacity(0.3)),
+                      title: tr('Share Scam Patterns'),
+                      subtitle: tr('Help improve detection (anonymous)'),
+                      trailing: BrutalToggle(value: _sharePatterns, onChanged: _toggleSharePatterns),
+                    ),
+                    buildSettingsRow(context,
+                      leading: buildRowIcon(context, Icons.download, iconColor: const Color(0xFF6366F1)), // Indigo
+                      title: tr('Export My Data'),
+                      subtitle: tr('Download a copy of your data'),
+                      trailing: _isExporting 
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1))) 
+                          : Icon(Icons.download, size: 18, color: AppColors.textSecondary(context).withOpacity(0.3)),
+                      isLast: true,
+                      onTap: _isExporting ? null : _exportData,
+                    ),
+                  ]),
+                  const SizedBox(height: 32),
+
+                  // ── Danger Zone ──
+                  buildSectionLabel(context, 'Danger Zone'),
+                  buildSettingsCard(context, borderColor: const Color(0xFFEF4444).withOpacity(0.4), children: [
+                    buildSettingsRow(context,
+                      leading: buildRowIcon(context, Icons.delete_forever, iconColor: const Color(0xFFEF4444), bgColor: const Color(0xFFEF4444).withOpacity(0.1), borderColor: const Color(0xFFEF4444).withOpacity(0.2)),
+                      title: tr('Delete Account'),
+                      titleColor: const Color(0xFFEF4444),
+                      subtitle: tr('Permanently delete your account and data'),
+                      isLast: true,
+                      onTap: () => setState(() => _showDeleteModal = true),
+                    ),
+                  ]),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
-            
-            const SizedBox(height: 32),
-            
-            // Data Privacy Section
-            _buildSectionHeader('Data Privacy'),
-            _buildGlassCard(
-              child: Column(
-                children: [
-                  _buildSwitchRow(
-                    icon: Icons.analytics_outlined,
-                    iconColor: const Color(0xFF22C55E),
-                    title: 'Share Scam Patterns',
-                    subtitle: 'Help improve detection (anonymous)',
-                    value: _sharePatterns,
-                    onChanged: _toggleSharePatterns,
-                  ),
-                  Divider(color: AppColors.border(context), height: 1),
-                  _buildNavigationRow(
-                    icon: Icons.download,
-                    iconColor: const Color(0xFF3B82F6),
-                    title: 'Export My Data',
-                    subtitle: 'Download all your data',
-                    isLoading: _isExporting,
-                    onTap: _exportData,
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // Danger Zone
-            _buildSectionHeader('Danger Zone'),
-            _buildGlassCard(
-              borderColor: const Color(0x33EF4444),
-              child: _buildNavigationRow(
-                icon: Icons.delete_forever,
-                iconColor: const Color(0xFFEF4444),
-                title: 'Delete Account',
-                titleColor: const Color(0xFFEF4444),
-                subtitle: 'Permanently delete your account',
-                isLoading: _isDeleting,
-                onTap: _showDeleteAccountDialog,
-              ),
-            ),
+
+            // ── Delete Account Modal ──
+            if (_showDeleteModal) _buildDeleteAccountModal(),
           ],
         ),
       ),
     );
   }
 
-  // --- Change Password ---
+  Widget _buildDeleteAccountModal() {
+    final passwordController = TextEditingController();
+    bool isLoading = false;
+    String? errorMessage;
+
+    return StatefulBuilder(
+      builder: (context, setModalState) {
+        return Container(
+          color: Colors.black.withOpacity(0.6),
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 320,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface(context),
+                  border: Border.all(color: AppColors.divider(context), width: 2),
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: [BoxShadow(offset: const Offset(4, 4), color: AppColors.divider(context))],
+                ),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  // Warning icon
+                  Container(
+                    width: 48, height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444).withOpacity(0.1),
+                      border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3), width: 2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Icon(Icons.warning, size: 24, color: Color(0xFFEF4444)),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(tr('Delete Account?'), style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary(context),
+                  )),
+                  const SizedBox(height: 8),
+                  Text(tr('This action is permanent and cannot be undone. Enter your password to confirm.'),
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary(context), height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  if (errorMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      color: const Color(0xFFEF4444).withOpacity(0.1),
+                      child: Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+                    ),
+
+                  // Password field
+                  Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.background(context),
+                      border: Border.all(color: AppColors.divider(context), width: 2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      style: TextStyle(fontSize: 14, color: AppColors.textPrimary(context)),
+                      decoration: InputDecoration(
+                        hintText: tr('Password'),
+                        hintStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary(context).withOpacity(0.4)),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Buttons
+                  Row(children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: isLoading ? null : () => setState(() => _showDeleteModal = false),
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.background(context),
+                            border: Border.all(color: AppColors.divider(context)),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Center(child: Text(tr('CANCEL'), style: TextStyle(
+                            fontFamily: 'IntegralCF', fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary(context),
+                          ))),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: isLoading ? null : () async {
+                          if (passwordController.text.isEmpty) {
+                            setModalState(() => errorMessage = 'Password is required');
+                            return;
+                          }
+                          setModalState(() {
+                            isLoading = true;
+                            errorMessage = null;
+                          });
+                          try {
+                            await apiService.deleteAccount(password: passwordController.text);
+                            if (mounted) {
+                              setState(() => _showDeleteModal = false);
+                              await apiService.clearToken();
+                              ref.read(authProvider.notifier).state = const AsyncValue.data(false);
+                              Navigator.of(context).popUntil((route) => route.isFirst);
+                            }
+                          } catch (e) {
+                            setModalState(() {
+                              isLoading = false;
+                              errorMessage = e.toString().replaceAll('Exception: ', '');
+                            });
+                          }
+                        },
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(4)), // Red
+                          child: Center(child: isLoading 
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : Text(tr('DELETE'), style: const TextStyle(
+                                fontFamily: 'IntegralCF', fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white,
+                              ))),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ]),
+              ),
+            ),
+          ),
+        );
+      }
+    );
+  }
+
+  // --- Change Password Dialog ---
   Future<void> _showChangePasswordDialog() async {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
@@ -144,39 +269,35 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF18181B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Tr('Change Password', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.surface(context),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: BorderSide(color: AppColors.divider(context), width: 2)),
+          title: Text(tr('Change Password'), style: TextStyle(fontFamily: 'IntegralCF', fontSize: 16, color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (errorMessage != null)
                   Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0x1AEF4444),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13)),
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    color: const Color(0xFFEF4444).withOpacity(0.1),
+                    child: Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
                   ),
-                _buildPasswordField('Current Password', currentPasswordController),
-                const SizedBox(height: 16),
-                _buildPasswordField('New Password', newPasswordController),
-                const SizedBox(height: 16),
-                _buildPasswordField('Confirm Password', confirmPasswordController),
+                _buildBrutalPasswordField('Current Password', currentPasswordController),
+                const SizedBox(height: 12),
+                _buildBrutalPasswordField('New Password', newPasswordController),
+                const SizedBox(height: 12),
+                _buildBrutalPasswordField('Confirm Password', confirmPasswordController),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: isLoading ? null : () => Navigator.pop(context),
-              child: const Tr('Cancel', style: TextStyle(color: Color(0xFF71717A))),
+              child: Text(tr('CANCEL'), style: TextStyle(fontFamily: 'IntegralCF', fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary(context))),
             ),
-            ElevatedButton(
-              onPressed: isLoading ? null : () async {
-                // Validate
+            GestureDetector(
+              onTap: isLoading ? null : () async {
                 if (newPasswordController.text != confirmPasswordController.text) {
                   setDialogState(() => errorMessage = 'Passwords do not match');
                   return;
@@ -185,12 +306,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   setDialogState(() => errorMessage = 'Password must be at least 6 characters');
                   return;
                 }
-                
-                setDialogState(() {
-                  isLoading = true;
-                  errorMessage = null;
-                });
-                
+                setDialogState(() { isLoading = true; errorMessage = null; });
                 try {
                   await apiService.changePassword(
                     currentPassword: currentPasswordController.text,
@@ -209,36 +325,38 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   });
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(color: const Color(0xFF7C3AED), borderRadius: BorderRadius.circular(4)), // Primary
+                child: isLoading
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(tr('CHANGE'), style: const TextStyle(fontFamily: 'IntegralCF', fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
-              child: isLoading
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Tr('Change', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ],
         ),
       ),
     );
-    
-    currentPasswordController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
   }
 
-  Widget _buildPasswordField(String label, TextEditingController controller) {
-    return TextField(
-      controller: controller,
-      obscureText: true,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Color(0xFF71717A)),
-        filled: true,
-        fillColor: const Color(0xFF27272A),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary)),
+  Widget _buildBrutalPasswordField(String hint, TextEditingController controller) {
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: AppColors.background(context),
+        border: Border.all(color: AppColors.divider(context), width: 1),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: true,
+        style: TextStyle(fontSize: 14, color: AppColors.textPrimary(context)),
+        decoration: InputDecoration(
+          hintText: tr(hint),
+          hintStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary(context).withOpacity(0.4)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
       ),
     );
   }
@@ -246,67 +364,46 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   // --- Biometric Lock ---
   Future<void> _toggleBiometric(bool value) async {
     if (value) {
-      // Check if biometric is available
       final canAuthenticate = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
       
       if (!canAuthenticate || !isDeviceSupported) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Setup fingerprint or face ID in device settings first'),
-              backgroundColor: AppColors.warning,
-              duration: Duration(seconds: 3),
-            ),
+            const SnackBar(content: Text('Setup fingerprint or face ID in device settings first'), backgroundColor: Color(0xFFF5A623), duration: Duration(seconds: 3)),
           );
         }
         return;
       }
       
-      // Authenticate first
       try {
-        final didAuthenticate = await _localAuth.authenticate(
-          localizedReason: 'Enable biometric lock for Detooz',
-        );
+        final didAuthenticate = await _localAuth.authenticate(localizedReason: 'Enable biometric lock for Detooz');
         if (didAuthenticate) {
           setState(() => _biometricEnabled = true);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Biometric lock enabled'), backgroundColor: AppColors.success),
-            );
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Biometric lock enabled'), backgroundColor: AppColors.success));
           }
-          // TODO: Save to secure storage
         }
       } on PlatformException catch (e) {
         if (mounted) {
           String message = 'Biometric not available';
-          if (e.code == 'NotEnrolled') {
-            message = 'No fingerprints registered. Setup in device settings.';
-          } else if (e.code == 'NotAvailable') {
-            message = 'Biometric hardware not available';
-          } else if (e.message != null) {
-            message = e.message!;
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message), backgroundColor: AppColors.warning),
-          );
+          if (e.code == 'NotEnrolled') message = 'No fingerprints registered. Setup in device settings.';
+          else if (e.code == 'NotAvailable') message = 'Biometric hardware not available';
+          else if (e.message != null) message = e.message!;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: const Color(0xFFF5A623)));
         }
       }
     } else {
       setState(() => _biometricEnabled = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Biometric lock disabled'), backgroundColor: AppColors.success),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Biometric lock disabled'), backgroundColor: AppColors.success));
       }
-      // TODO: Remove from secure storage
     }
   }
 
   // --- Share Patterns Toggle ---
   Future<void> _toggleSharePatterns(bool value) async {
     setState(() => _sharePatterns = value);
-    // TODO: Persist to backend when shareScamPatterns field is added
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -321,16 +418,11 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   // --- Export Data ---
   Future<void> _exportData() async {
     setState(() => _isExporting = true);
-    
     try {
       final data = await apiService.exportData();
-      
-      // Save to downloads
       final directory = await getExternalStorageDirectory();
       final downloadsDir = Directory('${directory?.parent.parent.parent.parent.path}/Download');
-      if (!await downloadsDir.exists()) {
-        await downloadsDir.create(recursive: true);
-      }
+      if (!await downloadsDir.exists()) await downloadsDir.create(recursive: true);
       
       final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
       final file = File('${downloadsDir.path}/detooz_data_export_$timestamp.txt');
@@ -338,236 +430,13 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Data exported to ${file.path}'),
-            backgroundColor: AppColors.success,
-            duration: const Duration(seconds: 4),
-          ),
+          SnackBar(content: Text('Data exported to ${file.path}'), backgroundColor: AppColors.success, duration: const Duration(seconds: 4)),
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e'), backgroundColor: AppColors.danger),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e'), backgroundColor: const Color(0xFFEF4444)));
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
-  }
-
-  // --- Delete Account ---
-  Future<void> _showDeleteAccountDialog() async {
-    final passwordController = TextEditingController();
-    bool isLoading = false;
-    String? errorMessage;
-
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF18181B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.warning, color: Color(0xFFEF4444)),
-              SizedBox(width: 8),
-              Text('Delete Account', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'This action is permanent and cannot be undone. All your data will be deleted:',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 12),
-                const Text('• Profile information', style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 13)),
-                const Text('• Scan history', style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 13)),
-                const Text('• Settings & preferences', style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 13)),
-                const SizedBox(height: 16),
-                if (errorMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0x1AEF4444),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13)),
-                  ),
-                Text('Enter your password to confirm:', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                _buildPasswordField('Password', passwordController),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFF71717A))),
-            ),
-            ElevatedButton(
-              onPressed: isLoading ? null : () async {
-                if (passwordController.text.isEmpty) {
-                  setDialogState(() => errorMessage = 'Password is required');
-                  return;
-                }
-                
-                setDialogState(() {
-                  isLoading = true;
-                  errorMessage = null;
-                });
-                
-                try {
-                  await apiService.deleteAccount(password: passwordController.text);
-                  if (mounted) {
-                    Navigator.pop(context); // Close dialog
-                    // Logout and go to login
-                    await apiService.clearToken();
-                    ref.read(authProvider.notifier).state = const AsyncValue.data(false);
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  }
-                } catch (e) {
-                  setDialogState(() {
-                    isLoading = false;
-                    errorMessage = e.toString().replaceAll('Exception: ', '');
-                  });
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFEF4444),
-                foregroundColor: Colors.white,
-              ),
-              child: isLoading
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Delete Forever', style: TextStyle(fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ),
-      ),
-    );
-    
-    passwordController.dispose();
-  }
-
-  // --- UI Helpers ---
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
-      child: Tr(
-        title.toUpperCase(),
-        style: const TextStyle(
-          color: Color(0xFF71717A),
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.0,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGlassCard({required Widget child, Color? borderColor}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor ?? AppColors.border(context)),
-        boxShadow: AppColors.cardShadow(context),
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildNavigationRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    String? subtitle,
-    Color? titleColor,
-    bool isLoading = false,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: isLoading ? null : onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: titleColor ?? AppColors.textPrimary(context))),
-                  if (subtitle != null)
-                    Tr(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF71717A))),
-                ],
-              ),
-            ),
-            if (isLoading)
-              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
-            else
-              const Icon(Icons.arrow_forward_ios, color: Color(0xFF71717A), size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSwitchRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    String? subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Tr(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary(context))),
-                if (subtitle != null)
-                  Tr(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF71717A))),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: const Color(0xFF7C3AED),
-            activeTrackColor: const Color(0xFF7C3AED).withOpacity(0.5),
-            inactiveThumbColor: AppColors.isDark(context) ? const Color(0xFFA1A1AA) : const Color(0xFFD4D4D8),
-            inactiveTrackColor: AppColors.isDark(context) ? const Color(0xFF27272A) : const Color(0xFFE5E7EB),
-          ),
-        ],
-      ),
-    );
   }
 }

@@ -3,7 +3,8 @@ class Article {
   final String url;  // Primary identifier for bookmarks
   final String title;
   final String? summary;
-  final String? imageUrl;
+  final String? imageUrl; // We keep imageUrl for backwards-compatibility or as fallback. We can treat it as mediaUrl based on mediaType.
+  final String mediaType; // 'image' or 'video'
   final String source;
   final String category;
   final int readTimeMins;
@@ -16,6 +17,7 @@ class Article {
     required this.title,
     this.summary,
     this.imageUrl,
+    this.mediaType = 'image',
     required this.source,
     required this.category,
     required this.readTimeMins,
@@ -29,7 +31,8 @@ class Article {
       url: json['url'] ?? '',
       title: json['title'] ?? '',
       summary: json['summary'] ?? json['content'],  // Exclusive uses 'content'
-      imageUrl: json['image_url'],
+      imageUrl: json['image_url'] ?? json['media_url'],
+      mediaType: json['media_type'] ?? 'image',
       source: json['source'] ?? 'Unknown',
       category: json['category'] ?? 'news',
       readTimeMins: json['read_time_mins'] ?? 3,
@@ -47,7 +50,8 @@ class Article {
       url: json['url'] ?? '',
       title: json['title'] ?? '',
       summary: null,
-      imageUrl: json['image_url'],
+      imageUrl: json['image_url'] ?? json['media_url'],
+      mediaType: json['media_type'] ?? 'image',
       source: json['source'] ?? 'Unknown',
       category: 'bookmark',
       readTimeMins: 3,
@@ -65,6 +69,7 @@ class Article {
       title: title,
       summary: summary,
       imageUrl: imageUrl,
+      mediaType: mediaType,
       source: source,
       category: category,
       readTimeMins: readTimeMins,
@@ -80,6 +85,7 @@ class Article {
       'title': title,
       'source': source,
       'image_url': imageUrl,
+      'media_type': mediaType,
       'is_exclusive': isExclusive,
     };
   }
