@@ -15,7 +15,7 @@ import '../../services/ml/state_language_map.dart';
 
 class SetupOfflineProtectionScreen extends ConsumerStatefulWidget {
   /// Optional callback when setup is complete.
-  final VoidCallback? onComplete;
+  final void Function(BuildContext context)? onComplete;
 
   const SetupOfflineProtectionScreen({super.key, this.onComplete});
 
@@ -323,7 +323,7 @@ class _SetupOfflineProtectionScreenState
 
     // Call the parent's callback or navigate to dashboard directly
     if (widget.onComplete != null) {
-      widget.onComplete!();
+      widget.onComplete!(context);
     } else {
       if (mounted) Navigator.of(context).pop();
     }

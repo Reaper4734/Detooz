@@ -37,14 +37,14 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFE2E8F0)), // Light border
+          side: const BorderSide(color: AppColors.borderLight), // Light border
         ),
       ),
       */
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.surfaceLight,
         selectedItemColor: AppColors.primary,
-        unselectedItemColor: Color(0xFF94A3B8),
+        unselectedItemColor: AppColors.textSecondaryLight,  // --text-muted light
         type: BottomNavigationBarType.fixed,
         showSelectedLabels: true,
         showUnselectedLabels: true,
@@ -85,14 +85,14 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFF293038)), // Dark border
+          side: const BorderSide(color: AppColors.borderDark), // Dark border
         ),
       ),
       */
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.backgroundDark, // Match OLED black bg
         selectedItemColor: AppColors.primary,
-        unselectedItemColor: Color(0xFF64748B),
+        unselectedItemColor: AppColors.textSecondaryDark,  // --text-muted dark
         type: BottomNavigationBarType.fixed,
         showSelectedLabels: true,
         showUnselectedLabels: true,

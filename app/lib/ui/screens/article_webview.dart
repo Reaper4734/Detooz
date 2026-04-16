@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../components/neo_snackbar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/app_colors.dart';
 import '../components/tr.dart';
@@ -138,12 +139,7 @@ class _ArticleWebViewState extends State<ArticleWebView> {
                 // Open in external browser if user prefers
                 final uri = Uri.parse(widget.url);
                 // Using url_launcher would require import, keeping simple for now
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('URL: ${widget.url}'),
-                    action: SnackBarAction(label: 'Copy', onPressed: () {}),
-                  ),
-                );
+                NeoSnackBar.show(context, message: 'URL: ${widget.url}', type: NeoSnackbarType.info, position: NeoSnackbarPosition.bottom);
               },
             ),
           ],

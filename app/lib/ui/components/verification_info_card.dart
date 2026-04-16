@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../components/tr.dart';
+import '../theme/app_colors.dart';
 
 /// Dismissible verification info card
 /// Shows once on dashboard for new users who haven't verified
@@ -26,8 +27,8 @@ class VerificationInfoCard extends StatelessWidget {
       return const SizedBox.shrink();
     }
     
-    const primaryColor = Color(0xFF7C3BED);
-    const warningColor = Color(0xFFFFA726);
+    final primaryColor = AppColors.primary;
+    final warningColor = AppColors.warning;
     
     return Dismissible(
       key: const ValueKey('verification_info_card'),
@@ -80,7 +81,7 @@ class VerificationInfoCard extends StatelessWidget {
                     color: warningColor.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.shield_outlined,
                     color: warningColor,
                     size: 20,
@@ -149,8 +150,10 @@ class VerificationInfoCard extends StatelessWidget {
                     ),
                     child: Tr(
                       'Verify Now',
-                      style: const TextStyle(
+                      style: TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
+                        color: AppColors.warning,
                       ),
                     ),
                   ),

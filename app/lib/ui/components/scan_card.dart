@@ -4,6 +4,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'risk_badge.dart';
 import 'platform_icon.dart';
+import '../theme/app_colors.dart';
 
 class ScanCard extends StatelessWidget {
   final ScanViewModel scan;
@@ -23,7 +24,7 @@ class ScanCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        side: const BorderSide(color: Color(0xFFE2E8F0)), // Light border
+        side: BorderSide(color: AppColors.divider(context)), // Light border
       ),
       child: InkWell(
         onTap: onTap,

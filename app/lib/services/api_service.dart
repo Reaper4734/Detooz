@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http_parser/http_parser.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -736,10 +737,25 @@ class ApiService {
       request.fields['sender'] = 'Manual Check';
       request.fields['platform'] = 'WHATSAPP';
 
+      final extension = imageFile.name.split('.').last.toLowerCase();
+      MediaType contentType;
+      if (['jpg', 'jpeg'].contains(extension)) {
+        contentType = MediaType('image', 'jpeg');
+      } else if (extension == 'png') {
+        contentType = MediaType('image', 'png');
+      } else if (extension == 'gif') {
+        contentType = MediaType('image', 'gif');
+      } else if (extension == 'webp') {
+        contentType = MediaType('image', 'webp');
+      } else {
+        contentType = MediaType('application', 'octet-stream');
+      }
+
       request.files.add(http.MultipartFile.fromBytes(
         'file', 
         await imageFile.readAsBytes(),
         filename: imageFile.name,
+        contentType: contentType,
       ));
 
       final streamedResponse = await request.send().timeout(const Duration(seconds: 120));

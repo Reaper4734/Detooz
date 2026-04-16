@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../components/neo_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import '../theme/app_colors.dart';
@@ -124,12 +125,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       await widget.onResendOTP!();
       _startResendTimer();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr('OTP sent successfully')),
-            backgroundColor: AppColors.success,
-          ),
-        );
+        NeoSnackBar.show(context, message: tr('OTP sent successfully'), type: NeoSnackbarType.success, position: NeoSnackbarPosition.bottom);
       }
     } catch (e) {
       if (mounted) {

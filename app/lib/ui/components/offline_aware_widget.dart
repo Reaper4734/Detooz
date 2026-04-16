@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'neo_snackbar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/api_service.dart';
 
@@ -179,23 +180,15 @@ void showOfflineSnackBar(BuildContext context, Object error) {
       ? error.message
       : error.toString().replaceAll('Exception: ', '');
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Row(
-        children: [
-          Icon(
-            error is OfflineException
-                ? Icons.wifi_off_rounded
-                : Icons.error_outline_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(message)),
-        ],
-      ),
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 4),
-    ),
+  final type = error is OfflineException
+      ? NeoSnackbarType.warning
+      : NeoSnackbarType.error;
+
+  NeoSnackBar.show(
+    context,
+    message: message,
+    type: type,
+    position: NeoSnackbarPosition.bottom,
+    duration: const Duration(seconds: 4),
   );
 }

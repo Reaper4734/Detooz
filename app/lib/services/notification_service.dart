@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../ui/theme/app_colors.dart';
 
 /// Notification Service for showing on-screen alerts
 /// Used for:
@@ -64,7 +65,7 @@ class NotificationService {
           playSound: true,
           enableVibration: true,
           enableLights: true,
-          ledColor: Color(0xFFFF0000),
+          ledColor: AppColors.danger,
           showBadge: true,
         ),
       );
@@ -142,7 +143,7 @@ class NotificationService {
       category: AndroidNotificationCategory.alarm,
       visibility: NotificationVisibility.public,
       styleInformation: BigTextStyleInformation(''),
-      color: Color(0xFFE53935), // Red color
+      color: AppColors.danger, // Red color
       colorized: true,
       ongoing: false,
       autoCancel: true,
@@ -188,7 +189,7 @@ class NotificationService {
       priority: isHigh ? Priority.max : Priority.high,
       ticker: isHigh ? '🚨 HIGH RISK SCAM' : '⚠️ Suspicious message',
       styleInformation: BigTextStyleInformation(reason),
-      color: isHigh ? const Color(0xFFE53935) : const Color(0xFFFF9800),
+      color: isHigh ? AppColors.danger : AppColors.warning,
       colorized: true,
       visibility: NotificationVisibility.public,  // Show on lock screen
       fullScreenIntent: isHigh,  // Full screen for HIGH risk only

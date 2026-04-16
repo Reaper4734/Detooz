@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../components/neo_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
@@ -51,19 +52,19 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  buildBrutalistHeader(context, 'Privacy & Security'),
+                  buildBrutalistHeader(context, tr('Privacy & Security')),
 
                   // ── Security Section ──
-                  buildSectionLabel(context, 'Security'),
+                  buildSectionLabel(context, tr('Security')),
                   buildSettingsCard(context, children: [
                     buildSettingsRow(context,
-                      leading: buildRowIcon(context, Icons.key, iconColor: const Color(0xFFF5A623)),
+                      leading: buildRowIcon(context, Icons.key, iconColor: AppColors.warning),
                       title: tr('Change Password'),
                       trailing: Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary(context).withOpacity(0.3)),
                       onTap: _showChangePasswordDialog,
                     ),
                     buildSettingsRow(context,
-                      leading: buildRowIcon(context, Icons.fingerprint, iconColor: const Color(0xFF7C3AED)), // Primary Violet
+                      leading: buildRowIcon(context, Icons.fingerprint, iconColor: AppColors.primary),
                       title: tr('Biometric Lock'),
                       subtitle: tr('Require fingerprint or face to open'),
                       trailing: BrutalToggle(value: _biometricEnabled, onChanged: _toggleBiometric),
@@ -73,7 +74,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   const SizedBox(height: 24),
 
                   // ── Data Privacy Section ──
-                  buildSectionLabel(context, 'Data Privacy'),
+                  buildSectionLabel(context, tr('Data Privacy')),
                   buildSettingsCard(context, children: [
                     buildSettingsRow(context,
                       leading: buildRowIcon(context, Icons.analytics, iconColor: AppColors.textSecondary(context).withOpacity(0.3)),
@@ -82,11 +83,11 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                       trailing: BrutalToggle(value: _sharePatterns, onChanged: _toggleSharePatterns),
                     ),
                     buildSettingsRow(context,
-                      leading: buildRowIcon(context, Icons.download, iconColor: const Color(0xFF6366F1)), // Indigo
+                      leading: buildRowIcon(context, Icons.download, iconColor: AppColors.primary),
                       title: tr('Export My Data'),
                       subtitle: tr('Download a copy of your data'),
                       trailing: _isExporting 
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1))) 
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)) 
                           : Icon(Icons.download, size: 18, color: AppColors.textSecondary(context).withOpacity(0.3)),
                       isLast: true,
                       onTap: _isExporting ? null : _exportData,
@@ -95,12 +96,12 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   const SizedBox(height: 32),
 
                   // ── Danger Zone ──
-                  buildSectionLabel(context, 'Danger Zone'),
-                  buildSettingsCard(context, borderColor: const Color(0xFFEF4444).withOpacity(0.4), children: [
+                  buildSectionLabel(context, tr('Danger Zone')),
+                  buildSettingsCard(context, borderColor: AppColors.danger.withValues(alpha: 0.4), children: [
                     buildSettingsRow(context,
-                      leading: buildRowIcon(context, Icons.delete_forever, iconColor: const Color(0xFFEF4444), bgColor: const Color(0xFFEF4444).withOpacity(0.1), borderColor: const Color(0xFFEF4444).withOpacity(0.2)),
+                      leading: buildRowIcon(context, Icons.delete_forever, iconColor: AppColors.danger, bgColor: AppColors.danger.withValues(alpha: 0.1), borderColor: AppColors.danger.withValues(alpha: 0.2)),
                       title: tr('Delete Account'),
-                      titleColor: const Color(0xFFEF4444),
+                      titleColor: AppColors.danger,
                       subtitle: tr('Permanently delete your account and data'),
                       isLast: true,
                       onTap: () => setState(() => _showDeleteModal = true),
@@ -145,11 +146,11 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   Container(
                     width: 48, height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444).withOpacity(0.1),
-                      border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3), width: 2),
+                      color: AppColors.danger.withValues(alpha: 0.1),
+                      border: Border.all(color: AppColors.danger.withValues(alpha: 0.3), width: 2),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Icon(Icons.warning, size: 24, color: Color(0xFFEF4444)),
+                    child: Icon(Icons.warning, size: 24, color: AppColors.danger),
                   ),
                   const SizedBox(height: 16),
                   Text(tr('Delete Account?'), style: TextStyle(
@@ -165,8 +166,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       margin: const EdgeInsets.only(bottom: 12),
-                      color: const Color(0xFFEF4444).withOpacity(0.1),
-                      child: Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+                      color: AppColors.danger.withValues(alpha: 0.1),
+                      child: Text(errorMessage!, style: TextStyle(color: AppColors.danger, fontSize: 12)),
                     ),
 
                   // Password field
@@ -238,7 +239,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                         },
                         child: Container(
                           height: 44,
-                          decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(4)), // Red
+                          decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(4)),
                           child: Center(child: isLoading 
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                               : Text(tr('DELETE'), style: const TextStyle(
@@ -280,8 +281,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     margin: const EdgeInsets.only(bottom: 12),
-                    color: const Color(0xFFEF4444).withOpacity(0.1),
-                    child: Text(errorMessage!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+                    color: AppColors.danger.withValues(alpha: 0.1),
+                    child: Text(errorMessage!, style: TextStyle(color: AppColors.danger, fontSize: 12)),
                   ),
                 _buildBrutalPasswordField('Current Password', currentPasswordController),
                 const SizedBox(height: 12),
@@ -302,8 +303,20 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   setDialogState(() => errorMessage = 'Passwords do not match');
                   return;
                 }
-                if (newPasswordController.text.length < 6) {
-                  setDialogState(() => errorMessage = 'Password must be at least 6 characters');
+                if (newPasswordController.text.length < 8) {
+                  setDialogState(() => errorMessage = tr('Password must be at least 8 characters'));
+                  return;
+                }
+                if (!newPasswordController.text.contains(RegExp(r'[A-Z]'))) {
+                  setDialogState(() => errorMessage = tr('Must contain 1 uppercase letter'));
+                  return;
+                }
+                if (!newPasswordController.text.contains(RegExp(r'[0-9]'))) {
+                  setDialogState(() => errorMessage = tr('Must contain 1 number'));
+                  return;
+                }
+                if (!newPasswordController.text.contains(RegExp(r'[@#*&!$%^]'))) {
+                  setDialogState(() => errorMessage = tr('Must contain 1 special char'));
                   return;
                 }
                 setDialogState(() { isLoading = true; errorMessage = null; });
@@ -314,9 +327,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                   );
                   if (mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Password changed successfully'), backgroundColor: AppColors.success),
-                    );
+                    NeoSnackBar.show(context, message: tr('Password changed successfully'), type: NeoSnackbarType.success, position: NeoSnackbarPosition.bottom);
                   }
                 } catch (e) {
                   setDialogState(() {
@@ -327,7 +338,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(color: const Color(0xFF7C3AED), borderRadius: BorderRadius.circular(4)), // Primary
+                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(4)),
                 child: isLoading
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : Text(tr('CHANGE'), style: const TextStyle(fontFamily: 'IntegralCF', fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
@@ -369,9 +380,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       
       if (!canAuthenticate || !isDeviceSupported) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Setup fingerprint or face ID in device settings first'), backgroundColor: Color(0xFFF5A623), duration: Duration(seconds: 3)),
-          );
+          NeoSnackBar.show(context, message: tr('Setup fingerprint or face ID in device settings first'), type: NeoSnackbarType.warning, position: NeoSnackbarPosition.bottom, duration: const Duration(seconds: 3));
         }
         return;
       }
@@ -381,7 +390,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         if (didAuthenticate) {
           setState(() => _biometricEnabled = true);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Biometric lock enabled'), backgroundColor: AppColors.success));
+            NeoSnackBar.show(context, message: tr('Biometric lock enabled'), type: NeoSnackbarType.success, position: NeoSnackbarPosition.bottom);
           }
         }
       } on PlatformException catch (e) {
@@ -390,13 +399,13 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           if (e.code == 'NotEnrolled') message = 'No fingerprints registered. Setup in device settings.';
           else if (e.code == 'NotAvailable') message = 'Biometric hardware not available';
           else if (e.message != null) message = e.message!;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: const Color(0xFFF5A623)));
+          NeoSnackBar.show(context, message: message, type: NeoSnackbarType.warning, position: NeoSnackbarPosition.bottom);
         }
       }
     } else {
       setState(() => _biometricEnabled = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Biometric lock disabled'), backgroundColor: AppColors.success));
+        NeoSnackBar.show(context, message: tr('Biometric lock disabled'), type: NeoSnackbarType.success, position: NeoSnackbarPosition.bottom);
       }
     }
   }
@@ -405,13 +414,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   Future<void> _toggleSharePatterns(bool value) async {
     setState(() => _sharePatterns = value);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(value ? 'Sharing enabled' : 'Sharing disabled'),
-          backgroundColor: AppColors.success,
-          duration: const Duration(seconds: 1),
-        ),
-      );
+      NeoSnackBar.show(context, message: value ? 'Sharing enabled' : 'Sharing disabled', type: NeoSnackbarType.success, position: NeoSnackbarPosition.bottom, duration: const Duration(seconds: 1));
     }
   }
 
@@ -429,12 +432,10 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       await file.writeAsString(data);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Data exported to ${file.path}'), backgroundColor: AppColors.success, duration: const Duration(seconds: 4)),
-        );
+        NeoSnackBar.show(context, message: 'Data exported to ${file.path}', type: NeoSnackbarType.success, position: NeoSnackbarPosition.bottom, duration: const Duration(seconds: 4));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e'), backgroundColor: const Color(0xFFEF4444)));
+      if (mounted) NeoSnackBar.show(context, message: 'Export failed: $e', type: NeoSnackbarType.error, position: NeoSnackbarPosition.bottom);
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }

@@ -15,37 +15,61 @@ import 'services/firebase_messaging_service.dart';
 import 'services/ai_service.dart';
 import 'services/translation/translation_service.dart';
 import '../ui/components/tr.dart';
+import '../ui/components/tr_strings.dart';
 
 /// Global navigator key for notification tap navigation
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase (required for FCM push notifications) - Skip on Web for now
-  if (!kIsWeb) {
-    await Firebase.initializeApp();
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
     
-    // Initialize Firebase Cloud Messaging (for push when app is closed)
-    await firebaseMessagingService.initialize();
-  } else {
-    debugPrint('⚠️ Web detected: Skipping Firebase initialization');
+    // Initialize Firebase (required for FCM push notifications) - Skip on Web for now
+    if (!kIsWeb) {
+      await Firebase.initializeApp();
+      
+      // Initialize Firebase Cloud Messaging (for push when app is closed)
+      try {
+        await firebaseMessagingService.initialize();
+      } catch (e) {
+        debugPrint('⚠️ Firebase Messaging init failed (Play Services disabled/restricted?): $e');
+      }
+    } else {
+      debugPrint('⚠️ Web detected: Skipping Firebase initialization');
+    }
+
+    // Initialize offline cache
+    await offlineCacheService.initialize();
+    
+    // Initialize local push notifications
+    await notificationService.initialize();
+    notificationService.setNavigatorKey(navigatorKey);
+
+    // Initialize AI Model (Hybrid Shield)
+    await aiService.loadModel();
+    
+    // Initialize Translation Service (ML Kit)
+    await TranslationService().initialize();
+    
+    // Preload is handled during Language Selector screen; Hive persists it instantly.
+    
+    runApp(const ProviderScope(child: MyApp()));
+  } catch (e, stack) {
+    runApp(MaterialApp(
+      home: Scaffold(
+        backgroundColor: const Color(0xFF8B0000), // Dark Red
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              'FATAL ERROR ON STARTUP:\n\n$e\n\n$stack',
+              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 12, fontFamily: 'monospace'),
+            ),
+          ),
+        ),
+      ),
+    ));
   }
-
-  // Initialize offline cache
-  await offlineCacheService.initialize();
-  
-  // Initialize local push notifications
-  await notificationService.initialize();
-  notificationService.setNavigatorKey(navigatorKey);
-
-  // Initialize AI Model (Hybrid Shield)
-  await aiService.loadModel();
-  
-  // Initialize Translation Service (ML Kit)
-  await TranslationService().initialize();
-  
-  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends ConsumerWidget {
@@ -54,8 +78,10 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
+    final currentLang = ref.watch(languageProvider);
 
     return MaterialApp(
+      key: ValueKey('${themeMode.name}_$currentLang'),
       navigatorKey: navigatorKey,
       title: tr('Detooz'),
       debugShowCheckedModeBanner: false,

@@ -4,6 +4,7 @@ import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../theme/app_colors.dart';
+import '../components/neo_snackbar.dart';
 import '../theme/responsive_utils.dart';
 import 'guardians_screen.dart';
 import 'admin/admin_login_screen.dart';
@@ -176,14 +177,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.danger,
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(label: tr('OK'), onPressed: () {}, textColor: Colors.white),
-      ),
-    );
+    NeoSnackBar.show(context, message: message, type: NeoSnackbarType.error, position: NeoSnackbarPosition.bottom, duration: const Duration(seconds: 4));
   }
 
   // ─── ADD GUARDIAN PROMPT (Neo-Brutalist) ─────────────
@@ -237,12 +231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!result.success) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.error ?? tr('Google Sign-In failed')),
-              backgroundColor: AppColors.danger,
-            ),
-          );
+          NeoSnackBar.show(context, message: result.error ?? tr('Google Sign-In failed'), type: NeoSnackbarType.error, position: NeoSnackbarPosition.bottom);
         }
         setState(() => _isLoading = false);
         return;
@@ -259,23 +248,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['detail'] ?? tr('Sign-In failed')),
-              backgroundColor: AppColors.danger,
-            ),
-          );
+          NeoSnackBar.show(context, message: response['detail'] ?? tr('Sign-In failed'), type: NeoSnackbarType.error, position: NeoSnackbarPosition.bottom);
         }
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
+        NeoSnackBar.show(context, message: 'Error: ${e.toString().replaceAll('Exception: ', '')}', type: NeoSnackbarType.error, position: NeoSnackbarPosition.bottom);
       }
     }
   }
@@ -546,7 +525,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _buildLabel(tr('EMAIL ADDRESS')),
       _buildNeoTextField(
         controller: _emailController,
-        hint: 'user@protection.io',
+        hint: tr('user@protection.io'),
         keyboardType: TextInputType.emailAddress,
         validator: _validateEmail,
       ),
@@ -649,7 +628,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _buildLabel(tr('EMAIL ADDRESS')),
       _buildNeoTextField(
         controller: _emailController,
-        hint: 'name@example.com',
+        hint: tr('name@example.com'),
         keyboardType: TextInputType.emailAddress,
         validator: _validateEmail,
       ),

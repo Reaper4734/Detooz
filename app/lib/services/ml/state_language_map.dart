@@ -72,6 +72,22 @@ String languageForState(String state) {
   return stateToLanguage[state] ?? 'en';
 }
 
+/// Native script symbol for language badge display.
+String languageNativeSymbol(String code) {
+  return switch (code) {
+    'hi' => 'हि',
+    'mr' => 'म',
+    'bn' => 'বা',
+    'gu' => 'ગુ',
+    'kn' => 'ಕ',
+    'ta' => 'த',
+    'te' => 'తె',
+    'ur' => 'ا',
+    'en' => 'E',
+    _ => '?',
+  };
+}
+
 /// Human-readable language name for display.
 String languageDisplayName(String code) {
   return switch (code) {

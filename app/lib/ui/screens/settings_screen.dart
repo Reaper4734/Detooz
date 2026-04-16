@@ -43,10 +43,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              buildBrutalistHeader(context, 'Settings'),
+              buildBrutalistHeader(context, tr('Settings'), showBackButton: false),
 
               // ── ACCOUNT ──
-              buildSectionLabel(context, 'Account'),
+              buildSectionLabel(context, tr('Account')),
               buildSettingsCard(context, children: [
                 buildSettingsRow(context,
                   leading: buildRowIcon(context, Icons.person),
@@ -68,7 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 24),
 
               // ── ALERTS ──
-              buildSectionLabel(context, 'Alerts'),
+              buildSectionLabel(context, tr('Alerts')),
               settingsAsync.when(
                 data: (settings) => buildSettingsCard(context, children: [
                   buildSettingsRow(context,
@@ -81,13 +81,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     isLast: true,
                   ),
                 ]),
-                loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED))),
-                error: (e, _) => Text(e.toString(), style: const TextStyle(color: Color(0xFFEF4444))),
+                loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                error: (e, _) => Text(e.toString(), style: TextStyle(color: AppColors.danger)),
               ),
               const SizedBox(height: 24),
 
               // ── LANGUAGE ──
-              buildSectionLabel(context, 'Language'),
+              buildSectionLabel(context, tr('Language')),
               buildSettingsCard(context, children: [
                 Consumer(builder: (context, ref, _) {
                     final langCode = ref.watch(languageProvider);
@@ -119,7 +119,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 24),
 
               // ── APPEARANCE ──
-              buildSectionLabel(context, 'Appearance'),
+              buildSectionLabel(context, tr('Appearance')),
               buildSettingsCard(context, children: [
                 _radioRow('System', ThemeMode.system, currentTheme, ref),
                 _radioRow('Dark Mode', ThemeMode.dark, currentTheme, ref),
@@ -129,28 +129,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               // ── LOG OUT ──
               GestureDetector(
-                onTap: () async {
-                  await ref.read(authProvider.notifier).logout();
-                },
+                onTap: () => _showLogoutDialog(context, ref),
                 child: Container(
                   width: double.infinity,
                   height: 48,
                   decoration: BoxDecoration(
                     color: Colors.transparent,
-                    border: Border.all(color: const Color(0xFFEF4444), width: 2), // Red border
+                    border: Border.all(color: AppColors.danger, width: 2),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.logout, color: Color(0xFFEF4444), size: 18),
+                      Icon(Icons.logout, color: AppColors.danger, size: 18),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'LOG OUT',
                         style: TextStyle(
                           fontFamily: 'IntegralCF',
                           fontSize: 13,
-                          fontWeight: FontWeight.w700, // Explicitly heavy for Brutalism
-                          color: Color(0xFFEF4444),
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.danger,
                         ),
                       ),
                     ],
@@ -197,7 +195,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isActive ? const Color(0xFF7C3AED) : AppColors.textSecondary(context),
+                  color: isActive ? AppColors.primary : AppColors.textSecondary(context),
                   width: 2,
                 ),
               ),
@@ -208,13 +206,106 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         height: 10,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFF7C3AED),
+                          color: AppColors.primary,
                         ),
                       ),
                     )
                   : null,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.surface(context),
+            border: Border.all(color: AppColors.divider(context), width: 2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Warning icon
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.12),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Icon(Icons.logout, color: AppColors.danger, size: 24),
+              ),
+              const SizedBox(height: 16),
+
+              // Title
+              Text(
+                'LOG OUT?',
+                style: TextStyle(
+                  fontFamily: 'IntegralCF', fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary(context),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Description
+              Text(
+                'Are you sure you want to log out? You will need to sign in again to access your account and scan history.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary(context), height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Buttons
+              Row(children: [
+                Expanded(child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.background(context),
+                      border: Border.all(color: AppColors.divider(context)),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Center(child: Text(
+                      'CANCEL',
+                      style: TextStyle(fontFamily: 'IntegralCF', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary(context)),
+                    )),
+                  ),
+                )),
+                const SizedBox(width: 8),
+                Expanded(child: GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await ref.read(authProvider.notifier).logout();
+                  },
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Center(child: Text(
+                      'LOG OUT',
+                      style: TextStyle(fontFamily: 'IntegralCF', fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+                    )),
+                  ),
+                )),
+              ]),
+            ],
+          ),
         ),
       ),
     );

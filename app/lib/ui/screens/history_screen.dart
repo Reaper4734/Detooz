@@ -102,7 +102,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             width: 32 * scale,
                             height: 32 * scale,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF00E5FF),
+                              color: AppColors.primary,
                               borderRadius: BorderRadius.circular(2),
                             ),
                             child: Icon(Icons.more_vert, color: Colors.black, size: 20 * scale),
@@ -118,14 +118,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                               height: 40 * scale,
                               child: Row(
                                 children: [
-                                  Icon(Icons.delete, color: const Color(0xFFFF3366), size: 18 * scale),
+                                  Icon(Icons.delete, color: AppColors.danger, size: 18 * scale),
                                   SizedBox(width: 8 * scale),
                                   Text(
                                     'CLEAR ALL MESSAGES',
                                     style: TextStyle(
                                       fontFamily: 'IntegralCF',
                                       fontWeight: FontWeight.w900,
-                                      color: const Color(0xFFFF3366),
+                                      color: AppColors.danger,
                                       fontSize: 11 * scale,
                                     ),
                                   ),
@@ -146,7 +146,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           height: 44 * scale,
                           decoration: BoxDecoration(
                             color: Colors.transparent,
-                            border: Border.all(color: const Color(0xFF00E5FF), width: 2),
+                            border: Border.all(color: AppColors.primary, width: 2),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(4),
                               bottomLeft: Radius.circular(4),
@@ -161,7 +161,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             },
                             style: TextStyle(color: AppColors.textPrimary(context), fontSize: 13 * scale),
                             decoration: InputDecoration(
-                              hintText: 'Search by name, number, risk...',
+                              hintText: tr('Search by name, number, risk...'),
                               hintStyle: TextStyle(color: AppColors.textSecondary(context)),
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 12 * scale),
@@ -172,9 +172,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       Container(
                         height: 44 * scale,
                         width: 44 * scale,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF00E5FF),
-                          borderRadius: BorderRadius.only(
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: const BorderRadius.only(
                             topRight: Radius.circular(4),
                             bottomRight: Radius.circular(4),
                           ),
@@ -221,7 +221,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             // Content List
             Expanded(
               child: RefreshIndicator(
-                color: const Color(0xFF00E5FF),
+                color: AppColors.primary,
                 backgroundColor: AppColors.surface(context),
                 onRefresh: () async {
                   await ref.read(scansProvider.notifier).loadScans();
@@ -247,10 +247,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Widget _buildGridChip(String label, RiskLevel? level, double scale) {
     final isSelected = _filter == level;
     final Color activeColor;
-    if (level == RiskLevel.high) activeColor = const Color(0xFFFF3366);
-    else if (level == RiskLevel.medium) activeColor = const Color(0xFFFFD700);
-    else if (level == RiskLevel.low) activeColor = const Color(0xFF00FF66);
-    else activeColor = const Color(0xFF00E5FF);
+    if (level == RiskLevel.high) activeColor = AppColors.danger;
+    else if (level == RiskLevel.medium) activeColor = AppColors.warning;
+    else if (level == RiskLevel.low) activeColor = AppColors.success;
+    else activeColor = AppColors.primary;
 
     return GestureDetector(
       onTap: () => setState(() => _filter = level),
@@ -327,9 +327,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }
 
     Color riskColor;
-    if (scan.riskLevel == RiskLevel.high) riskColor = const Color(0xFFFF3366);
-    else if (scan.riskLevel == RiskLevel.medium) riskColor = const Color(0xFFFFD700);
-    else riskColor = const Color(0xFF00FF66);
+    if (scan.riskLevel == RiskLevel.high) riskColor = AppColors.danger;
+    else if (scan.riskLevel == RiskLevel.medium) riskColor = AppColors.warning;
+    else riskColor = AppColors.success;
 
     return GestureDetector(
       onTap: () {

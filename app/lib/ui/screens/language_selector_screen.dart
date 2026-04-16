@@ -4,12 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/translation/translation_service.dart';
 import '../../services/translation/language_config.dart';
+import '../../services/ml/sms_translator.dart';
 import '../theme/app_colors.dart';
 import '../providers.dart';
-import '../components/tr.dart';
-import 'model_download_screen.dart';
 import '../components/settings_widgets.dart';
-
+import '../components/tr.dart';
+import '../components/tr_strings.dart';
 Future<void> showLanguageSelector(BuildContext context, WidgetRef ref) async {
   await Navigator.of(context).push(
     MaterialPageRoute(
@@ -28,7 +28,6 @@ class LanguageSelectorScreen extends StatefulWidget {
 
 class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
   Map<String, bool> _downloadedModels = {};
-  String? _downloadingLang;
   bool _isLoading = true;
 
   @override
@@ -54,6 +53,9 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
   Widget build(BuildContext context) {
     final currentLang = widget.ref.watch(languageProvider);
 
+    final downloadedLangs = supportedLanguages.where((l) => l.isEnglish || (_downloadedModels[l.code] ?? false)).toList();
+    final availableLangs = supportedLanguages.where((l) => !l.isEnglish && !(_downloadedModels[l.code] ?? false)).toList();
+
     return Scaffold(
       backgroundColor: AppColors.background(context),
       body: SafeArea(
@@ -61,45 +63,80 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
             children: [
-              buildBrutalistHeader(context, 'Languages'),
-              
+              buildBrutalistHeader(context, tr('Languages')),
+
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED)))
+                    ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                     : SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            buildHeroBlock(context, 
-                              icon: Icons.language, 
-                              title: 'App Language', 
-                              subtitle: 'Change the language Detooz uses for menus, buttons, and notifications. ~30 MB download required for non-English.',
+                            buildHeroBlock(context,
+                              icon: Icons.language,
+                              title: tr('App Language'),
+                              subtitle: tr('Manage the language Detooz uses for menus, buttons, and notifications.'),
                             ),
-                            const SizedBox(height: 16),
-                            buildInfoBox(context, 'Changing language requires an app restart to apply everywhere.'),
                             const SizedBox(height: 24),
 
+                            // ─── Downloaded Languages ───
+                            buildSectionLabel(context, tr('Downloaded')),
                             buildSettingsCard(context, children: [
-                              for (int i = 0; i < supportedLanguages.length; i++) ...[
+                              for (int i = 0; i < downloadedLangs.length; i++)
                                 Builder(builder: (context) {
-                                  final lang = supportedLanguages[i];
-                                  final isDownloaded = _downloadedModels[lang.code] ?? false;
-                                  final isDownloading = _downloadingLang == lang.code;
+                                  final lang = downloadedLangs[i];
                                   final isSelected = currentLang == lang.code;
-                                  
+
                                   return buildSettingsRow(context,
                                     leading: buildLangBadge(context, lang.nativeName.substring(0, 1), isSelected),
                                     title: lang.englishName,
-                                    subtitle: lang.nativeName,
-                                    backgroundColor: isSelected ? const Color(0xFF7C3AED).withOpacity(0.08) : null,
-                                    titleColor: isSelected ? const Color(0xFF7C3AED) : null,
-                                    isLast: i == supportedLanguages.length - 1,
-                                    trailing: _buildTrailing(lang, isSelected, isDownloaded, isDownloading),
-                                    onTap: isDownloading ? null : () => _onLanguageTap(lang, isDownloaded),
+                                    subtitle: isSelected ? 'Default' : lang.nativeName,
+                                    backgroundColor: isSelected ? AppColors.primary.withValues(alpha: 0.08) : null,
+                                    titleColor: isSelected ? AppColors.primary : null,
+                                    isLast: i == downloadedLangs.length - 1,
+                                    trailing: _buildDownloadedTrailing(lang, isSelected),
+                                    onTap: () => _onLanguageTap(lang, true),
                                   );
                                 }),
-                              ],
                             ]),
+                            const SizedBox(height: 32),
+
+                            // ─── Available for Download ───
+                            buildSectionLabel(context, tr('Available for Download')),
+                            if (availableLangs.isNotEmpty)
+                              buildSettingsCard(context, children: [
+                                for (int i = 0; i < availableLangs.length; i++)
+                                  Builder(builder: (context) {
+                                    final lang = availableLangs[i];
+                                    return buildSettingsRow(context,
+                                      leading: buildLangBadge(context, lang.nativeName.substring(0, 1), false),
+                                      title: lang.englishName,
+                                      titleColor: AppColors.textPrimary(context),
+                                      isLast: i == availableLangs.length - 1,
+                                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                        Text(tr('30 MB'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary(context))),
+                                        const SizedBox(width: 6),
+                                        Icon(Icons.cloud_download, size: 18, color: AppColors.textSecondary(context)),
+                                      ]),
+                                      onTap: () => _onLanguageTap(lang, false),
+                                    );
+                                  }),
+                              ])
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface(context),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: AppColors.divider(context)),
+                                ),
+                                child: Text(
+                                  'All available packs are installed!',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13, fontWeight: FontWeight.w500),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -111,40 +148,77 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
     );
   }
 
-  Widget _buildTrailing(SupportedLanguage lang, bool isSelected, bool isDownloaded, bool isDownloading) {
-    const primary = Color(0xFF7C3AED);
-    if (isDownloading) {
-      return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: primary));
-    }
+  /// Trailing for downloaded languages — checkmark for active, plain trash for others
+  Widget _buildDownloadedTrailing(SupportedLanguage lang, bool isSelected) {
     if (isSelected) {
-      return Container(
-        width: 24, height: 24,
-        decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
-        child: const Icon(Icons.check, color: Colors.white, size: 14),
-      );
+      return Icon(Icons.check_circle, color: AppColors.primary, size: 22);
     }
-    if (lang.isEnglish) return const SizedBox(width: 24);
-    if (isDownloaded) {
-      return Icon(Icons.check_circle_outline, color: AppColors.textSecondary(context), size: 20);
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('30MB', style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11, fontWeight: FontWeight.w600)),
-        const SizedBox(width: 6),
-        const Icon(Icons.cloud_download_outlined, color: primary, size: 20),
-      ],
+    if (lang.isEnglish) return const SizedBox(width: 22);
+
+    // Downloaded non-active: size + delete icon (plain, no box)
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Text(tr('30 MB'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary(context))),
+      const SizedBox(width: 12),
+      GestureDetector(
+        onTap: () => _deleteLanguage(lang),
+        child: Icon(Icons.delete, size: 18, color: AppColors.textSecondary(context)),
+      ),
+    ]);
+  }
+
+  Future<void> _deleteLanguage(SupportedLanguage lang) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: BorderSide(color: AppColors.divider(context), width: 2)),
+        title: Text(tr('Delete Pack?'), style: TextStyle(fontFamily: 'IntegralCF', fontSize: 16, color: AppColors.textPrimary(context), fontWeight: FontWeight.bold)),
+        content: Text(
+          'This will remove the ${lang.englishName} language pack. You can re-download it later.',
+          style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13, height: 1.4),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          Row(children: [
+            Expanded(child: GestureDetector(
+              onTap: () => Navigator.pop(ctx, false),
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(color: AppColors.background(ctx), border: Border.all(color: AppColors.divider(ctx)), borderRadius: BorderRadius.circular(4)),
+                child: Center(child: Text('CANCEL', style: TextStyle(fontFamily: 'IntegralCF', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary(ctx)))),
+              ),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: GestureDetector(
+              onTap: () => Navigator.pop(ctx, true),
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(4)),
+                child: const Center(child: Text('DELETE', style: TextStyle(fontFamily: 'IntegralCF', fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
+              ),
+            )),
+          ]),
+        ],
+      ),
     );
+
+    if (confirm == true) {
+      await TranslationService().deleteModel(lang.code);
+      if (mounted) {
+        setState(() => _downloadedModels[lang.code] = false);
+      }
+    }
   }
 
   Future<void> _onLanguageTap(SupportedLanguage lang, bool isDownloaded) async {
-    if (_downloadingLang != null) return;
     if (lang.isEnglish) {
       await _setLanguage(lang.code);
       return;
     }
     if (!isDownloaded) {
-      final success = await showModelDownload(context, widget.ref, langCode: lang.code, langName: lang.englishName);
+      // Inline download dialog
+      final success = await showDownloadDialog(context, langCode: lang.code, langName: lang.englishName);
       if (success && mounted) {
         setState(() => _downloadedModels[lang.code] = true);
         await _setLanguage(lang.code);
@@ -155,61 +229,57 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
   }
 
   Future<void> _setLanguage(String code) async {
+    if (code != 'en') {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext ctx) {
+          final size = MediaQuery.of(ctx).size;
+          return Center(
+            child: Material(
+              type: MaterialType.transparency,
+              child: Container(
+                width: size.width * 0.6,
+                padding: EdgeInsets.symmetric(
+                  horizontal: size.width * 0.05, 
+                  vertical: size.height * 0.02
+                ),
+                decoration: BoxDecoration(color: AppColors.surface(context), borderRadius: BorderRadius.circular(8)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: AppColors.primary),
+                    SizedBox(height: size.height * 0.02),
+                    Text(
+                      tr('Applying Language...'), 
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textPrimary(context), 
+                        fontFamily: 'IntegralCF', 
+                        fontSize: size.width * 0.035, // Dynamic indexing (responsive text)
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.none, // Ensure no yellow lines
+                      )
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
+
     await TranslationService().setLanguage(code);
+    await SmsTranslator().setUserLanguage(code);
+    
+    if (code != 'en') {
+      await TranslationService().preloadTranslations(allAppStrings);
+      if (mounted) Navigator.pop(context); // Close loading dialog
+    }
+    
     await widget.ref.read(languageProvider.notifier).setLanguage(code);
 
-    if (mounted) Navigator.pop(context);
-    await Future.delayed(const Duration(milliseconds: 200));
-
-    final langName = supportedLanguages.firstWhere((l) => l.code == code).englishName;
-    if (mounted) _showRestartDialog(langName);
-  }
-
-  void _showRestartDialog(String langName) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface(ctx),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: BorderSide(color: AppColors.divider(ctx), width: 2)),
-        icon: const Icon(Icons.refresh, color: Color(0xFF7C3AED), size: 40),
-        title: Tr('Restart Required', style: TextStyle(color: AppColors.textPrimary(ctx), fontWeight: FontWeight.w700, fontFamily: 'IntegralCF', fontSize: 16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Tr('Language changed to $langName.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textPrimary(ctx), fontSize: 14, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            Tr('Please restart the app for all translations to take effect.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary(ctx), height: 1.4, fontSize: 12)),
-          ],
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        actions: [
-          Row(children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () => Navigator.pop(ctx),
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(color: AppColors.background(ctx), border: Border.all(color: AppColors.divider(ctx)), borderRadius: BorderRadius.circular(4)),
-                  child: Center(child: Text(tr('LATER'), style: TextStyle(fontFamily: 'IntegralCF', fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary(ctx)))),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: GestureDetector(
-                onTap: () { Navigator.pop(ctx); SystemNavigator.pop(); },
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(color: const Color(0xFF7C3AED), borderRadius: BorderRadius.circular(4)),
-                  child: Center(child: Text(tr('RESTART'), style: const TextStyle(fontFamily: 'IntegralCF', fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white))),
-                ),
-              ),
-            ),
-          ]),
-        ],
-      ),
-    );
+    if (mounted) Navigator.pop(context); // Close language selector screen completely
   }
 }

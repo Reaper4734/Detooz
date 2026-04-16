@@ -149,14 +149,15 @@ class TranslationService {
   /// Pre-load translations into cache for synchronous access
   /// Call this on widget init for nav labels, button text, etc.
   Future<void> preloadTranslations(List<String> texts) async {
-    for (final text in texts) {
-      await translate(text); // This populates the cache
-    }
+    await translateBatch(texts);
   }
 
-  /// Batch translate multiple strings (more efficient)
   Future<List<String>> translateBatch(List<String> texts) async {
-    return Future.wait(texts.map((t) => translate(t)));
+    final results = <String>[];
+    for (final text in texts) {
+      results.add(await translate(text));
+    }
+    return results;
   }
 
   /// Check if a language model is downloaded
@@ -217,6 +218,12 @@ class TranslationService {
       }
     }
     return downloaded;
+  }
+
+  /// Delete a specific language model and its cached translations.
+  /// Exposed for UI screens that allow users to manage downloaded packs.
+  Future<void> deleteModel(String langCode) async {
+    await _deleteModelAndCache(langCode);
   }
 
   // Private methods

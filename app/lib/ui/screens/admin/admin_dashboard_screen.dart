@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../components/neo_snackbar.dart';
 import '../../../services/api_service.dart';
+import '../../theme/app_colors.dart';
 import 'admin_login_screen.dart';
 import '../../components/tr.dart';
 
@@ -54,7 +56,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Tr('Error: $e')));
+        NeoSnackBar.show(context, message: 'Error: $e', type: NeoSnackbarType.error, position: NeoSnackbarPosition.bottom);
       }
     }
   }
@@ -123,7 +125,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 await apiService.updateUser(user['id'], nameCtrl.text, phoneCtrl.text);
                 Navigator.pop(ctx, true);
               } catch (e) {
-                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Tr('Error: $e')));
+                NeoSnackBar.show(ctx, message: 'Error: $e', type: NeoSnackbarType.error, position: NeoSnackbarPosition.bottom);
               }
             },
             child: Tr('Save'),
@@ -158,10 +160,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _showSnack(String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.red : Colors.green,
-    ));
+    NeoSnackBar.show(context, message: msg, type: isError ? NeoSnackbarType.error : NeoSnackbarType.success, position: NeoSnackbarPosition.bottom);
   }
 
   @override
@@ -329,10 +328,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
          children: [
            Row(
              children: [
-               _buildStatCard('Total Users', _stats!['total_users'].toString(), Icons.people, const Color(0xFF6366F1)),
+               _buildStatCard('Total Users', _stats!['total_users'].toString(), Icons.people, const Color(0xFF00C2D1)),
                _buildStatCard('Guardians', _stats!['total_guardians'].toString(), Icons.shield_moon, const Color(0xFF10B981)),
                _buildStatCard('Active Alerts', _stats!['total_alerts'].toString(), Icons.notifications_active, const Color(0xFFF59E0B)),
-               _buildStatCard('Scams Blocked', _stats!['total_scams_detected'].toString(), Icons.gpp_bad, const Color(0xFFEF4444)),
+               _buildStatCard('Scams Blocked', _stats!['total_scams_detected'].toString(), Icons.gpp_bad, AppColors.danger),
              ],
            ),
            SizedBox(height: 48),

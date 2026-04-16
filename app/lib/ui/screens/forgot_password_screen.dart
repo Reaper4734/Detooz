@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../components/neo_snackbar.dart';
 import '../theme/app_colors.dart';
 import '../theme/responsive_utils.dart';
 import '../components/tr.dart';
@@ -78,6 +79,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() { _message = tr('Password must be at least 8 characters'); _isError = true; });
       return;
     }
+    if (!password.contains(RegExp(r'[A-Z]'))) {
+      setState(() { _message = tr('Must contain 1 uppercase letter'); _isError = true; });
+      return;
+    }
+    if (!password.contains(RegExp(r'[0-9]'))) {
+      setState(() { _message = tr('Must contain 1 number'); _isError = true; });
+      return;
+    }
+    if (!password.contains(RegExp(r'[@#*&!$%^]'))) {
+      setState(() { _message = tr('Must contain 1 special char'); _isError = true; });
+      return;
+    }
 
     setState(() { _isLoading = true; _message = null; });
 
@@ -89,12 +102,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? tr('Password reset successfully!')),
-            backgroundColor: AppColors.success,
-          ),
-        );
+        NeoSnackBar.show(context, message: result['message'] ?? tr('Password reset successfully!'), type: NeoSnackbarType.success, position: NeoSnackbarPosition.bottom);
         Navigator.pop(context);
       }
     } catch (e) {
@@ -255,21 +263,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               _buildLabel('EMAIL ADDRESS'),
                               _buildTextField(
                                 controller: _emailController,
-                                hint: 'user@protection.io',
+                                hint: tr('user@protection.io'),
                                 isEmail: true,
                               ),
                             ] else ...[
                               _buildLabel('OTP CODE'),
                               _buildTextField(
                                 controller: _otpController,
-                                hint: '6-digit code',
+                                hint: tr('6-digit code'),
                                 keyboardType: TextInputType.number,
                               ),
                               SizedBox(height: Responsive.sp(20)),
                               _buildLabel('NEW PASSWORD'),
                               _buildTextField(
                                 controller: _passwordController,
-                                hint: 'New password',
+                                hint: tr('New password'),
                                 isPassword: true,
                                 obscureText: _obscurePassword,
                                 onToggleVisibility: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -278,7 +286,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               _buildLabel('CONFIRM PASSWORD'),
                               _buildTextField(
                                 controller: _confirmPasswordController,
-                                hint: 'Repeat password',
+                                hint: tr('Repeat password'),
                                 isPassword: true,
                                 obscureText: _obscureConfirm,
                                 onToggleVisibility: () => setState(() => _obscureConfirm = !_obscureConfirm),

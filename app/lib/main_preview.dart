@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:app/ui/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -14,7 +16,6 @@ import 'package:app/ui/screens/feed_screen.dart';
 import 'package:app/ui/screens/guardians_screen.dart';
 import 'package:app/ui/screens/history_screen.dart';
 import 'package:app/ui/screens/language_selector_screen.dart';
-import 'package:app/ui/screens/manual_result_screen.dart';
 import 'package:app/ui/screens/otp_verification_screen.dart';
 import 'package:app/ui/screens/permission_wizard_screen.dart';
 import 'package:app/ui/screens/privacy_security_screen.dart';
@@ -67,22 +68,22 @@ class PreviewApp extends StatelessWidget {
         educationFeedProvider('all').overrideWith((ref) => FeedResponse(
              articles: _mockArticles,
              total: _mockArticles.length,
-             curated: [_mockArticles.first],
+             exclusive: [],
         )),
         educationFeedProvider('alert').overrideWith((ref) => FeedResponse(
              articles: [], 
              total: 0, 
-             curated: []
+             exclusive: []
         )),
         educationFeedProvider('tip').overrideWith((ref) => FeedResponse(
              articles: [], 
              total: 0, 
-             curated: []
+             exclusive: []
         )),
         educationFeedProvider('news').overrideWith((ref) => FeedResponse(
              articles: [], 
              total: 0, 
-             curated: []
+             exclusive: []
         )),
         
         bookmarksNotifierProvider.overrideWith((ref) => MockBookmarksNotifier()),
@@ -95,13 +96,13 @@ class PreviewApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           brightness: Brightness.dark,
-          scaffoldBackgroundColor: const Color(0xFF18181B),
-          primaryColor: const Color(0xFF8B5CF6),
+          scaffoldBackgroundColor: AppColors.backgroundDark,
+          primaryColor: AppColors.primary,
           colorScheme: const ColorScheme.dark(
-            primary: Color(0xFF8B5CF6),
-            secondary: Color(0xFF10B981),
-            surface: Color(0xFF27272A),
-            error: Color(0xFFEF4444),
+            primary: AppColors.primary,
+            secondary: AppColors.success,
+            surface: AppColors.surfaceDark,
+            error: AppColors.danger,
           ),
           textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
           useMaterial3: true,
@@ -328,7 +329,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   void _showScreenSelector() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF18181B),
+      backgroundColor: AppColors.backgroundDark,
       builder: (context) {
         return ListView.builder(
           itemCount: _titles.length,
@@ -393,7 +394,7 @@ final List<ScanViewModel> _mockScans = [
 
 final List<Article> _mockArticles = [
   Article(
-      id: 1, 
+      url: 'https://example.com/1',
       title: 'How to Spot a Phishing Scam',
       summary: 'Learn the red flags of common phishing attempts in emails and SMS.',
       source: 'CyberSafe',
@@ -403,7 +404,7 @@ final List<Article> _mockArticles = [
       publishedAt: DateTime.now()
   ),
   Article(
-      id: 2, 
+      url: 'https://example.com/2',
       title: 'New WhatsApp Scam Alert',
       summary: 'A new verification code scam is targeting users via WhatsApp.',
       source: 'TechNews',

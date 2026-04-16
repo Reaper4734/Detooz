@@ -93,8 +93,8 @@ class _ScanDetailScreenState extends State<ScanDetailScreen>
         return _DynamicRiskState(
           score: 0,
           color: AppColors.danger,
-          label: 'HIGH RISK',
-          title: 'Threat Detected',
+          label: tr('HIGH RISK'),
+          title: tr('Threat Detected'),
           icon: Icons.warning_amber_rounded,
         );
       case RiskLevel.medium:
@@ -102,7 +102,7 @@ class _ScanDetailScreenState extends State<ScanDetailScreen>
           score: 0,
           color: AppColors.warning,
           label: 'SUSPICIOUS',
-          title: 'Potential Risk',
+          title: tr('Potential Risk'),
           icon: Icons.privacy_tip_outlined,
         );
       case RiskLevel.low:
@@ -110,7 +110,7 @@ class _ScanDetailScreenState extends State<ScanDetailScreen>
           score: 0,
           color: AppColors.success,
           label: 'SAFE',
-          title: 'Safe Content',
+          title: tr('Safe Content'),
           icon: Icons.verified_user_outlined,
         );
     }
@@ -504,49 +504,12 @@ class _ScanDetailScreenState extends State<ScanDetailScreen>
           top: BorderSide(color: AppColors.divider(context), width: 1.5),
         ),
       ),
-      child: _isManual
-          ? // ── Manual: Single CLOSE button ──
-            _buildNeoButton(
-              label: 'CLOSE',
-              color: AppColors.primary,
-              textColor: Colors.black,
-              onTap: () => Navigator.maybePop(context),
-            )
-          : // ── Real Scan: Block + Report Safe ──
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildNeoButton(
-                  label: 'BLOCK SENDER',
-                  color: AppColors.danger,
-                  textColor: Colors.white,
-                  onTap: () async {
-                    try {
-                      await apiService.blockSender(widget.scan.sender);
-                      if (mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (mounted) showOfflineSnackBar(context, e);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildNeoButton(
-                  label: 'REPORT AS SAFE',
-                  color: AppColors.surface(context),
-                  textColor: AppColors.textPrimary(context),
-                  borderColor: AppColors.divider(context),
-                  onTap: () async {
-                    try {
-                      await apiService
-                          .markTrusted(sender: widget.scan.sender);
-                      if (mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (mounted) showOfflineSnackBar(context, e);
-                    }
-                  },
-                ),
-              ],
-            ),
+      child: _buildNeoButton(
+        label: 'CLOSE',
+        color: AppColors.primary,
+        textColor: Colors.black,
+        onTap: () => Navigator.maybePop(context),
+      ),
     );
   }
 

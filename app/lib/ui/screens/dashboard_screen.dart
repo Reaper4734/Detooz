@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../components/neo_snackbar.dart';
 import 'dart:ui';
 import 'dart:async'; // Added
 import 'package:flutter/material.dart';
@@ -37,6 +38,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final ImagePicker _picker = ImagePicker();
   Timer? _refreshTimer;
   bool _verificationCardDismissed = false;
+  String? _lastProfilePicBase64;
+  MemoryImage? _cachedAvatarImage;
 
   @override
   void initState() {
@@ -91,9 +94,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     } catch (e) {
        setState(() => _isAnalyzing = false);
        if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Tr('Image analysis failed: $e'), backgroundColor: AppColors.danger),
-         );
+         NeoSnackBar.show(context, message: 'Image analysis failed: $e', type: NeoSnackbarType.error, position: NeoSnackbarPosition.top);
        }
     }
   }
@@ -122,9 +123,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     } catch (e) {
       setState(() => _isAnalyzing = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Tr('Scan failed: $e'), backgroundColor: AppColors.danger),
-        );
+        NeoSnackBar.show(context, message: 'Scan failed: $e', type: NeoSnackbarType.error, position: NeoSnackbarPosition.top);
       }
     }
   }
@@ -168,8 +167,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      userProfile.when(
-                        data: (profile) {
+                      Builder(
+                        builder: (context) {
+                          final profile = userProfile.valueOrNull;
+                          if (profile == null) {
+                            return Text(
+                              greeting,
+                              style: TextStyle(
+                                color: AppColors.textPrimary(context),
+                                fontSize: Responsive.sp(14),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          }
+                          
                           final firstName = profile.name.split(' ').first;
                           final capitalized = firstName.isNotEmpty
                               ? firstName[0].toUpperCase() + firstName.substring(1).toLowerCase()
@@ -198,22 +209,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           );
                         },
-                        loading: () => Text(
-                          greeting,
-                          style: TextStyle(
-                            color: AppColors.textPrimary(context),
-                            fontSize: Responsive.sp(14),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        error: (_, __) => Text(
-                          greeting,
-                          style: TextStyle(
-                            color: AppColors.textPrimary(context),
-                            fontSize: Responsive.sp(14),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                       ),
                     ],
                   ),
@@ -294,10 +289,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               width: 6,
                               height: 6,
                               margin: const EdgeInsets.only(left: 4),
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
+                              decoration: BoxDecoration(
+                                color: AppColors.success,
                                 shape: BoxShape.circle,
-                                boxShadow: [BoxShadow(color: Color(0x5928C76F), blurRadius: 4)],
+                                boxShadow: [BoxShadow(color: AppColors.success.withOpacity(0.35), blurRadius: 4)],
                               ),
                             ),
                           ),
@@ -308,11 +303,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildStatCard(context, 'SCANNED', userStats.isLoading ? '-' : '${userStats.valueOrNull?.totalScans ?? 0}', isRisk: false),
+                          child: _buildStatCard(
+                            context, 
+                            'SCANNED', 
+                            userStats.valueOrNull?.totalScans ?? 0, 
+                            isRisk: false,
+                            isLoading: userStats.isLoading && !userStats.hasValue,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: _buildStatCard(context, 'HIGH RISK', userStats.isLoading ? '-' : '${userStats.valueOrNull?.highRiskBlocked ?? 0}', isRisk: true),
+                          child: _buildStatCard(
+                            context, 
+                            'HIGH RISK', 
+                            userStats.valueOrNull?.highRiskBlocked ?? 0, 
+                            isRisk: true,
+                            isLoading: userStats.isLoading && !userStats.hasValue,
+                          ),
                         ),
                       ],
                     ),
@@ -350,7 +357,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         minLines: 1,
                         style: TextStyle(fontSize: Responsive.sp(13), color: AppColors.textPrimary(context)),
                         decoration: InputDecoration(
-                          hintText: 'Paste or type text, URL...',
+                          hintText: tr('Paste or type text, URL...'),
                           hintStyle: TextStyle(color: AppColors.textSecondary(context)),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(horizontal: Responsive.sp(14), vertical: Responsive.sp(11)),
@@ -479,20 +486,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     Widget avatarChild;
     DecorationImage? avatarImage;
 
-    if (userProfile.hasValue && userProfile.value!.profilePicture != null && userProfile.value!.profilePicture!.isNotEmpty) {
-      try {
-        final bytes = base64Decode(userProfile.value!.profilePicture!);
+    final profile = userProfile.valueOrNull;
+    if (profile != null && profile.profilePicture != null && profile.profilePicture!.isNotEmpty) {
+      if (profile.profilePicture != _lastProfilePicBase64) {
+        try {
+          _lastProfilePicBase64 = profile.profilePicture;
+          _cachedAvatarImage = MemoryImage(base64Decode(_lastProfilePicBase64!));
+        } catch (_) {
+          _lastProfilePicBase64 = null;
+          _cachedAvatarImage = null;
+        }
+      }
+      
+      if (_cachedAvatarImage != null) {
         avatarImage = DecorationImage(
-          image: MemoryImage(bytes),
+          image: _cachedAvatarImage!,
           fit: BoxFit.cover,
         );
-      } catch (_) {
-        // Fallback to initials on decode error
       }
     }
 
     if (avatarImage == null) {
-      final name = userProfile.hasValue ? userProfile.value!.name : '';
+      final name = profile?.name ?? '';
       final initial = name.isNotEmpty ? name[0].toUpperCase() : 'U';
       avatarChild = Center(
         child: Text(
@@ -521,7 +536,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String label, String value, {required bool isRisk}) {
+  Widget _buildStatCard(BuildContext context, String label, int value, {required bool isRisk, bool isLoading = false}) {
     return Container(
       padding: EdgeInsets.all(Responsive.sp(12)),
       decoration: BoxDecoration(
@@ -544,8 +559,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
-                value,
+              _AnimatedCountText(
+                value: value,
+                isLoading: isLoading,
                 style: TextStyle(
                   fontFamily: 'IntegralCF',
                   fontSize: Responsive.sp(24),
@@ -582,19 +598,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+
   Widget _buildScanItem(BuildContext context, ScanViewModel scan) {
     final RiskLevel risk = scan.riskLevel;
     Color statusColor;
 
     switch (risk) {
       case RiskLevel.high:
-        statusColor = const Color(0xFFF87171); // Red-400
+        statusColor = AppColors.danger;
         break;
       case RiskLevel.medium:
-        statusColor = const Color(0xFFFBBF24); // Amber-400
+        statusColor = AppColors.warning;
         break;
       case RiskLevel.low:
-        statusColor = const Color(0xFF34D399); // Emerald-400
+        statusColor = AppColors.success;
         break;
     }
 
@@ -814,6 +831,46 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
         widget.text,
         style: widget.style,
       ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────
+// COUNTER ANIMATION WIDGET
+// ──────────────────────────────────────────────
+
+class _AnimatedCountText extends StatelessWidget {
+  final int value;
+  final bool isLoading;
+  final TextStyle style;
+
+  const _AnimatedCountText({
+    required this.value,
+    required this.isLoading,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        final offsetAnimation = Tween<Offset>(
+          begin: const Offset(0.0, 0.5),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutBack));
+        
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          ),
+        );
+      },
+      child: isLoading 
+        ? Text('-', key: const ValueKey('loading'), style: style)
+        : Text('$value', key: ValueKey(value), style: style),
     );
   }
 }

@@ -34,14 +34,38 @@ class ScanViewModel {
   
   /// Create from API JSON response
   factory ScanViewModel.fromJson(Map<String, dynamic> json) {
+    String message = json['message'] ?? '';
+    String preview = json['message_preview'] ?? json['message'] ?? '';
+    final String reason = json['risk_reason'] ?? '';
+
+    // Transform technical placeholders like [Image Analysis] into meaningful summaries
+    if ((preview.trim() == '[Image Analysis]' || preview.isEmpty) && reason.isNotEmpty) {
+      final words = reason.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+      if (words.length > 7) {
+        preview = words.take(7).join(' ') + '...';
+      } else {
+        preview = reason;
+      }
+    }
+    
+    // Final check to remove square brackets if they still exist in any image analysis placeholder
+    if (preview.contains('[Image Analysis]')) {
+      preview = preview.replaceAll('[', '').replaceAll(']', '');
+    }
+
+    // Fallback if still empty
+    if (preview.isEmpty || preview.trim() == '[]' || preview.trim() == 'Image Analysis') {
+      preview = preview.trim() == 'Image Analysis' ? 'Image Analysis' : 'Visual Content Scan';
+    }
+
     return ScanViewModel(
       id: json['id']?.toString() ?? '',
       senderNumber: json['sender'] ?? 'Unknown',
-      message: json['message'] ?? '',
-      messagePreview: json['message_preview'] ?? json['message'] ?? '',
+      message: message,
+      messagePreview: preview,
       riskLevel: _parseRiskLevel(json['risk_level']),
       platform: _parsePlatform(json['platform']),
-      riskReason: json['risk_reason'],
+      riskReason: reason,
       confidence: (json['confidence'] as num?)?.toDouble(),
       source: json['source'] ?? 'cloud',
       scannedAt: json['created_at'] != null 

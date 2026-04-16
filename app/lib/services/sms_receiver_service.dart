@@ -6,7 +6,6 @@ import '../services/notification_service.dart';
 import '../services/ai_service.dart';
 import '../services/connectivity_service.dart';
 import '../services/sms_sender_service.dart';
-import '../ui/components/scam_alert_overlay.dart';
 import '../ui/screens/permission_wizard_screen.dart';
 import '../services/offline_cache_service.dart';
 
@@ -265,16 +264,7 @@ class SmsReceiverService {
         );
       }
       
-      // Also show full-screen overlay for HIGH risk (only if app is open)
-      if (riskLevel == 'HIGH' && _context != null) {
-        _showScamAlert(
-          sender: sender,
-          message: message,
-          reason: reason,
-          confidence: (result['confidence'] as num?)?.toDouble() ?? 0.9,
-          platform: platform,
-        );
-      } else if (riskLevel == 'MEDIUM') {
+      if (riskLevel == 'MEDIUM') {
         debugPrint('⚠️ MEDIUM risk detected from $sender');
       }
       
@@ -289,36 +279,6 @@ class SmsReceiverService {
       }
     } catch (e) {
       debugPrint('❌ Message analysis failed: $e');
-    }
-  }
-  
-  void _showScamAlert({
-    required String sender,
-    required String message,
-    required String reason,
-    required double confidence,
-    required String platform,
-  }) {
-    if (_context == null) return;
-    
-    debugPrint('🚨 HIGH RISK $platform message detected! Showing alert...');
-    
-    ScamAlertOverlay.show(
-      _context!,
-      sender: '$platform: $sender',
-      message: message,
-      reason: reason,
-      confidence: confidence,
-      onBlock: () => _blockSender(sender),
-    );
-  }
-  
-  Future<void> _blockSender(String sender) async {
-    try {
-      await apiService.blockSender(sender);
-      debugPrint('🚫 Blocked sender: $sender');
-    } catch (e) {
-      debugPrint('❌ Failed to block sender: $e');
     }
   }
   

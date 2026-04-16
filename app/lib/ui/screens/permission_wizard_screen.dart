@@ -65,85 +65,92 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
     return Scaffold(
       backgroundColor: AppColors.background(context),
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(Responsive.sp(24)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: Responsive.sp(12)),
-              // ─── Header ───
-              Text(
-                'SETUP',
-                style: TextStyle(
-                  fontFamily: 'IntegralCF',
-                  fontSize: Responsive.sp(36),
-                  fontWeight: FontWeight.w700,
-                  height: 1.0,
-                  letterSpacing: -1,
-                  color: AppColors.textPrimary(context),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(Responsive.sp(24)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: Responsive.sp(12)),
+                    // ─── Header ───
+                    Text(
+                      'SETUP',
+                      style: TextStyle(
+                        fontFamily: 'IntegralCF',
+                        fontSize: Responsive.sp(36),
+                        fontWeight: FontWeight.w700,
+                        height: 1.0,
+                        letterSpacing: -1,
+                        color: AppColors.textPrimary(context),
+                      ),
+                    ),
+                    Text(
+                      'DETOOZ',
+                      style: TextStyle(
+                        fontFamily: 'IntegralCF',
+                        fontSize: Responsive.sp(36),
+                        fontWeight: FontWeight.w700,
+                        height: 1.0,
+                        letterSpacing: -1,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    SizedBox(height: Responsive.sp(12)),
+                    Tr(
+                      'To protect you 24/7, Detooz needs system permissions to operate successfully.',
+                      style: TextStyle(
+                        fontSize: Responsive.sp(14),
+                        color: AppColors.textSecondary(context),
+                        height: 1.4,
+                      ),
+                    ),
+                    SizedBox(height: Responsive.sp(40)),
+
+                    // ─── Step 1: Notification Access ───
+                    _buildStepCard(
+                      index: 1,
+                      title: tr("SCAM DETECTION ACCESS"),
+                      description: tr("Required to read incoming SMS/WhatsApp messages independently."),
+                      icon: Icons.notifications_active,
+                      isDone: _notificationGranted,
+                      actionLabel: "GRANT ACCESS",
+                      onAction: () async {
+                         await [Permission.sms, Permission.contacts].request();
+                         await smsReceiverService.openNotificationListenerSettings();
+                      },
+                    ),
+                    
+                    SizedBox(height: Responsive.sp(20)),
+
+                    // ─── Step 2: Autostart (Xiaomi/Oppo/Vivo) ───
+                    _buildStepCard(
+                      index: 2,
+                      title: tr("RUN IN BACKGROUND"),
+                      description: tr("Prevents the system from killing Detooz. Enable 'Autostart'."),
+                      icon: Icons.flash_on,
+                      isDone: _autostartDone,
+                      actionLabel: "OPEN SETTINGS",
+                      onAction: () async {
+                        try {
+                          await smsReceiverService.openAutostartSettings();
+                        } catch (e) {
+                          debugPrint('Autostart error: $e');
+                        } finally {
+                          if (mounted) setState(() => _autostartDone = true);
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                'DETOOZ',
-                style: TextStyle(
-                  fontFamily: 'IntegralCF',
-                  fontSize: Responsive.sp(36),
-                  fontWeight: FontWeight.w700,
-                  height: 1.0,
-                  letterSpacing: -1,
-                  color: AppColors.primary,
-                ),
-              ),
-              SizedBox(height: Responsive.sp(12)),
-              Tr(
-                'To protect you 24/7, Detooz needs system permissions to operate successfully.',
-                style: TextStyle(
-                  fontSize: Responsive.sp(14),
-                  color: AppColors.textSecondary(context),
-                  height: 1.4,
-                ),
-              ),
-              SizedBox(height: Responsive.sp(40)),
-
-              // ─── Step 1: Notification Access ───
-              _buildStepCard(
-                index: 1,
-                title: tr("SCAM DETECTION ACCESS"),
-                description: "Required to read incoming SMS/WhatsApp messages independently.",
-                icon: Icons.notifications_active,
-                isDone: _notificationGranted,
-                actionLabel: "GRANT ACCESS",
-                onAction: () async {
-                   await [Permission.sms, Permission.contacts].request();
-                   await smsReceiverService.openNotificationListenerSettings();
-                },
-              ),
-              
-              SizedBox(height: Responsive.sp(20)),
-
-              // ─── Step 2: Autostart (Xiaomi/Oppo/Vivo) ───
-              _buildStepCard(
-                index: 2,
-                title: tr("RUN IN BACKGROUND"),
-                description: "Prevents the system from killing Detooz. Enable 'Autostart'.",
-                icon: Icons.flash_on,
-                isDone: _autostartDone,
-                actionLabel: "OPEN SETTINGS",
-                onAction: () async {
-                  try {
-                    await smsReceiverService.openAutostartSettings();
-                  } catch (e) {
-                    debugPrint('Autostart error: $e');
-                  } finally {
-                    if (mounted) setState(() => _autostartDone = true);
-                  }
-                },
-              ),
-
-              const Spacer(),
-              
-              // ─── Continue Button ───
-              GestureDetector(
+            ),
+            
+            // ─── Continue Button ───
+            Padding(
+              padding: EdgeInsets.fromLTRB(Responsive.sp(24), 0, Responsive.sp(24), Responsive.sp(16)),
+              child: GestureDetector(
                 onTap: _notificationGranted ? () async {
                   if (!_offlineSetupDone) {
                     final prefs = await SharedPreferences.getInstance();
@@ -152,8 +159,8 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                         builder: (_) => SetupOfflineProtectionScreen(
-                          onComplete: () {
-                            Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (Route<dynamic> route) => false);
+                          onComplete: (setupContext) {
+                            Navigator.of(setupContext).popUntil((route) => route.isFirst);
                           },
                         ),
                       ),
@@ -188,9 +195,8 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
                   ),
                 ),
               ),
-              SizedBox(height: Responsive.sp(16)),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

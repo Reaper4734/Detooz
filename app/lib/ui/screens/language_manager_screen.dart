@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import '../components/neo_snackbar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../components/tr.dart';
 import '../providers.dart';
 import '../../services/ml/sms_translator.dart';
 import '../../services/ml/state_language_map.dart';
-import 'model_download_screen.dart';
 import '../components/settings_widgets.dart';
 
 class LanguageManagerScreen extends ConsumerStatefulWidget {
@@ -47,27 +47,29 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              buildBrutalistHeader(context, 'Detection Language'),
+              buildBrutalistHeader(context, tr('Detection Language')),
               
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED)))
+                    ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                     : SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             buildHeroBlock(context, 
                               icon: Icons.translate, 
-                              title: 'SMS Detection Language', 
-                              subtitle: 'These language packs allow Detooz to detect scams in your local language, even offline. All processing stays on your device.',
+                              title: tr('SMS Detection'), 
+                              subtitle: tr('Manage offline scam detection packs.'),
                             ),
+                            const SizedBox(height: 16),
+                            buildInfoBox(context, 'Download language models to enable SMS analysis on your device without an active internet connection.'),
                             const SizedBox(height: 24),
 
-                            buildSectionLabel(context, 'Installed Packs'),
+                            buildSectionLabel(context, tr('Downloaded')),
                             _buildLanguageList(downloaded: true),
                             const SizedBox(height: 32),
 
-                            buildSectionLabel(context, 'Available to Download'),
+                            buildSectionLabel(context, tr('Available for Download')),
                             _buildLanguageList(downloaded: false),
                           ],
                         ),
@@ -116,42 +118,41 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
     final isDownloaded = status == _ModelStatus.downloaded;
     
     return buildSettingsRow(context,
-      leading: buildLangBadge(context, code.toUpperCase(), isDownloaded),
+      leading: buildLangBadge(context, languageNativeSymbol(code), isDownloaded),
       title: name,
-      titleColor: isDownloaded ? AppColors.textPrimary(context) : AppColors.textSecondary(context),
-      subtitle: isDownloaded ? 'Installed (~30 MB)' : '~30 MB download',
-      trailing: _buildActionButton(code, status),
+      titleColor: isDownloaded ? AppColors.textPrimary(context) : AppColors.textPrimary(context),
+      trailing: _buildActionTrailing(code, status),
       isLast: isLast,
+      onTap: isDownloaded ? null : () => _downloadModel(code),
     );
   }
 
-  Widget _buildActionButton(String code, _ModelStatus status) {
+  Widget _buildActionTrailing(String code, _ModelStatus status) {
     switch (status) {
       case _ModelStatus.downloaded:
-        return GestureDetector(
-          onTap: () => _deleteModel(code),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(color: const Color(0xFFEF4444).withOpacity(0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFFEF4444))),
-            child: Text(tr('DELETE'), style: const TextStyle(fontFamily: 'IntegralCF', fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFEF4444))),
+        // Plain: size text + trash icon (no box)
+        return Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(tr('30 MB'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary(context))),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => _deleteModel(code),
+            child: Icon(Icons.delete, size: 18, color: AppColors.textSecondary(context)),
           ),
-        );
+        ]);
       case _ModelStatus.downloading:
-        return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7C3AED)));
+        return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary));
       case _ModelStatus.notDownloaded:
-        return GestureDetector(
-          onTap: () => _downloadModel(code),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFF7C3AED))),
-            child: Text(tr('DOWNLOAD'), style: const TextStyle(fontFamily: 'IntegralCF', fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF7C3AED))),
-          ),
-        );
+        // Plain: size text + cloud icon (no box)
+        return Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(tr('30 MB'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary(context))),
+          const SizedBox(width: 6),
+          Icon(Icons.cloud_download, size: 18, color: AppColors.textSecondary(context)),
+        ]);
     }
   }
 
   Future<void> _downloadModel(String code) async {
-    final success = await showModelDownload(context, ref, langCode: code, langName: languageDisplayName(code));
+    final success = await showDownloadDialog(context, langCode: code, langName: languageDisplayName(code));
     if (success && mounted) {
       setState(() => _statuses[code] = _ModelStatus.downloaded);
     }
@@ -185,7 +186,7 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
                 onTap: () => Navigator.pop(ctx, true),
                 child: Container(
                   height: 40,
-                  decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(4)),
+                  decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(4)),
                   child: Center(child: Text(tr('DELETE'), style: const TextStyle(fontFamily: 'IntegralCF', fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
                 ),
               ),
@@ -199,7 +200,7 @@ class _LanguageManagerScreenState extends ConsumerState<LanguageManagerScreen> {
       await _translator.deleteModel(code);
       if (mounted) {
         setState(() => _statuses[code] = _ModelStatus.notDownloaded);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${languageDisplayName(code)} pack removed'), backgroundColor: AppColors.surface(context)));
+        NeoSnackBar.show(context, message: '${languageDisplayName(code)} pack removed', type: NeoSnackbarType.info, position: NeoSnackbarPosition.bottom);
       }
     }
   }

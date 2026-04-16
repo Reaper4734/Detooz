@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../components/neo_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,15 +35,15 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
           children: [
             // ─── Header ───
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              padding: EdgeInsets.fromLTRB(20 * (MediaQuery.of(context).size.width / 375.0), 24 * (MediaQuery.of(context).size.width / 375.0), 20 * (MediaQuery.of(context).size.width / 375.0), 0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'GUARDIAN NETWORK',
                   style: TextStyle(
                     fontFamily: 'IntegralCF',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 20 * (MediaQuery.of(context).size.width / 375.0),
+                    fontWeight: FontWeight.w900,
                     color: AppColors.textPrimary(context),
                     letterSpacing: 0.5,
                   ),
@@ -61,9 +62,9 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
                 ),
                 child: Row(
                   children: [
-                    _buildTab('PROTECT ME', 0),
+                    _buildTab(tr('PROTECT ME'), 0),
                     Container(width: 2, height: 44, color: AppColors.divider(context)),
-                    _buildTab('PROTECT OTHERS', 1),
+                    _buildTab(tr('PROTECT OTHERS'), 1),
                   ],
                 ),
               ),
@@ -99,7 +100,7 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.5,
                 color: isActive
-                    ? const Color(0xFF121417)
+                    ? AppColors.backgroundDark
                     : AppColors.textSecondary(context),
               ),
             ),
@@ -112,70 +113,12 @@ class _GuardiansScreenState extends ConsumerState<GuardiansScreen> {
   // ─── Top-Down Overlay Notification ───
   void _showTopNotification(String message, bool isSuccess) {
     if (!mounted) return;
-    final OverlayState? overlayState;
-    try {
-      overlayState = Overlay.of(context);
-    } catch (_) {
-      return; // Overlay not available yet
-    }
-    late OverlayEntry entry;
-
-    entry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: 20,
-        right: 20,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: -150.0, end: 0.0),
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOutBack,
-          builder: (context, val, child) {
-            return Transform.translate(
-              offset: Offset(0, val),
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: isSuccess ? AppColors.success : AppColors.danger,
-                    border: Border.all(color: AppColors.textPrimary(context), width: 2),
-                    boxShadow: [
-                      BoxShadow(offset: const Offset(4, 4), color: AppColors.textPrimary(context)),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isSuccess ? Icons.check_circle_outline : Icons.error_outline,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          message.toUpperCase(),
-                          style: const TextStyle(
-                            fontFamily: 'IntegralCF',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
+    NeoSnackBar.show(
+      context,
+      message: message,
+      type: isSuccess ? NeoSnackbarType.success : NeoSnackbarType.error,
+      position: NeoSnackbarPosition.top,
     );
-
-    overlayState.insert(entry);
-    Future.delayed(const Duration(seconds: 3), () {
-      if (entry.mounted) entry.remove();
-    });
   }
 }
 
@@ -259,9 +202,9 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                 style: TextStyle(color: AppColors.textSecondary(context), fontSize: 13, height: 1.4),
               ),
               const SizedBox(height: 20),
-              _buildNeoInput(controller: nameController, hint: 'Name (Optional)', icon: Icons.person_outline),
+              _buildNeoInput(controller: nameController, hint: tr('Name (Optional)'), icon: Icons.person_outline),
               const SizedBox(height: 12),
-              _buildNeoInput(controller: phoneController, hint: 'Phone (Required)', icon: Icons.phone_android, keyboardType: TextInputType.phone),
+              _buildNeoInput(controller: phoneController, hint: tr('Phone (Required)'), icon: Icons.phone_android, keyboardType: TextInputType.phone),
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -300,7 +243,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                       },
                       child: const Text(
                         'GENERATE CODE',
-                        style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF121417)),
+                        style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.backgroundDark),
                       ),
                     ),
                   ),
@@ -366,7 +309,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 decoration: BoxDecoration(
-                  color: AppColors.isDark(context) ? const Color(0xFF1A1F24) : const Color(0xFFF1F4F8),
+                  color: AppColors.isDark(context) ? AppColors.panelDark : AppColors.panelLight,
                   border: Border.all(color: AppColors.textPrimary(context), width: 1.5),
                 ),
                 child: Center(
@@ -402,18 +345,18 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(Icons.copy, color: Color(0xFF121417), size: 18),
+                    Icon(Icons.copy, color: AppColors.backgroundDark, size: 18),
                     SizedBox(width: 8),
                     Text(
                       'COPY',
-                      style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF121417)),
+                      style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.backgroundDark),
                     ),
                     SizedBox(width: 4),
-                    Text('&', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF121417))),
+                    Text('&', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.backgroundDark)),
                     SizedBox(width: 4),
                     Text(
                       'CLOSE',
-                      style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF121417)),
+                      style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.backgroundDark),
                     ),
                   ],
                 ),
@@ -473,11 +416,11 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
           _NeoButton(
             onTap: _isGeneratingOtp ? () {} : _showAddGuardianDetailsDialog,
             child: _isGeneratingOtp
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Color(0xFF121417), strokeWidth: 3))
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: AppColors.backgroundDark, strokeWidth: 3))
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(Icons.add, color: Color(0xFF121417), size: 20),
+                      Icon(Icons.add, color: AppColors.backgroundDark, size: 20),
                       SizedBox(width: 8),
                       Text(
                         'ADD NEW GUARDIAN',
@@ -485,7 +428,7 @@ class _ProtectMeTabState extends State<_ProtectMeTab> {
                           fontFamily: 'IntegralCF',
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF121417),
+                          color: AppColors.backgroundDark,
                         ),
                       ),
                     ],
@@ -751,7 +694,7 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                _buildNeoInput(controller: _emailController, hint: 'user@example.com', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+                _buildNeoInput(controller: _emailController, hint: tr('user@example.com'), icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
                 const SizedBox(height: 16),
 
                 // OTP Field
@@ -765,27 +708,27 @@ class _ProtectOthersTabState extends State<_ProtectOthersTab> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                _buildNeoInput(controller: _otpController, hint: 'Enter 6-digit code', icon: Icons.lock_outline, keyboardType: TextInputType.number),
+                _buildNeoInput(controller: _otpController, hint: tr('Enter 6-digit code'), icon: Icons.lock_outline, keyboardType: TextInputType.number),
                 const SizedBox(height: 24),
 
                 // Link Button
                 _NeoButton(
                   onTap: _isLinking ? () {} : _linkUser,
                   child: _isLinking
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Color(0xFF121417), strokeWidth: 3))
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: AppColors.backgroundDark, strokeWidth: 3))
                       : Row(
                           mainAxisSize: MainAxisSize.min,
                           children: const [
                             Text(
                               'LINK',
-                              style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF121417)),
+                              style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.backgroundDark),
                             ),
                             SizedBox(width: 4),
-                            Text('&', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF121417))),
+                            Text('&', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.backgroundDark)),
                             SizedBox(width: 4),
                             Text(
                               'PROTECT',
-                              style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF121417)),
+                              style: TextStyle(fontFamily: 'IntegralCF', fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.backgroundDark),
                             ),
                           ],
                         ),

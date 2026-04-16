@@ -191,7 +191,7 @@ class _ReelItemState extends ConsumerState<_ReelItem> with SingleTickerProviderS
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF131A13), // Match screenshot dark olive
+      backgroundColor: Colors.black, // Forced dark mode for reels content
       body: GestureDetector(
         onTap: _handleTap,
         child: Stack(
@@ -284,7 +284,7 @@ class _ReelItemState extends ConsumerState<_ReelItem> with SingleTickerProviderS
               Text(
                 widget.article.source,
                 style: const TextStyle(
-                  color: Color(0xFF00E5FF), // Cyan matching the screenshot
+                  color: AppColors.primary, 
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),

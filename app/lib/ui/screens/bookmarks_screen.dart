@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../components/neo_snackbar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'article_webview.dart';
 import '../components/tr.dart';
 import '../theme/app_colors.dart';
 import '../providers/education_provider.dart';
 import '../../contracts/article.dart';
+
+import '../components/settings_widgets.dart';
 
 class BookmarksScreen extends ConsumerWidget {
   const BookmarksScreen({super.key});
@@ -15,16 +18,15 @@ class BookmarksScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        backgroundColor: AppColors.background(context),
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.textPrimary(context)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Tr('My Bookmarks', style: TextStyle(color: AppColors.textPrimary(context), fontWeight: FontWeight.w600)),
-      ),
-      body: bookmarksAsync.when(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 20, right: 20, top: 24),
+              child: buildBrutalistHeader(context, tr('My Bookmarks')),
+            ),
+            Expanded(
+              child: bookmarksAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(
           child: Column(
@@ -37,7 +39,7 @@ class BookmarksScreen extends ConsumerWidget {
               ElevatedButton(
                 onPressed: () => ref.read(bookmarksNotifierProvider.notifier).loadBookmarks(),
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                child: const Text('Retry'),
+                child: Text(tr('Retry')),
               ),
             ],
           ),
@@ -52,7 +54,7 @@ class BookmarksScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Tr('No bookmarks yet', style: TextStyle(color: AppColors.textPrimary(context), fontSize: 18, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
-                  const Tr('Save articles to read later', style: TextStyle(color: Color(0xFF9CA3AF))),
+                  Tr('Save articles to read later', style: TextStyle(color: AppColors.textSecondary(context))),
                 ],
               ),
             );
@@ -68,8 +70,12 @@ class BookmarksScreen extends ConsumerWidget {
           );
         },
       ),
-    );
-  }
+    ),
+  ],
+),
+),
+);
+}
 }
 
 class _BookmarkCard extends ConsumerWidget {
@@ -135,19 +141,7 @@ class _BookmarkCard extends ConsumerWidget {
                       children: [
                         Text(
                           article.source,
-                          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            '${article.readTimeMins} min',
-                            style: TextStyle(color: AppColors.primary, fontSize: 10),
-                          ),
+                          style: TextStyle(color: AppColors.textSecondary(context), fontSize: 11),
                         ),
                       ],
                     ),
@@ -161,9 +155,7 @@ class _BookmarkCard extends ConsumerWidget {
               onPressed: () async {
                 await ref.read(bookmarksNotifierProvider.notifier).removeBookmark(article);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Bookmark removed'), backgroundColor: AppColors.success),
-                  );
+                  NeoSnackBar.show(context, message: tr('Bookmark removed'), type: NeoSnackbarType.success, position: NeoSnackbarPosition.bottom);
                 }
               },
             ),
