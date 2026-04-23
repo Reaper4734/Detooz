@@ -54,6 +54,7 @@ class MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     Responsive.init(context);
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           IndexedStack(

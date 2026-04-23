@@ -11,10 +11,25 @@ class GoogleAuthService {
 
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
+    // ════════════════════════════════════════════════════════════════
+    // IMPORTANT: This serverClientId MUST be the **Web client ID** from
+    // your Firebase project (detooz-eaef4, project_number: 69985650510).
+    //
+    // Steps to get the correct ID:
+    // 1. Add your SHA-1 fingerprints to Firebase Console → Project Settings → Android app
+    // 2. Download the updated google-services.json
+    // 3. Go to Google Cloud Console → APIs & Services → Credentials
+    // 4. Copy the "Web client" OAuth 2.0 Client ID (NOT the Android one)
+    // 5. Replace the serverClientId below
+    //
+    // Current ID '497423501955-...' belongs to a DIFFERENT project.
+    // It must start with '69985650510-...' to match the Firebase project.
+    // ════════════════════════════════════════════════════════════════
     await _googleSignIn.initialize(
       serverClientId: '497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com',
     );
     _initialized = true;
+    debugPrint('GoogleAuth: Initialized with serverClientId');
   }
   
   /// Sign in with Google
