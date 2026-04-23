@@ -26,7 +26,7 @@ class GoogleAuthService {
     // It must start with '69985650510-...' to match the Firebase project.
     // ════════════════════════════════════════════════════════════════
     await _googleSignIn.initialize(
-      serverClientId: '497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com',
+      serverClientId: '69985650510-ejsbp6d2oniofsu108nu8imcgon0ci09.apps.googleusercontent.com',
     );
     _initialized = true;
     debugPrint('GoogleAuth: Initialized with serverClientId');
