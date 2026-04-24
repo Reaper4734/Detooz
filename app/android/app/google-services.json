@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "497423501955-ofp4lqdhrr1oefeckajp8bgt6ktvvn51.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.detooz.app",
+            "certificate_hash": "be106917104a2087b0b77ca9372ada774364168a"
+          }
+        },
+        {
           "client_id": "497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com",
           "client_type": 3
         }
