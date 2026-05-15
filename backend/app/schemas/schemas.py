@@ -130,3 +130,20 @@ class ScanResponse(BaseModel):
 class ScanDetail(ScanResponse):
     message: str | None
     is_blocked: bool
+
+
+class AppScanRequest(BaseModel):
+    package_name: str
+    app_name: str
+    signature_sha256: str
+    requested_permissions: list[str] = []
+
+
+class AppScanResponse(BaseModel):
+    package_name: str
+    app_name: str
+    is_malicious: bool
+    risk_level: str
+    reason: str
+    confidence: float
+    play_store_verified: bool

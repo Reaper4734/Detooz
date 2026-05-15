@@ -22,6 +22,9 @@
     
     <!-- Contacts Permission - to skip saved contacts for privacy -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    
+    <!-- App Scanner: Required to detect newly installed packages and extract signatures -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <application
         android:label="Detooz"

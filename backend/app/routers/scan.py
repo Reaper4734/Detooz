@@ -9,8 +9,9 @@ import uuid
 from app.db import get_db
 from app.models import User, Scan, RiskLevel, PlatformType
 from app.routers.auth import get_current_user
-from app.schemas import ScanRequest, ScanResponse, ScanDetail
+from app.schemas import ScanRequest, ScanResponse, ScanDetail, AppScanRequest, AppScanResponse
 from app.services.scam_detector import ScamDetector
+import httpx
 from app.services.confidence_scorer import confidence_scorer
 from app.services.explanation_engine import explanation_engine
 from app.services.guardian_alert_service import guardian_alert_service
@@ -62,6 +63,68 @@ async def analyze_message(
         await guardian_alert_service.create_alerts_for_scan(db, current_user, scan)
     
     return scan
+
+
+@router.post("/app", response_model=AppScanResponse)
+async def scan_app(
+    request: AppScanRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Scan a newly installed Android application for scam/impersonation markers"""
+    
+    # 1. Deterministic Play Store Check
+    play_store_verified = False
+    async with httpx.AsyncClient() as client:
+        url = f"https://play.google.com/store/apps/details?id={request.package_name}"
+        try:
+            resp = await client.get(url, timeout=3.0)
+            if resp.status_code == 200:
+                play_store_verified = True
+        except Exception:
+            pass
+
+    # 2. AI Prompting (Groq)
+    prompt = f"App Name: {request.app_name}\nPackage Name: {request.package_name}\nPlay Store Verified: {play_store_verified}\nPermissions: {request.requested_permissions}"
+    
+    # We pass it to the detector simulating a system message
+    result = await detector.analyze(f"App Installation Analysis:\n{prompt}", "App Scanner")
+    
+    is_malicious = False
+    if result["risk_level"] == "HIGH":
+        is_malicious = True
+        
+    response = AppScanResponse(
+        package_name=request.package_name,
+        app_name=request.app_name,
+        is_malicious=is_malicious,
+        risk_level=result["risk_level"],
+        reason=result["reason"],
+        confidence=result.get("confidence", 0.9),
+        play_store_verified=play_store_verified
+    )
+    
+    # 3. Guardian Alerts (Crucial feature from our USP)
+    if is_malicious:
+        scan_record = Scan(
+            user_id=current_user.id,
+            sender="System Scanner",
+            message=f"Installed Malicious App: {request.app_name} ({request.package_name})",
+            message_preview=f"Malicious App: {request.app_name}",
+            platform=PlatformType.SMS, # Fallback platform enum
+            risk_level=RiskLevel.HIGH,
+            risk_reason=result["reason"],
+            confidence=result.get("confidence", 0.9),
+            guardian_alerted=False
+        )
+        db.add(scan_record)
+        await db.commit()
+        await db.refresh(scan_record)
+        
+        # This executes the guardian alert trigger, bypassing the victim's input
+        await guardian_alert_service.create_alerts_for_scan(db, current_user, scan_record)
+        
+    return response
 
 
 @router.post("/analyze-image", response_model=ScanResponse)

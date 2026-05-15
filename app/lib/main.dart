@@ -13,6 +13,7 @@ import 'services/offline_cache_service.dart';
 import 'services/notification_service.dart';
 import 'services/firebase_messaging_service.dart';
 import 'services/ai_service.dart';
+import 'services/app_scan_service.dart';
 import 'services/translation/translation_service.dart';
 import '../ui/components/tr.dart';
 import '../ui/components/tr_strings.dart';
@@ -44,6 +45,9 @@ void main() async {
     // Initialize local push notifications
     await notificationService.initialize();
     notificationService.setNavigatorKey(navigatorKey);
+
+    // Initialize APK/App Scanner (Threat Detection)
+    await appScanService.initialize();
 
     // Initialize AI Model (Hybrid Shield)
     await aiService.loadModel();

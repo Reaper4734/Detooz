@@ -6,6 +6,11 @@ import io.flutter.plugin.common.MethodChannel
 import android.telephony.SmsManager
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import io.flutter.plugin.common.EventChannel
 import androidx.core.content.ContextCompat
 
 class MainActivity: FlutterFragmentActivity() {
@@ -13,7 +18,11 @@ class MainActivity: FlutterFragmentActivity() {
     companion object {
         private const val SMS_CHANNEL = "com.detooz.app/sms_notifications"
         private const val SMS_SENDER_CHANNEL = "com.detooz.app/sms"
+        private const val APP_SCANNER_CHANNEL = "com.detooz.app/apk_scanner"
     }
+    
+    private var appScanEventSink: EventChannel.EventSink? = null
+    private var packageReceiver: BroadcastReceiver? = null
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -76,6 +85,22 @@ class MainActivity: FlutterFragmentActivity() {
                 }
             }
         }
+        
+        // Setup App Scanner event channel
+        val appScannerChannel = EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            APP_SCANNER_CHANNEL
+        )
+        appScannerChannel.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                appScanEventSink = events
+                registerPackageReceiver()
+            }
+            override fun onCancel(arguments: Any?) {
+                appScanEventSink = null
+                unregisterPackageReceiver()
+            }
+        })
     }
     
     private fun hasSmsPermission(): Boolean {
@@ -172,5 +197,80 @@ class MainActivity: FlutterFragmentActivity() {
         } catch (e: Exception) {
             // Ignore
         }
+    }
+    
+    private fun registerPackageReceiver() {
+        if (packageReceiver == null) {
+            packageReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    if (intent.action == Intent.ACTION_PACKAGE_ADDED) {
+                        val uri = intent.data
+                        val pkgName = uri?.schemeSpecificPart ?: return
+                        
+                        // Ignore our own app updates
+                        if (pkgName == context.packageName) return
+                        
+                        Thread {
+                            val appData = extractAppMetadata(context, pkgName)
+                            runOnUiThread {
+                                appScanEventSink?.success(appData)
+                            }
+                        }.start()
+                    }
+                }
+            }
+            val filter = IntentFilter(Intent.ACTION_PACKAGE_ADDED).apply {
+                addDataScheme("package")
+            }
+            registerReceiver(packageReceiver, filter)
+            android.util.Log.d("MainActivity", "✅ Registered APK Scanner Package Receiver")
+        }
+    }
+
+    private fun unregisterPackageReceiver() {
+        packageReceiver?.let {
+            unregisterReceiver(it)
+            packageReceiver = null
+        }
+    }
+
+    private fun extractAppMetadata(context: Context, pkgName: String): Map<String, Any> {
+        val pm = context.packageManager
+        val data = mutableMapOf<String, Any>()
+        data["packageName"] = pkgName
+        
+        try {
+            val packageInfo = pm.getPackageInfo(
+                pkgName, 
+                PackageManager.GET_PERMISSIONS or PackageManager.GET_SIGNING_CERTIFICATES
+            )
+            data["appName"] = packageInfo.applicationInfo.loadLabel(pm).toString()
+            data["requestedPermissions"] = packageInfo.requestedPermissions?.toList() ?: emptyList<String>()
+            
+            // Extract SHA-256 signature
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val signatures = packageInfo.signingInfo?.apkContentsSigners
+                if (signatures != null && signatures.isNotEmpty()) {
+                    val md = java.security.MessageDigest.getInstance("SHA-256")
+                    md.update(signatures[0].toByteArray())
+                    val hash = md.digest().joinToString("") { "%02x".format(it) }
+                    data["signature"] = hash
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val signatures = pm.getPackageInfo(pkgName, PackageManager.GET_SIGNATURES).signatures
+                if (signatures != null && signatures.isNotEmpty()) {
+                    val md = java.security.MessageDigest.getInstance("SHA-256")
+                    md.update(signatures[0].toByteArray())
+                    val hash = md.digest().joinToString("") { "%02x".format(it) }
+                    data["signature"] = hash
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error extracting metadata for $pkgName: ${e.message}")
+            data["error"] = e.message ?: "Unknown error"
+        }
+        
+        return data
     }
 }
