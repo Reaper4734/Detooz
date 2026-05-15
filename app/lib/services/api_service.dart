@@ -195,6 +195,11 @@ class ApiService {
     }
   }
 
+  /// Authenticated POST wrapper (used for extensions like APK scanner)
+  Future<http.Response> post(String path, Object? body) async {
+    return _authPost(path, body: body);
+  }
+
   /// Authenticated PUT with auto-retry on 401
   Future<http.Response> _authPut(String path, {Object? body}) async {
     try {

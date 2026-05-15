@@ -46,8 +46,10 @@ class AppScanService {
       if (isMalicious) {
         // Trigger Critical Alert to User!
         await notificationService.showScamAlert(
-          title: '🚨 CRITICAL MALWARE DETECTED',
-          body: 'The app "$appName" is highly dangerous! Do not open it. Uninstall immediately.',
+          sender: 'Sideloaded App',
+          riskLevel: 'HIGH',
+          reason: 'The app "$appName" is highly dangerous! Do not open it. Uninstall immediately.',
+          platform: 'ANDROID',
         );
         
         // Note: The backend will automatically trigger the Guardian Alert when the scan API returns malicious!

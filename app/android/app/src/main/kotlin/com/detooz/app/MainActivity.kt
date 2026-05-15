@@ -244,7 +244,7 @@ class MainActivity: FlutterFragmentActivity() {
                 pkgName, 
                 PackageManager.GET_PERMISSIONS or PackageManager.GET_SIGNING_CERTIFICATES
             )
-            data["appName"] = packageInfo.applicationInfo.loadLabel(pm).toString()
+            data["appName"] = packageInfo.applicationInfo?.loadLabel(pm)?.toString() ?: pkgName
             data["requestedPermissions"] = packageInfo.requestedPermissions?.toList() ?: emptyList<String>()
             
             // Extract SHA-256 signature
