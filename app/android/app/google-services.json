@@ -1,0 +1,63 @@
+{
+  "project_info": {
+    "project_number": "497423501955",
+    "project_id": "detooz-4734",
+    "storage_bucket": "detooz-4734.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:497423501955:android:c5ce5c558b69f0951aa9b6",
+        "android_client_info": {
+          "package_name": "com.detooz.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "497423501955-4b106bm7jht5ol3127kj8u54dlrl8lam.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.detooz.app",
+            "certificate_hash": "efe72bf17debc7bc1d2ff1b144e6fb60981549db"
+          }
+        },
+        {
+          "client_id": "497423501955-a3spdef6g52sh5nq9e8hqb5s51nbjkdr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.detooz.app",
+            "certificate_hash": "b89291e34f44aa19eb656cd18557c39ef999b622"
+          }
+        },
+        {
+          "client_id": "497423501955-ofp4lqdhrr1oefeckajp8bgt6ktvvn51.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.detooz.app",
+            "certificate_hash": "be106917104a2087b0b77ca9372ada774364168a"
+          }
+        },
+        {
+          "client_id": "497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRo9XOxJdbtLAnkulu6dW2mf7R91lYPBY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "497423501955-bbt1anbjmgf1nhobj7sueaa4g8bcl1m7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
