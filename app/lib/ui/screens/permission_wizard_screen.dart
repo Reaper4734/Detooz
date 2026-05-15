@@ -124,9 +124,22 @@ class _PermissionWizardScreenState extends State<PermissionWizardScreen> with Wi
                     
                     SizedBox(height: Responsive.sp(20)),
 
-                    // ─── Step 2: Autostart (Xiaomi/Oppo/Vivo) ───
+                    // ─── Step 2: App Installation Shield (Informational) ───
                     _buildStepCard(
                       index: 2,
+                      title: tr("APP INSTALL SHIELD"),
+                      description: tr("Automatically scans sideloaded apps and APKs for malware. (Permission granted on install)."),
+                      icon: Icons.shield,
+                      isDone: true,
+                      actionLabel: "",
+                      onAction: () {},
+                    ),
+                    
+                    SizedBox(height: Responsive.sp(20)),
+
+                    // ─── Step 3: Autostart (Xiaomi/Oppo/Vivo) ───
+                    _buildStepCard(
+                      index: 3,
                       title: tr("RUN IN BACKGROUND"),
                       description: tr("Prevents the system from killing Detooz. Enable 'Autostart'."),
                       icon: Icons.flash_on,
